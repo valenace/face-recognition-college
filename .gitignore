@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Own folders
+
+/data/dataset_pro
+/experiments/dataset_pro_old

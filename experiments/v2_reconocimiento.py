@@ -12,13 +12,13 @@ import faiss
 from datetime import datetime
 from uniface import create_detector, create_recognizer
 import supervision as sv
-from utils_facial import aplicar_clahe
+from core.utils_facial import aplicar_clahe
 
 # ============================================================
 # ⚙️ CONFIGURACIÓN
 # ============================================================
-DB_FILE = "database_embeddings.pkl"
-ASISTENCIA_FILE = "asistencia.csv"
+DB_FILE = "data/database_embeddings.pkl"
+ASISTENCIA_FILE = "data/asistencia.csv"
 
 UMBRAL_SIMILITUD = 0.35
 TAMANO_MINIMO_ROSTRO = 30

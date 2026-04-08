@@ -7,13 +7,13 @@ import os
 import pickle
 import numpy as np
 from uniface import create_detector, create_recognizer
-from utils_facial import aplicar_clahe
+from core.utils_facial import aplicar_clahe
 
 # ============================================================
 # ⚙️ CONFIGURACIÓN
 # ============================================================
-DATASET_PATH = "dataset_pro"
-DB_FILE = "database_embeddings.pkl"
+DATASET_PATH = "data/dataset_pro"
+DB_FILE = "data/database_embeddings.pkl"
 
 # ============================================================
 # 🚀 INICIALIZACIÓN

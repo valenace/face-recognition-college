@@ -3,10 +3,10 @@ import pickle
 import numpy as np
 from pathlib import Path
 from uniface import create_detector, create_recognizer
-from utils_facial import aplicar_clahe, es_imagen_borrosa, alinear_rostro
+from core.utils_facial import aplicar_clahe, es_imagen_borrosa, alinear_rostro
 
-DATASET_PATH = Path("dataset_pro")
-DB_FILE = Path("database_embeddings.pkl")
+DATASET_PATH = Path("data/dataset_pro")
+DB_FILE = Path("data/database_embeddings.pkl")
 
 MAX_FOTOS = 50
 FRAMES_ENTRE_FOTOS = 8
@@ -22,42 +22,33 @@ if not nombre:
     print("Error: el nombre no puede estar vacio.")
     exit()
 
-ruta_video = input("Ruta del archivo de video: ").strip()
-if not Path(ruta_video).exists():
-    print("Error: el archivo de video no existe.")
-    exit()
-
 path_estudiante = DATASET_PATH / nombre
 path_estudiante.mkdir(parents=True, exist_ok=True)
 print(f"Directorio: {path_estudiante}")
 
-WINDOW_NAME = "Registro desde Video"
+WINDOW_NAME = "Registro"
 cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
-cap = cv2.VideoCapture(ruta_video)
+cap = cv2.VideoCapture(0)
 if not cap.isOpened():
-    print("Error: no se pudo abrir el video.")
+    print("Error: no se pudo acceder a la camara.")
     exit()
 
 count = 0
 frames_counter = 0
 
-print("Extrayendo frames... 'q' para cancelar.\n")
+print("\nMantén 's' presionada y gira la cabeza lentamente. 'q' para salir.\n")
 
 try:
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("Fin del video.")
             break
 
-        frames_counter += 1
-        if frames_counter % FRAMES_ENTRE_FOTOS != 0:
-            continue
-
         display = frame.copy()
-        rostros = detector.detect(frame)
+        frames_counter += 1
 
+        rostros = detector.detect(frame)
         rostro_listo = None
         mensaje_estado = "Buscando rostro..."
         color_mensaje = (0, 165, 255)
@@ -71,16 +62,16 @@ try:
 
                 if rostro_alineado is not None:
                     if es_imagen_borrosa(rostro_alineado, umbral=UMBRAL_CALIDAD_BLUR):
-                        mensaje_estado = "BORROSA - descartando"
+                        mensaje_estado = "BORROSA - quietud"
                         color_mensaje = (0, 0, 255)
                     else:
                         gray = cv2.cvtColor(rostro_alineado, cv2.COLOR_BGR2GRAY)
                         brillo = np.mean(gray)
                         if brillo < UMBRAL_BRILLO_MIN:
-                            mensaje_estado = "MUY OSCURO - descartando"
+                            mensaje_estado = "MUY OSCURO"
                             color_mensaje = (0, 0, 255)
                         else:
-                            mensaje_estado = "OK - capturando"
+                            mensaje_estado = "OK - presiona 's'"
                             color_mensaje = (0, 255, 0)
                             rostro_listo = rostro_alineado
 
@@ -94,9 +85,9 @@ try:
 
         if count < MAX_FOTOS:
             progreso = int((count / MAX_FOTOS) * 100)
-            instruccion = f"Extrayendo... ({progreso}%)"
+            instruccion = f"Gira la cabeza ({progreso}%)"
         else:
-            instruccion = "Extraccion completada"
+            instruccion = "COMPLETADO - presiona 'q'"
             color_mensaje = (0, 255, 255)
 
         h_frame = display.shape[0]
@@ -111,26 +102,22 @@ try:
 
         cv2.imshow(WINDOW_NAME, display)
 
-        if rostro_listo is not None and count < MAX_FOTOS:
-            filename = path_estudiante / f"{nombre}_{count}.jpg"
-            cv2.imwrite(str(filename), rostro_listo)
-            count += 1
-            print(f"  Foto {count}/{MAX_FOTOS}")
-
-        if count >= MAX_FOTOS:
-            print("Maximo de fotos alcanzado.")
-            break
-
         key = cv2.waitKey(1) & 0xFF
+        if key == ord('s') and rostro_listo is not None and count < MAX_FOTOS:
+            if frames_counter % FRAMES_ENTRE_FOTOS == 0:
+                filename = path_estudiante / f"{nombre}_{count}.jpg"
+                cv2.imwrite(str(filename), rostro_listo)
+                count += 1
+                print(f"  Foto {count}/{MAX_FOTOS}")
+
         if key == ord('q'):
-            print("Cancelado por el usuario.")
             break
 
 finally:
     if cap is not None:
         cap.release()
     cv2.destroyAllWindows()
-    print(f"\nExtraccion finalizada: {count} fotos")
+    print(f"\nCaptura finalizada: {count} fotos")
 
 if count < 10:
     print("Advertencia: pocas fotos. La calidad del reconocimiento puede ser baja.")
@@ -175,11 +162,14 @@ if vectores_estudiante:
         ruta_temporal.replace(DB_FILE)
         print("Base de datos actualizada.")
     except Exception as e:
-        print(f"Error al guardar: {e}")
+        print(f"Error al guardar la base de datos: {e}")
         if ruta_temporal.exists():
             ruta_temporal.unlink()
 else:
     print(f"No se pudieron extraer embeddings para {nombre}.")
+
+with open(DB_FILE, "wb") as f:
+    pickle.dump(db_embeddings, f)
 
 print(f"\nTotal registradas: {len(db_embeddings)}")
 for n in db_embeddings:
