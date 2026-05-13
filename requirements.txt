@@ -1,4 +1,4 @@
-# Dependencias para el Pipeline de Reconocimiento Facial (UniFace v2)
+# Dependencias para el Pipeline de Reconocimiento Facial (CV College v2)
 
 # --- Computación y Visión ---
 numpy
@@ -6,13 +6,13 @@ opencv-python
 scipy
 
 # --- Inteligencia Artificial y ONNX ---
-# UniFace utiliza ONNX Runtime para RetinaFace y ArcFace
+# CV College utiliza ONNX Runtime para RetinaFace y ArcFace
 onnxruntime
 
 # --- Tracking y Supervisión ---
 supervision
 
-# --- Librería Core (UniFace) ---
+# --- Librería Core (CV College) ---
 # Nota: Asegúrate de tener acceso a esta librería. 
 # Si es un paquete privado, instálalo con: pip install <ruta-o-url>
 uniface

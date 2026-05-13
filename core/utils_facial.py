@@ -37,7 +37,7 @@ def alinear_rostro(frame, landmarks_5pts, target_size=(224, 224)):
     angulo = np.degrees(np.arctan2(dy, dx))
     centro_ojos = (
         int((ojo_izq[0] + ojo_der[0]) / 2),
-        int((ojo_izq[1] + ojo_der[1]) / 2)
+        int((ojo_izq[1] + ojo_der[1]) / 2),
     )
 
     dist_ojos = np.sqrt(dx**2 + dy**2)
