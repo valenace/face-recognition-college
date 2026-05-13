@@ -14,8 +14,8 @@ UMBRAL_CALIDAD_BLUR = 60
 UMBRAL_BRILLO_MIN = 20
 
 print("Cargando modelos...")
-detector = create_detector('retinaface')
-recognizer = create_recognizer('arcface')
+detector = create_detector("retinaface")
+recognizer = create_recognizer("arcface")
 
 nombre = input("Nombre de la persona a registrar: ").strip()
 if not nombre:
@@ -76,9 +76,18 @@ try:
                             rostro_listo = rostro_alineado
 
                     h_crop, w_crop = rostro_alineado.shape[:2]
-                    if 10 + h_crop < display.shape[0] and 10 + w_crop < display.shape[1]:
-                        display[10:10 + h_crop, 10:10 + w_crop] = rostro_alineado
-                        cv2.rectangle(display, (10, 10), (10 + w_crop, 10 + h_crop), color_mensaje, 2)
+                    if (
+                        10 + h_crop < display.shape[0]
+                        and 10 + w_crop < display.shape[1]
+                    ):
+                        display[10 : 10 + h_crop, 10 : 10 + w_crop] = rostro_alineado
+                        cv2.rectangle(
+                            display,
+                            (10, 10),
+                            (10 + w_crop, 10 + h_crop),
+                            color_mensaje,
+                            2,
+                        )
 
                 x1, y1, x2, y2 = map(int, rostro.bbox)
                 cv2.rectangle(display, (x1, y1), (x2, y2), color_mensaje, 2)
@@ -92,25 +101,48 @@ try:
 
         h_frame = display.shape[0]
         ancho_barra = int((count / MAX_FOTOS) * display.shape[1])
-        cv2.rectangle(display, (0, h_frame - 15), (ancho_barra, h_frame), (0, 255, 0), -1)
-        cv2.putText(display, f"Fotos: {count}/{MAX_FOTOS}", (20, h_frame - 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-        cv2.putText(display, instruccion, (20, h_frame - 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-        cv2.putText(display, mensaje_estado, (150, 50),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, color_mensaje, 2)
+        cv2.rectangle(
+            display, (0, h_frame - 15), (ancho_barra, h_frame), (0, 255, 0), -1
+        )
+        cv2.putText(
+            display,
+            f"Fotos: {count}/{MAX_FOTOS}",
+            (20, h_frame - 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (255, 255, 255),
+            2,
+        )
+        cv2.putText(
+            display,
+            instruccion,
+            (20, h_frame - 80),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
+            2,
+        )
+        cv2.putText(
+            display,
+            mensaje_estado,
+            (150, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            color_mensaje,
+            2,
+        )
 
         cv2.imshow(WINDOW_NAME, display)
 
         key = cv2.waitKey(1) & 0xFF
-        if key == ord('s') and rostro_listo is not None and count < MAX_FOTOS:
+        if key == ord("s") and rostro_listo is not None and count < MAX_FOTOS:
             if frames_counter % FRAMES_ENTRE_FOTOS == 0:
                 filename = path_estudiante / f"{nombre}_{count}.jpg"
                 cv2.imwrite(str(filename), rostro_listo)
                 count += 1
                 print(f"  Foto {count}/{MAX_FOTOS}")
 
-        if key == ord('q'):
+        if key == ord("q"):
             break
 
 finally:
@@ -132,8 +164,10 @@ if DB_FILE.exists():
     print(f"Base de datos cargada: {len(db_embeddings)} personas")
 
 vectores_estudiante = []
-extensiones_validas = {'.jpg', '.jpeg', '.png'}
-archivos_validos = [p for p in path_estudiante.iterdir() if p.suffix.lower() in extensiones_validas]
+extensiones_validas = {".jpg", ".jpeg", ".png"}
+archivos_validos = [
+    p for p in path_estudiante.iterdir() if p.suffix.lower() in extensiones_validas
+]
 
 for i, ruta_imagen in enumerate(sorted(archivos_validos)):
     img = cv2.imread(str(ruta_imagen))
@@ -155,7 +189,7 @@ if vectores_estudiante:
     centroide_normalizado = centroide / np.linalg.norm(centroide)
     db_embeddings[nombre] = centroide_normalizado
 
-    ruta_temporal = DB_FILE.with_suffix('.pkl.tmp')
+    ruta_temporal = DB_FILE.with_suffix(".pkl.tmp")
     try:
         with open(ruta_temporal, "wb") as f:
             pickle.dump(db_embeddings, f)

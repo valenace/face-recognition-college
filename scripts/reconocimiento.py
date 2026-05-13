@@ -40,11 +40,11 @@ with open(DB_FILE, "rb") as f:
 nombres_lista = list(db.keys())
 vectores_lista = list(db.values())
 indice_faiss = faiss.IndexFlatIP(512)
-indice_faiss.add(np.array(vectores_lista).astype('float32'))
+indice_faiss.add(np.array(vectores_lista).astype("float32"))
 
 print("Cargando modelos...")
-detector = create_detector('retinaface')
-recognizer = create_recognizer('arcface')
+detector = create_detector("retinaface")
+recognizer = create_recognizer("arcface")
 tracker = sv.ByteTrack()
 
 identidades_ancladas = {}
@@ -75,7 +75,14 @@ def registrar_asistencia(nombre, similitud):
     ahora = datetime.now()
     with open(ASISTENCIA_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([nombre, ahora.strftime("%Y-%m-%d"), ahora.strftime("%H:%M:%S"), f"{similitud:.4f}"])
+        writer.writerow(
+            [
+                nombre,
+                ahora.strftime("%Y-%m-%d"),
+                ahora.strftime("%H:%M:%S"),
+                f"{similitud:.4f}",
+            ]
+        )
     asistencia_registrada.add(nombre)
     print(f"Asistencia: {nombre} ({similitud:.2f})")
 
@@ -105,7 +112,7 @@ try:
         if len(detections_list) > 0:
             detections = sv.Detections(
                 xyxy=np.array([d[:4] for d in detections_list]),
-                confidence=np.array([d[4] for d in detections_list])
+                confidence=np.array([d[4] for d in detections_list]),
             )
             tracked_detections = tracker.update_with_detections(detections=detections)
 
@@ -130,13 +137,13 @@ try:
                 # liveness por paralaje (yaw ratio)
                 if tracker_id not in memoria_liveness:
                     memoria_liveness[tracker_id] = {
-                        'frames_active': 0,
-                        'head_turned': False,
-                        'validated': False
+                        "frames_active": 0,
+                        "head_turned": False,
+                        "validated": False,
                     }
 
                 liveness_data = memoria_liveness[tracker_id]
-                liveness_data['frames_active'] += 1
+                liveness_data["frames_active"] += 1
 
                 # Extraer coordenadas X de los landmarks centrales (Ojo Izq, Ojo Der, Nariz)
 
@@ -149,35 +156,70 @@ try:
                     dist_der = abs(ojo_der_x - nariz_x)
                     ratio_yaw = dist_izq / (dist_der + 1e-6)
 
-                    if not liveness_data['validated']:
+                    if not liveness_data["validated"]:
                         if ratio_yaw > 1.5 or ratio_yaw < 0.6:
-                            liveness_data['head_turned'] = True
+                            liveness_data["head_turned"] = True
 
-                        if liveness_data['head_turned'] and 0.7 < ratio_yaw < 1.3:
-                            liveness_data['validated'] = True
-                        elif liveness_data['frames_active'] > FRAMES_LIMITE_REGISTRO:
-                            cv2.rectangle(frame, (t_x1, t_y1), (t_x2, t_y2), (0, 0, 255), 2)
-                            cv2.putText(frame, "SPOOF DETECTADO", (t_x1, t_y1 - 5),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                        if liveness_data["head_turned"] and 0.7 < ratio_yaw < 1.3:
+                            liveness_data["validated"] = True
+                        elif liveness_data["frames_active"] > FRAMES_LIMITE_REGISTRO:
+                            cv2.rectangle(
+                                frame, (t_x1, t_y1), (t_x2, t_y2), (0, 0, 255), 2
+                            )
+                            cv2.putText(
+                                frame,
+                                "SPOOF DETECTADO",
+                                (t_x1, t_y1 - 5),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.6,
+                                (0, 0, 255),
+                                2,
+                            )
                             continue
 
-                    if not liveness_data['validated']:
-                        instruccion = "Gira izq/der" if not liveness_data['head_turned'] else "Mira al frente"
+                    if not liveness_data["validated"]:
+                        instruccion = (
+                            "Gira izq/der"
+                            if not liveness_data["head_turned"]
+                            else "Mira al frente"
+                        )
                         cv2.rectangle(frame, (t_x1, t_y1), (t_x2, t_y2), color, 2)
-                        cv2.putText(frame, instruccion, (t_x1, t_y1 - 5),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                        progreso = int((liveness_data['frames_active'] / FRAMES_LIMITE_REGISTRO) * (t_x2 - t_x1))
-                        cv2.line(frame, (t_x1, t_y2 + 10), (t_x1 + progreso, t_y2 + 10), color, 3)
+                        cv2.putText(
+                            frame,
+                            instruccion,
+                            (t_x1, t_y1 - 5),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6,
+                            (255, 255, 255),
+                            2,
+                        )
+                        progreso = int(
+                            (liveness_data["frames_active"] / FRAMES_LIMITE_REGISTRO)
+                            * (t_x2 - t_x1)
+                        )
+                        cv2.line(
+                            frame,
+                            (t_x1, t_y2 + 10),
+                            (t_x1 + progreso, t_y2 + 10),
+                            color,
+                            3,
+                        )
                         continue
                 else:
                     continue
 
                 if tracker_id in identidades_ancladas:
-                    nombre_mostrar, color = identidades_ancladas[tracker_id], (0, 255, 0)
+                    nombre_mostrar, color = identidades_ancladas[tracker_id], (
+                        0,
+                        255,
+                        0,
+                    )
                 else:
                     frame_ecualizado = aplicar_clahe(frame)
-                    vec_actual = recognizer.get_normalized_embedding(frame_ecualizado, rostro_asociado.landmarks)
-                    vec_np = np.array([vec_actual.flatten()]).astype('float32')
+                    vec_actual = recognizer.get_normalized_embedding(
+                        frame_ecualizado, rostro_asociado.landmarks
+                    )
+                    vec_np = np.array([vec_actual.flatten()]).astype("float32")
                     distancias, indices = indice_faiss.search(vec_np, 1)
 
                     max_similitud, idx_ganador = distancias[0][0], indices[0][0]
@@ -186,7 +228,9 @@ try:
                         candidato = nombres_lista[idx_ganador]
                         if tracker_id not in votos_identidad:
                             votos_identidad[tracker_id] = {}
-                        votos_identidad[tracker_id][candidato] = votos_identidad[tracker_id].get(candidato, 0) + 1
+                        votos_identidad[tracker_id][candidato] = (
+                            votos_identidad[tracker_id].get(candidato, 0) + 1
+                        )
 
                         if votos_identidad[tracker_id][candidato] >= VOTOS_REQUERIDOS:
                             identidades_ancladas[tracker_id] = candidato
@@ -197,18 +241,45 @@ try:
 
                 cv2.rectangle(frame, (t_x1, t_y1), (t_x2, t_y2), color, 2)
                 etiqueta = f"{nombre_mostrar} (ID:{tracker_id})"
-                (tw, th), _ = cv2.getTextSize(etiqueta, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-                cv2.rectangle(frame, (t_x1, t_y1 - th - 10), (t_x1 + tw, t_y1), color, -1)
-                cv2.putText(frame, etiqueta, (t_x1, t_y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
+                (tw, th), _ = cv2.getTextSize(
+                    etiqueta, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
+                )
+                cv2.rectangle(
+                    frame, (t_x1, t_y1 - th - 10), (t_x1 + tw, t_y1), color, -1
+                )
+                cv2.putText(
+                    frame,
+                    etiqueta,
+                    (t_x1, t_y1 - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 0, 0),
+                    2,
+                )
 
         t_actual = time.time()
         fps = 1 / (t_actual - tempo_previo) if (t_actual - tempo_previo) > 0 else 0
         tempo_previo = t_actual
-        cv2.putText(frame, f"FPS: {int(fps)}", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        cv2.putText(frame, f"Asistencia: {len(asistencia_registrada)}", (20, frame.shape[0] - 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.putText(
+            frame,
+            f"FPS: {int(fps)}",
+            (20, 40),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 255, 255),
+            2,
+        )
+        cv2.putText(
+            frame,
+            f"Asistencia: {len(asistencia_registrada)}",
+            (20, frame.shape[0] - 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 0),
+            2,
+        )
         cv2.imshow(WINDOW_NAME, frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
 finally:
