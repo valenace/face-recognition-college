@@ -161,6 +161,16 @@ class MotorAsistencia:
                         x1, y1, x2, y2 = map(int, t[0])
                         t_id = t[4]
 
+                       
+                        h_frame, w_frame = frame.shape[:2]
+                        margen = 15
+                        
+                        if x1 < margen or y1 < margen or x2 > (w_frame - margen) or y2 > (h_frame - margen):
+                            nombre_mostrar = "Céntrate"
+                            color = (0, 165, 255) 
+                            self._dibujar_ui(frame, x1, y1, x2, y2, nombre_mostrar, color, t_id)
+                            continue
+
                         # Buscar el objeto de rostro correspondiente al ID del tracker
                         mejor_iou, r_asociado = 0, None
                         for r in rostros_data:

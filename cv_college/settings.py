@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Third-Party
+    "rest_framework",
     # Local Apps
     "apps.users",
     "apps.academic",
@@ -80,8 +82,12 @@ WSGI_APPLICATION = "cv_college.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "cv_college_db",
+        "USER": "cv_college_user",
+        "PASSWORD": "cv_college_2026",
+        "HOST": "localhost",
+        "PORT": "5432",
     }
 }
 

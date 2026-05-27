@@ -1,5 +1,10 @@
 # Dependencias para el Pipeline de Reconocimiento Facial (CV College v2)
 
+# --- Web Framework ---
+django
+djangorestframework
+psycopg2-binary
+
 # --- Computación y Visión ---
 numpy
 opencv-python
