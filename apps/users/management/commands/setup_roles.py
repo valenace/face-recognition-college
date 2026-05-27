@@ -16,7 +16,7 @@ class Command(BaseCommand):
                 "apps": ["academic"],
                 "actions": ["view", "add", "change", "delete"],
                 "extra": [
-                    ("attendance", "view_attendancerecord"),
+                    ("attendance", "view_registroasistencia"),
                     ("attendance", "view_faceembedding"),
                 ]
             },
@@ -28,9 +28,9 @@ class Command(BaseCommand):
                     ("academic", "view_seccion"),
                     ("academic", "view_asignacionclase"),
                     # permisos sobre control de asistencia
-                    ("attendance", "view_attendancerecord"),
-                    ("attendance", "add_attendancerecord"),
-                    ("attendance", "change_attendancerecord"),
+                    ("attendance", "view_registroasistencia"),
+                    ("attendance", "add_registroasistencia"),
+                    ("attendance", "change_registroasistencia"),
                     ("attendance", "view_faceembedding"),
                 ]
             }
