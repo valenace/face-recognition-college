@@ -37,7 +37,7 @@ class User(AbstractUser):
         return self.role == self.Role.STUDENT
 
     def save(self, *args, **kwargs):
-        # Configurar flags de staff y superuser automáticamente según el rol
+        # configurar flags de staff y superuser automáticamente según el rol
         if self.role == self.Role.DEVELOPER:
             self.is_superuser = True
             self.is_staff = True
