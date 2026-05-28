@@ -1,5 +1,6 @@
 from django.views.generic import ListView, DetailView
 from django.core.exceptions import PermissionDenied
+from django.utils import timezone
 from apps.users.permissions import RoleRequiredMixin
 from apps.users.models import User
 from .models import AsignacionClase, Inscripcion
@@ -17,6 +18,33 @@ class DashboardProfesorView(RoleRequiredMixin, ListView):
     def get_queryset(self):
         # retornar únicamente las asignaciones vinculadas al profesor actual
         return AsignacionClase.objects.filter(profesor=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        clases = self.get_queryset()
+        
+        # Total de clases asignadas
+        context["total_clases"] = clases.count()
+        
+        # Total de estudiantes (únicos) registrados en las clases del profesor
+        context["total_estudiantes"] = Inscripcion.objects.filter(
+            asignacion_clase__in=clases
+        ).values('estudiante').distinct().count()
+        
+        # Total de alertas de fraude en las sesiones del profesor
+        context["total_alertas"] = RegistroAsistencia.objects.filter(
+            sesion__asignacion_clase__in=clases,
+            es_fraude=True
+        ).count()
+
+        # Próxima clase
+        ahora = timezone.localtime().time()
+        proxima = clases.filter(horario_inicio__gt=ahora).order_by('horario_inicio').first()
+        if not proxima:
+            proxima = clases.order_by('horario_inicio').first()
+        context["proxima_clase"] = proxima
+        
+        return context
 
 
 class MonitorClaseView(RoleRequiredMixin, DetailView):
