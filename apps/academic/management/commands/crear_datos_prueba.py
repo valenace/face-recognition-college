@@ -29,6 +29,57 @@ class Command(BaseCommand):
         else:
             self.stdout.write("el profesor 'profesor1' ya existe.")
 
+        # 1b. crear coordinador
+        coord, created = User.objects.get_or_create(
+            username="coordinador1",
+            defaults={
+                "email": "coordinador1@college.edu",
+                "first_name": "Ana",
+                "last_name": "Sánchez",
+                "role": User.Role.COORDINATOR
+            }
+        )
+        if created:
+            coord.set_password("admin123")
+            coord.save()
+            self.stdout.write("coordinador 'coordinador1' creado exitosamente.")
+        else:
+            self.stdout.write("el coordinador 'coordinador1' ya existe.")
+
+        # 1c. crear director
+        director, created = User.objects.get_or_create(
+            username="director1",
+            defaults={
+                "email": "director1@college.edu",
+                "first_name": "Carlos",
+                "last_name": "Mendoza",
+                "role": User.Role.DIRECTOR
+            }
+        )
+        if created:
+            director.set_password("admin123")
+            director.save()
+            self.stdout.write("director 'director1' creado exitosamente.")
+        else:
+            self.stdout.write("el director 'director1' ya existe.")
+
+        # 1d. crear desarrollador
+        dev, created = User.objects.get_or_create(
+            username="desarrollador1",
+            defaults={
+                "email": "desarrollador1@college.edu",
+                "first_name": "Diego",
+                "last_name": "López",
+                "role": User.Role.DEVELOPER
+            }
+        )
+        if created:
+            dev.set_password("admin123")
+            dev.save()
+            self.stdout.write("desarrollador 'desarrollador1' creado exitosamente.")
+        else:
+            self.stdout.write("el desarrollador 'desarrollador1' ya existe.")
+
         # 2. crear asignatura
         materia, _ = Asignatura.objects.get_or_create(
             codigo="IA-101",

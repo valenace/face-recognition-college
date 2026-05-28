@@ -15,7 +15,7 @@ urlpatterns = [
     # urls academicas
     path("academic/", include("apps.academic.urls")),
     # urls de autenticación
-    path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
+    path("login/", auth_views.LoginView.as_view(template_name="registration/login.html", redirect_authenticated_user=True), name="login"),
     path("logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
 ]
 
