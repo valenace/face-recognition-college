@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Clases | CV College{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-3xl font-bold text-slate-800 dark:text-zinc-100 tracking-tight">Mis Clases Asignadas</h2>
+    <p class="text-slate-500 dark:text-zinc-400 mt-1">aquí puedes gestionar el pase de lista y monitorear tus secciones en tiempo real.</p>
+</div>
+
+{% if clases %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for clase in clases %}
+    <div class="glass-card p-6 border-l-4 border-brand-blue flex flex-col justify-between h-64 hover:shadow-2xl transition-all duration-300">
+        <div>
+            <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-pastel-blue text-brand-blue dark:bg-zinc-800 dark:text-brand-yellow mb-4">
+                sección: {{ clase.seccion.codigo }}
+            </span>
+            <h3 class="text-xl font-bold text-slate-800 dark:text-zinc-100 tracking-tight line-clamp-2">
+                {{ clase.asignatura.nombre }}
+            </h3>
+            <p class="text-sm text-slate-400 mt-1">código: {{ clase.asignatura.codigo }}</p>
+        </div>
+
+        <div class="mt-4">
+            <div class="flex items-center text-sm text-slate-500 dark:text-zinc-400 mb-4 gap-4">
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <span>{{ clase.salon.nombre }}</span>
+                </div>
+                <div class="flex items-center">
+                    <svg class="w-4 h-4 mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</span>
+                </div>
+            </div>
+
+            {% with latest_session=clase.sesiones.last %}
+            {% if latest_session %}
+            <a href="{% url 'academic:monitor-clase' latest_session.id %}" 
+               class="w-full flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-white bg-brand-blue hover:bg-brand-blue-accent rounded-xl shadow-md shadow-brand-blue/10 hover:shadow-lg transition-all duration-200">
+                ir al monitor de clase
+            </a>
+            {% else %}
+            <button disabled 
+                    class="w-full flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-slate-400 bg-slate-100 dark:bg-zinc-800 dark:text-zinc-600 rounded-xl cursor-not-allowed">
+                sin sesiones activas hoy
+            </button>
+            {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="glass-card p-12 text-center max-w-lg mx-auto">
+    <div class="w-16 h-16 bg-slate-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+        </svg>
+    </div>
+    <h3 class="text-lg font-bold text-slate-800 dark:text-zinc-200">no tienes clases asignadas</h3>
+    <p class="text-sm text-slate-500 dark:text-zinc-500 mt-1">comunícate con el departamento de coordinación si esto es un error.</p>
+</div>
+{% endif %}
+{% endblock %}

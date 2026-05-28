@@ -3,6 +3,7 @@ from django.urls import path, include
 from apps.users.views import dashboard
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -11,8 +12,11 @@ urlpatterns = [
     # ── Attendance & Biometrics ────────────────────────────────
     path("", include("apps.attendance.urls")),
 
-    # academic placeholders
-    # path("academic/", include("apps.academic.urls")),
+    # urls academicas
+    path("academic/", include("apps.academic.urls")),
+    # urls de autenticación
+    path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
+    path("logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
 ]
 
 if settings.DEBUG:

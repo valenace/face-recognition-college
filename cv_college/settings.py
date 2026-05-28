@@ -135,3 +135,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# autenticación
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "academic:dashboard-profesor"
+LOGOUT_REDIRECT_URL = "login"
