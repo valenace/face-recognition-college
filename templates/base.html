@@ -73,9 +73,12 @@
 </head>
 
 <body class="antialiased overflow-x-hidden">
+    <!-- Overlay para móvil (fondo oscuro al abrir sidebar) -->
+    <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm hidden md:hidden transition-opacity"></div>
+
     <!-- Sidebar -->
     <aside id="sidebar"
-        class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform -translate-x-full sm:translate-x-0 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800">
+        class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform duration-300 -translate-x-full md:translate-x-0 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800">
         <div class="h-full px-4 py-6 overflow-y-auto flex flex-col justify-between">
             <div>
                 <!-- Brand logo -->
@@ -258,11 +261,11 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="p-4 sm:ml-64 min-h-screen">
+    <main class="p-4 md:ml-64 min-h-screen">
         <!-- Top Bar -->
         <header class="flex items-center justify-between mb-8 px-4 py-2">
-            <button data-drawer-target="sidebar" data-drawer-toggle="sidebar" aria-controls="sidebar" type="button"
-                class="inline-flex items-center p-2 text-sm text-slate-500 rounded-lg sm:hidden hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-200 dark:text-zinc-400 dark:hover:bg-zinc-700">
+            <button id="sidebar-toggle" type="button" aria-controls="sidebar" aria-label="Abrir menú"
+                class="inline-flex items-center p-2 text-sm text-slate-500 rounded-lg md:hidden hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 dark:text-zinc-400 dark:hover:bg-zinc-700 transition-colors">
                 <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                     <path
                         d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z">
@@ -343,6 +346,48 @@
                 }
             });
         });
+
+        // Sidebar Mobile Toggle Logic
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const toggleBtn = document.getElementById('sidebar-toggle');
+
+            function openSidebar() {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                overlay.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden', 'md:overflow-auto');
+            }
+
+            function closeSidebar() {
+                sidebar.classList.add('-translate-x-full');
+                sidebar.classList.remove('translate-x-0');
+                overlay.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden', 'md:overflow-auto');
+            }
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    if (sidebar.classList.contains('-translate-x-full')) {
+                        openSidebar();
+                    } else {
+                        closeSidebar();
+                    }
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', closeSidebar);
+            }
+
+            // Close sidebar on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !sidebar.classList.contains('-translate-x-full')) {
+                    closeSidebar();
+                }
+            });
+        })();
     </script>
     {% block extra_js %}{% endblock %}
 </body>
