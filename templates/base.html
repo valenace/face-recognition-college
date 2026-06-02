@@ -21,14 +21,14 @@
                 extend: {
                     colors: {
                         'brand-yellow': {
-                            DEFAULT: '#FFCC00',
-                            pastel: '#FFFDF0',
-                            accent: '#FFD700',
+                            DEFAULT: '#fde68a',
+                            pastel: '#fef3c7',
+                            accent: '#f59e0b',
                         },
                         'brand-blue': {
-                            DEFAULT: '#00247D',
-                            pastel: '#F0F4FF',
-                            accent: '#0033B3',
+                            DEFAULT: '#0ea5e9', // Sky 500
+                            pastel: '#e0f2fe', // Sky 100
+                            accent: '#38bdf8', // Sky 400
                         },
                         'pastel-yellow': '#FFF9E6',
                         'pastel-blue': '#E6ECF9',
@@ -44,10 +44,10 @@
     <style type="text/tailwindcss">
         @layer base {
             body {
-                @apply font-sans bg-slate-50 text-slate-900 transition-colors duration-300;
+                @apply font-sans bg-amber-50/30 text-slate-900 transition-colors duration-300;
             }
             .dark body {
-                @apply bg-zinc-950 text-zinc-100;
+                @apply bg-slate-900 text-slate-100;
             }
         }
         @layer components {
@@ -77,27 +77,28 @@
     <div id="sidebar-overlay" class="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm hidden md:hidden transition-opacity"></div>
 
     <!-- Sidebar -->
+    <!-- Sidebar -->
     <aside id="sidebar"
-        class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform duration-300 -translate-x-full md:translate-x-0 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800">
+        class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform duration-300 -translate-x-full md:translate-x-0 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 flex flex-col border-r border-slate-200 dark:border-slate-800">
         <div class="h-full px-4 py-6 overflow-y-auto flex flex-col justify-between">
             <div>
                 <!-- Brand logo -->
                 <div class="flex items-center gap-3 mb-6 px-2">
                     <div class="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center shadow-lg border border-brand-yellow/30">
-                        <span class="text-white font-bold text-xl">C</span>
+                        <span class="text-brand-blue dark:text-white font-bold text-xl">C</span>
                     </div>
-                    <h1 class="text-xl font-bold tracking-tight text-white">CV <span
-                            class="font-light text-slate-400">College</span></h1>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-800 dark:text-white">CV <span
+                            class="font-light text-slate-500 dark:text-slate-400">College</span></h1>
                 </div>
 
                 <!-- Sección de Perfil Corta -->
                 <div class="mb-6 px-2">
-                    <div class="flex items-center gap-3 bg-slate-800/40 p-3 rounded-xl border border-slate-800">
-                        <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold shrink-0 border border-slate-600">
+                    <div class="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-white font-bold shrink-0 border border-slate-300 dark:border-slate-600">
                             {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
                         </div>
                         <div class="overflow-hidden">
-                            <p class="text-sm font-semibold text-white truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
+                            <p class="text-sm font-semibold text-slate-800 dark:text-white truncate">{{ request.user.get_full_name|default:request.user.username }}</p>
                             {% if request.user.is_developer %}
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Desarrollador</span>
                             {% elif request.user.is_director %}
@@ -115,7 +116,7 @@
 
                 <nav class="space-y-1">                    <!-- Dashboard General (Default) -->
                     <a href="{% if request.user.is_professor %}{% url 'academic:dashboard-profesor' %}{% elif request.user.is_student %}{% url 'facial_registration' %}{% else %}{% url 'dashboard' %}{% endif %}"
-                        class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition">
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-brand-blue dark:hover:text-white transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
@@ -235,29 +236,12 @@
             </div>
 
             <!-- Bottom elements (Theme toggle & Logout) -->
-            <div class="px-2 mt-auto pt-6 border-t border-slate-800 flex flex-col gap-2">
-                <button id="theme-toggle"
-                    class="flex items-center justify-center w-full p-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all hover:ring-2 ring-brand-blue/20">
-                    <span id="theme-toggle-dark-icon" class="hidden">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z">
-                            </path>
-                        </svg>
-                    </span>
-                    <span id="theme-toggle-light-icon" class="hidden">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                        </svg>
-                    </span>
-                    <span class="ml-2 font-medium">Cambiar Modo</span>
-                </button>
-
+            <div class="px-2 mt-auto pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
                 <!-- Formulario POST seguro para Logout -->
                 <form id="logout-form" action="{% url 'logout' %}" method="post" class="hidden">
                     {% csrf_token %}
                 </form>
-                <button type="button" onclick="document.getElementById('logout-form').submit();" class="flex items-center justify-center gap-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg px-4 py-3 transition mt-auto mb-4 mx-2">
+                <button type="button" onclick="document.getElementById('logout-form').submit();" class="flex items-center justify-center gap-2 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg px-4 py-3 transition mt-auto mb-4 mx-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                     </svg>
@@ -281,6 +265,18 @@
             </button>
 
             <div class="flex items-center gap-4 ml-auto">
+                <button id="theme-toggle" type="button" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5 transition-colors">
+                    <span id="theme-toggle-dark-icon" class="hidden">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path>
+                        </svg>
+                    </span>
+                    <span id="theme-toggle-light-icon" class="hidden">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                        </svg>
+                    </span>
+                </button>
                 <div class="hidden md:flex flex-col items-end">
                     <span class="text-sm font-semibold">{{ user.get_full_name|default:user.username }}</span>
                     <span class="text-xs text-slate-500">{{ user.get_role_display }}</span>
@@ -347,7 +343,7 @@
                 const href = link.getAttribute('href');
                 if (href && href !== '#' && (currentPath === href || (currentPath.startsWith(href) && href !== '/'))) {
                     // Remove inactive classes
-                    link.classList.remove('text-slate-300', 'hover:bg-slate-800', 'hover:text-white');
+                    link.classList.remove('text-slate-600', 'dark:text-slate-300', 'hover:bg-slate-200', 'dark:hover:bg-slate-800', 'hover:text-brand-blue', 'dark:hover:text-white');
                     // Add active classes
                     link.classList.add('bg-brand-blue', 'text-white', 'font-medium');
                 }
