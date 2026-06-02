@@ -56,17 +56,17 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-50/50 dark:bg-zinc-900/50 border-b border-slate-100 dark:border-zinc-800">
-                        <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400">Nombre</th>
-                        <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400">Carnet</th>
-                        <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400">Historial de Flujo</th>
-                        <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400 text-center">Estado</th>
-                        <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400 text-right">Acción / Verificación</th>
+                        <th class="px-2 py-3 md:px-6 md:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400">Nombre</th>
+                        <th class="px-2 py-3 md:px-6 md:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400">Carnet</th>
+                        <th class="px-2 py-3 md:px-6 md:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400">Historial de Flujo</th>
+                        <th class="px-2 py-3 md:px-6 md:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400 text-center">Estado</th>
+                        <th class="px-2 py-3 md:px-6 md:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-zinc-400 text-right">Acción / Verificación</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-zinc-800 bg-white/50 dark:bg-zinc-900/50">
                     {% for item in estudiantes_monitoreo %}
                     <tr class="transition-colors {% if item.asistencia and item.asistencia.es_fraude %}bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30 border-l-4 border-red-500{% else %}hover:bg-slate-50 dark:hover:bg-zinc-800/50{% endif %}">
-                        <td class="px-6 py-4 whitespace-nowrap">
+                        <td class="px-2 py-3 md:px-6 md:py-4 whitespace-nowrap">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full {% if item.asistencia and item.asistencia.es_fraude %}bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-200{% else %}bg-pastel-blue text-brand-blue dark:bg-zinc-800 dark:text-brand-yellow{% endif %} font-bold flex items-center justify-center text-xs">
                                     {{ item.estudiante.user.first_name|first|upper }}{{ item.estudiante.user.last_name|first|upper }}
@@ -76,10 +76,10 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono {% if not item.asistencia or not item.asistencia.es_fraude %}text-slate-500 dark:text-zinc-400{% endif %}">
+                        <td class="px-2 py-3 md:px-6 md:py-4 whitespace-nowrap text-sm font-mono {% if not item.asistencia or not item.asistencia.es_fraude %}text-slate-500 dark:text-zinc-400{% endif %}">
                             {{ item.estudiante.matricula }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <td class="px-2 py-3 md:px-6 md:py-4 whitespace-nowrap text-sm">
                             <div class="flex flex-wrap gap-1.5 justify-start">
                                 {% if item.asistencia %}
                                     <span class="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 text-xs font-semibold">
@@ -102,7 +102,7 @@
                                 {% endif %}
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <td class="px-2 py-3 md:px-6 md:py-4 whitespace-nowrap text-center">
                             {% if item.asistencia %}
                                 {% if item.asistencia.es_fraude %}
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">
@@ -119,7 +119,7 @@
                                 </span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <td class="px-2 py-3 md:px-6 md:py-4 whitespace-nowrap text-right text-sm">
                             <button class="inline-flex items-center gap-1 text-slate-500 hover:text-brand-blue dark:text-zinc-400 dark:hover:text-brand-yellow font-medium transition-colors" title="Verificar alumno">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                 <span>Verificar</span>
@@ -128,7 +128,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-6 py-8 text-center text-slate-500 dark:text-zinc-500">
+                        <td colspan="5" class="px-2 py-3 md:px-6 md:py-4 text-center text-slate-500 dark:text-zinc-500">
                             No hay estudiantes registrados en esta sesión.
                         </td>
                     </tr>
@@ -139,7 +139,7 @@
     </div>
 
     <!-- Columna de Seguridad (lg:col-span-4) -->
-    <div class="lg:col-span-4 flex flex-col gap-4">
+    <div class="lg:col-span-4 flex flex-col gap-4 mt-6 lg:mt-0">
         <div class="glass-card p-4 rounded-xl shadow-sm bg-white/50 dark:bg-zinc-900/50">
             <h3 class="font-bold text-lg text-slate-800 dark:text-zinc-200 flex items-center gap-2">
                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
