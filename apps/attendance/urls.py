@@ -14,4 +14,5 @@ urlpatterns = [
 
     # Módulo de Dirección (Seguridad)
     path('direccion/auditoria/', views.AuditoriaSeguridadView.as_view(), name='auditoria-seguridad'),
+    path('coordinacion/reportes/', views.ReportesAsistenciaView.as_view(), name='reportes-asistencia'),
 ]

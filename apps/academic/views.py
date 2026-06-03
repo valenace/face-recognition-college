@@ -217,35 +217,4 @@ class VisorAcademicoView(RoleRequiredMixin, TemplateView):
         ).all().order_by('asignatura__nombre')
         return context
 
-class ReportesAsistenciaView(RoleRequiredMixin, TemplateView):
-    allowed_roles = ['COORDINATOR', 'DIRECTOR']
-    template_name = 'coordinacion/reportes_asistencia.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        
-        # Filtros de búsqueda
-        fecha_inicio = self.request.GET.get('fecha_inicio')
-        fecha_fin = self.request.GET.get('fecha_fin')
-        asignatura_id = self.request.GET.get('asignatura')
-        matricula = self.request.GET.get('matricula')
-        
-        queryset = RegistroAsistencia.objects.select_related(
-            'estudiante__user',
-            'sesion__asignacion_clase__asignatura'
-        ).all()
-        
-        if fecha_inicio:
-            queryset = queryset.filter(sesion__fecha__gte=fecha_inicio)
-        if fecha_fin:
-            queryset = queryset.filter(sesion__fecha__lte=fecha_fin)
-        if asignatura_id:
-            queryset = queryset.filter(sesion__asignacion_clase__asignatura_id=asignatura_id)
-        if matricula:
-            queryset = queryset.filter(estudiante__matricula__icontains=matricula)
-            
-        context['reportes'] = queryset.order_by('-sesion__fecha', '-hora_entrada')[:50]
-        context['asignaturas'] = Asignatura.objects.all()
-        return context
-
 

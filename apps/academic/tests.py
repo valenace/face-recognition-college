@@ -174,7 +174,7 @@ class CoordinationViewsTestCase(TestCase):
         self.client.logout()
 
     def test_reportes_asistencia(self):
-        url = reverse('academic:reportes-asistencia')
+        url = reverse('reportes-asistencia')
         
         # Anonimo -> Redirecciona
         response = self.client.get(url)
@@ -185,13 +185,12 @@ class CoordinationViewsTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['reportes']), 1)
-        self.assertEqual(len(response.context['asignaturas']), 1)
         
         # Probar filtros
-        response = self.client.get(url, {'matricula': 'MAT-001'})
+        response = self.client.get(url, {'q': 'MAT-001'})
         self.assertEqual(len(response.context['reportes']), 1)
         
-        response = self.client.get(url, {'matricula': 'NON-EXISTENT'})
+        response = self.client.get(url, {'q': 'NON-EXISTENT'})
         self.assertEqual(len(response.context['reportes']), 0)
         self.client.logout()
 
