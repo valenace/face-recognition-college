@@ -105,6 +105,7 @@ class Command(BaseCommand):
         asignacion, _ = AsignacionClase.objects.get_or_create(
             seccion=seccion,
             salon=salon,
+            dia_semana=AsignacionClase.DiaSemana.LUNES,
             horario_inicio=time(8, 0),
             defaults={
                 "profesor": prof,

@@ -212,9 +212,11 @@ class VisorAcademicoView(RoleRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['total_salones'] = Salon.objects.count()
         context['total_estudiantes'] = Estudiante.objects.count()
-        context['asignaciones'] = AsignacionClase.objects.select_related(
-            'asignatura', 'profesor', 'salon', 'seccion'
-        ).all().order_by('asignatura__nombre')
+        context['salones'] = Salon.objects.prefetch_related(
+            'asignaciones_salon__asignatura',
+            'asignaciones_salon__profesor',
+            'asignaciones_salon__seccion'
+        ).all().order_by('nombre')
         return context
 
 

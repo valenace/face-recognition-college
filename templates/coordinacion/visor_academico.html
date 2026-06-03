@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Visor Académico | CV College{% endblock %}
+{% block title %}Mapa de Salones y Ocupación | CV College{% endblock %}
 
 {% block content %}
 <div class="mb-8">
-    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Visor Académico</h2>
-    <p class="text-slate-500 dark:text-slate-400 mt-1">Supervisión de salones, asignaciones de clases y estudiantes.</p>
+    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Mapa de Salones y Ocupación</h2>
+    <p class="text-slate-500 dark:text-slate-400 mt-1">Supervisión en tiempo real de la infraestructura académica y horarios de clases.</p>
 </div>
 
 <!-- KPIs -->
@@ -41,53 +41,125 @@
     </div>
 </div>
 
-<div class="glass-card overflow-hidden border border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80 rounded-2xl">
-    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700/60">
-        <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Asignaciones de Clases</h3>
-    </div>
-    
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="bg-slate-100/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700/60">
-                    <th class="px-6 py-4">Asignatura</th>
-                    <th class="px-6 py-4">Profesor</th>
-                    <th class="px-6 py-4">Salón</th>
-                    <th class="px-6 py-4">Sección</th>
-                    <th class="px-6 py-4">Horario</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-150 dark:divide-slate-700/40 text-slate-700 dark:text-slate-350">
-                {% for asignacion in asignaciones %}
-                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-150">
-                    <td class="px-6 py-4">
-                        <div class="font-bold text-slate-800 dark:text-slate-100">{{ asignacion.asignatura.nombre }}</div>
-                        <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ asignacion.asignatura.codigo }}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        {{ asignacion.profesor.get_full_name|default:asignacion.profesor.username }}
-                    </td>
-                    <td class="px-6 py-4">
-                        {{ asignacion.salon.nombre }}
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="px-2.5 py-1 bg-brand-blue-pastel dark:bg-brand-blue/20 text-brand-blue dark:text-brand-blue-accent font-semibold rounded-lg text-xs">
-                            {{ asignacion.seccion.codigo }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 text-sm">
-                        {{ asignacion.horario_inicio|time:"H:i" }} - {{ asignacion.horario_fin|time:"H:i" }}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
-                        No hay asignaciones registradas en el sistema.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<!-- Filtro por Día -->
+<div class="mb-8 flex flex-wrap items-center gap-2 bg-white/40 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/60">
+    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-2">Filtrar por Día:</span>
+    <button data-filter="TODOS" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-brand-blue text-white shadow-sm hover:opacity-90">Todos</button>
+    <button data-filter="LUNES" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700">Lunes</button>
+    <button data-filter="MARTES" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700">Martes</button>
+    <button data-filter="MIERCOLES" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700">Miércoles</button>
+    <button data-filter="JUEVES" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700">Jueves</button>
+    <button data-filter="VIERNES" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700">Viernes</button>
+    <button data-filter="SABADO" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700">Sábado</button>
+    <button data-filter="DOMINGO" class="day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700">Domingo</button>
 </div>
+
+<!-- Grid de Salones -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-12">
+    {% for salon in salones %}
+    <div class="room-card glass-card overflow-hidden border border-slate-150 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80 rounded-2xl flex flex-col justify-between" data-room-name="{{ salon.nombre }}">
+        <div>
+            <!-- Cabecera de la Tarjeta -->
+            <div class="px-5 py-4 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 text-lg">{{ salon.nombre }}</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ salon.ubicacion|default:"Sin ubicación registrada" }}</p>
+                </div>
+                <span class="px-2.5 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-350 font-semibold rounded-lg text-xs">
+                    Cap: {{ salon.capacidad }}
+                </span>
+            </div>
+            
+            <!-- Cuerpo de la Tarjeta -->
+            <div class="p-5">
+                <h4 class="text-xs font-semibold text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-3">Clases Asignadas</h4>
+                
+                <div class="space-y-4 class-items-container">
+                    {% for asignacion in salon.asignaciones_salon.all %}
+                    <div class="class-item p-3.5 bg-white/60 dark:bg-slate-900/40 border border-slate-150 dark:border-slate-700/60 rounded-xl flex flex-col gap-1.5 transition-all hover:border-brand-blue/30" data-dia="{{ asignacion.dia_semana }}">
+                        <div class="flex justify-between items-start gap-2">
+                            <h5 class="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">{{ asignacion.asignatura.nombre }}</h5>
+                            <span class="px-1.5 py-0.5 bg-brand-blue-pastel dark:bg-brand-blue/20 text-brand-blue dark:text-brand-blue-accent font-bold rounded text-[10px]">
+                                {{ asignacion.seccion.codigo }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Prof: {{ asignacion.profesor.get_full_name|default:asignacion.profesor.username }}</p>
+                        
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1 text-xs font-semibold text-slate-750 dark:text-slate-300">
+                            <!-- Dia -->
+                            <div class="flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="capitalize">{{ asignacion.dia_semana|lower }}</span>
+                            </div>
+                            <!-- Horario -->
+                            <div class="flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ asignacion.horario_inicio|time:"H:i" }} - {{ asignacion.horario_fin|time:"H:i" }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <p class="empty-state text-xs text-slate-450 dark:text-slate-500 italic py-4 text-center {% if salon.asignaciones_salon.all %}hidden{% endif %}">Sin clases asignadas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full py-12 text-center text-slate-500 dark:text-slate-400 glass-card p-8 border border-slate-100 dark:border-slate-700">
+        No hay salones registrados.
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const buttons = document.querySelectorAll(".day-filter-btn");
+    const roomCards = document.querySelectorAll(".room-card");
+
+    buttons.forEach(button => {
+        button.addEventListener("click", function() {
+            // Activar botón seleccionado
+            buttons.forEach(btn => {
+                btn.className = "day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white dark:bg-slate-850 text-slate-650 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750/50 border border-slate-200 dark:border-slate-700";
+            });
+            this.className = "day-filter-btn px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-brand-blue text-white shadow-sm hover:opacity-90";
+
+            const filterValue = this.getAttribute("data-filter");
+
+            roomCards.forEach(card => {
+                const classItems = card.querySelectorAll(".class-item");
+                const emptyState = card.querySelector(".empty-state");
+                let visibleCount = 0;
+
+                classItems.forEach(item => {
+                    const itemDia = item.getAttribute("data-dia");
+                    if (filterValue === "TODOS" || itemDia === filterValue) {
+                        item.style.display = "flex";
+                        visibleCount++;
+                    } else {
+                        item.style.display = "none";
+                    }
+                });
+
+                if (visibleCount === 0) {
+                    if (filterValue === "TODOS") {
+                        emptyState.textContent = "Sin clases asignadas";
+                    } else {
+                        const dayCapitalized = filterValue.charAt(0) + filterValue.slice(1).toLowerCase();
+                        emptyState.textContent = `Sin clases asignadas para el día ${dayCapitalized}`;
+                    }
+                    emptyState.classList.remove("hidden");
+                } else {
+                    emptyState.classList.add("hidden");
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

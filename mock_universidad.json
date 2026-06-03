@@ -79,9 +79,14 @@
     ],
     "salones": [
       {
+        "nombre": "Laboratorio de Cómputo 3",
+        "capacidad": 30,
+        "ubicacion": "pabellón b, segundo piso"
+      },
+      {
         "nombre": "Laboratorio 3",
-        "capacidad": 25,
-        "ubicacion": "Edificio Ingeniería"
+        "capacidad": 30,
+        "ubicacion": "pabellón b, segundo piso"
       },
       {
         "nombre": "Aula 104",
@@ -103,7 +108,8 @@
       "profesor_username": "prof_pedro",
       "asignatura_codigo": "IA-101",
       "seccion_codigo": "IA-01",
-      "salon_nombre": "Laboratorio 3",
+      "salon_nombre": "Laboratorio de Cómputo 3",
+      "dia_semana": "LUNES",
       "horario_inicio": "08:00:00",
       "horario_fin": "10:00:00",
       "inscritos": ["est_carlos", "est_laura", "est_sofia"]
@@ -113,6 +119,7 @@
       "asignatura_codigo": "CALC-201",
       "seccion_codigo": "CALC-02",
       "salon_nombre": "Aula 104",
+      "dia_semana": "MIERCOLES",
       "horario_inicio": "10:30:00",
       "horario_fin": "12:30:00",
       "inscritos": ["est_carlos", "est_laura"]

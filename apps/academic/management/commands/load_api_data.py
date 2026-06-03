@@ -140,6 +140,7 @@ class Command(BaseCommand):
                     asignacion, plan_created = AsignacionClase.objects.get_or_create(
                         seccion=seccion,
                         salon=salon,
+                        dia_semana=plan.get("dia_semana", "LUNES"),
                         horario_inicio=plan["horario_inicio"],
                         defaults={
                             "profesor": profesor,

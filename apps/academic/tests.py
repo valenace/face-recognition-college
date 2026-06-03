@@ -154,7 +154,7 @@ class CoordinationViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['total_salones'], 1)
         self.assertEqual(response.context['total_estudiantes'], 1)
-        self.assertEqual(len(response.context['asignaciones']), 1)
+        self.assertEqual(len(response.context['salones']), 1)
 
     def test_auditoria_seguridad(self):
         url = reverse('auditoria-seguridad')
