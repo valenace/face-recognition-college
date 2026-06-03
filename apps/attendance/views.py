@@ -28,7 +28,7 @@ def directorio(request):
     })
 
 class AuditoriaSeguridadView(RoleRequiredMixin, ListView):
-    allowed_roles = ['DIRECTOR'] 
+    allowed_roles = ['COORDINATOR', 'DIRECTOR'] 
     template_name = 'coordinacion/auditoria_seguridad.html'
     context_object_name = 'alertas_seguridad'
 

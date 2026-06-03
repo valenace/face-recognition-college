@@ -166,11 +166,11 @@ class CoordinationViewsTestCase(TestCase):
         self.assertEqual(len(response.context['alertas_seguridad']), 1)
         self.client.logout()
 
-        # Coordinador -> ¿Debe tener acceso? En el código actual es ['DIRECTOR'].
+        # Coordinador -> 200 OK
         self.client.login(username="coordinator", password="password123")
         response = self.client.get(url)
-        # Código actual tiene ['DIRECTOR'], por lo tanto da 403.
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['alertas_seguridad']), 1)
         self.client.logout()
 
     def test_reportes_asistencia(self):

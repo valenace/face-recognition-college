@@ -1,0 +1,151 @@
+{
+  "usuarios_administrativos": [
+    {
+      "username": "coord_maria",
+      "first_name": "María",
+      "last_name": "López",
+      "email": "maria.lopez@college.edu",
+      "password": "coordPassword123",
+      "role": "COORDINATOR"
+    },
+    {
+      "username": "dir_roberto",
+      "first_name": "Roberto",
+      "last_name": "Gómez",
+      "email": "roberto.gomez@college.edu",
+      "password": "dirPassword123",
+      "role": "DIRECTOR"
+    }
+  ],
+  "profesores": [
+    {
+      "username": "prof_pedro",
+      "first_name": "Pedro",
+      "last_name": "Ramírez",
+      "email": "pedro.ramirez@college.edu",
+      "password": "profPassword123",
+      "role": "PROFESSOR"
+    },
+    {
+      "username": "prof_elena",
+      "first_name": "Elena",
+      "last_name": "Guzmán",
+      "email": "elena.guzman@college.edu",
+      "password": "profPassword123",
+      "role": "PROFESSOR"
+    }
+  ],
+  "estudiantes": [
+    {
+      "username": "est_carlos",
+      "first_name": "Carlos",
+      "last_name": "Sosa",
+      "email": "carlos.sosa@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-001",
+      "activo": true
+    },
+    {
+      "username": "est_laura",
+      "first_name": "Laura",
+      "last_name": "Pérez",
+      "email": "laura.perez@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-002",
+      "activo": true
+    },
+    {
+      "username": "est_sofia",
+      "first_name": "Sofía",
+      "last_name": "Castro",
+      "email": "sofia.castro@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-003",
+      "activo": true
+    }
+  ],
+  "infraestructura": {
+    "asignaturas": [
+      {
+        "nombre": "Inteligencia Artificial",
+        "codigo": "IA-101",
+        "descripcion": "Fundamentos y aplicaciones de IA"
+      },
+      {
+        "nombre": "Cálculo Multivariable",
+        "codigo": "CALC-201",
+        "descripcion": "Cálculo en varias variables"
+      }
+    ],
+    "salones": [
+      {
+        "nombre": "Laboratorio 3",
+        "capacidad": 25,
+        "ubicacion": "Edificio Ingeniería"
+      },
+      {
+        "nombre": "Aula 104",
+        "capacidad": 40,
+        "ubicacion": "Edificio Ciencias"
+      }
+    ],
+    "secciones": [
+      {
+        "codigo": "IA-01"
+      },
+      {
+        "codigo": "CALC-02"
+      }
+    ]
+  },
+  "planificacion_academica": [
+    {
+      "profesor_username": "prof_pedro",
+      "asignatura_codigo": "IA-101",
+      "seccion_codigo": "IA-01",
+      "salon_nombre": "Laboratorio 3",
+      "horario_inicio": "08:00:00",
+      "horario_fin": "10:00:00",
+      "inscritos": ["est_carlos", "est_laura", "est_sofia"]
+    },
+    {
+      "profesor_username": "prof_elena",
+      "asignatura_codigo": "CALC-201",
+      "seccion_codigo": "CALC-02",
+      "salon_nombre": "Aula 104",
+      "horario_inicio": "10:30:00",
+      "horario_fin": "12:30:00",
+      "inscritos": ["est_carlos", "est_laura"]
+    }
+  ],
+  "historial_sesiones_pasadas": [
+    {
+      "asignatura_codigo": "IA-101",
+      "seccion_codigo": "IA-01",
+      "fecha": "2026-06-01",
+      "registros": [
+        {
+          "username": "est_carlos",
+          "hora_entrada": "08:02:00",
+          "hora_salida": "09:58:00",
+          "similitud_ia": 0.35,
+          "es_fraude": true
+        },
+        {
+          "username": "est_laura",
+          "hora_entrada": "08:05:00",
+          "hora_salida": "10:00:00",
+          "similitud_ia": 0.95,
+          "es_fraude": false
+        },
+        {
+          "username": "est_sofia",
+          "hora_entrada": null,
+          "hora_salida": null,
+          "similitud_ia": null,
+          "es_fraude": false
+        }
+      ]
+    }
+  ]
+}

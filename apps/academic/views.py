@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from apps.users.permissions import RoleRequiredMixin
 from apps.users.models import User
-from .models import AsignacionClase, Inscripcion, Estudiante
+from .models import AsignacionClase, Inscripcion, Estudiante, Asignatura
 from apps.attendance.models import SesionClase, RegistroAsistencia, FaceEmbedding
 from django.views import View
 from django.db.models import Count
