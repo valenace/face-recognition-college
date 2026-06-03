@@ -1,5 +1,9 @@
 from django.shortcuts import render
 from django.contrib.auth import get_user_model
+from django.views.generic import ListView
+from apps.users.permissions import RoleRequiredMixin
+from apps.attendance.models import RegistroAsistencia
+
 
 User = get_user_model()
 
@@ -22,3 +26,17 @@ def directorio(request):
     return render(request, "attendance/directorio.html", {
         "estudiantes": estudiantes,
     })
+
+class AuditoriaSeguridadView(RoleRequiredMixin, ListView):
+    allowed_roles = ['DIRECTOR'] 
+    template_name = 'coordinacion/auditoria_seguridad.html'
+    context_object_name = 'alertas_seguridad'
+
+    def get_queryset(self):
+        # Filtramos solo los registros marcados como fraude
+        return RegistroAsistencia.objects.filter(
+            es_fraude=True
+        ).select_related(
+            'sesion__asignacion_clase__asignatura', 
+            'estudiante__user'
+        ).order_by('-sesion__fecha', '-hora_entrada')

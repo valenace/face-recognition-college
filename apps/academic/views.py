@@ -5,7 +5,12 @@ from django.utils import timezone
 from apps.users.permissions import RoleRequiredMixin
 from apps.users.models import User
 from .models import AsignacionClase, Inscripcion, Estudiante
-from apps.attendance.models import SesionClase, RegistroAsistencia
+from apps.attendance.models import SesionClase, RegistroAsistencia, FaceEmbedding
+from django.views import View
+from django.db.models import Count
+from django.http import JsonResponse
+import json
+from apps.academic.models import Estudiante, AsignacionClase, Salon
 
 class DashboardProfesorView(RoleRequiredMixin, ListView):
     """
@@ -167,4 +172,80 @@ class MetricasAlumnoView(RoleRequiredMixin, TemplateView):
             "fraudes_historicos": fraudes_historicos,
         })
         return context
+
+class PanelEnrolamientoView(RoleRequiredMixin, ListView):
+    allowed_roles = ['COORDINATOR', 'DIRECTOR']
+    template_name = 'coordinacion/panel_enrolamiento.html'
+    context_object_name = 'estudiantes'
+
+    def get_queryset(self):
+        # Cuenta los rostros registrados a través de la relación OneToOne con User
+        return Estudiante.objects.select_related('user').annotate(
+            tiene_rostro=Count('user__face_data')
+        ).order_by('tiene_rostro', 'user__first_name')
+
+class EnrolarRostroAPI(RoleRequiredMixin, View):
+    allowed_roles = ['COORDINATOR', 'DIRECTOR']
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            user_id = data.get('user_id')
+            imagen_base64 = data.get('imagen')
+
+            # Dummy de ejemplo mientras conectamos tu script IA:
+            vector_simulado = [0.12, 0.45, 0.78]
+
+            FaceEmbedding.objects.update_or_create(
+                user_id=user_id,
+                defaults={'embedding': vector_simulado}
+            )
+            return JsonResponse({'status': 'success', 'message': 'Biometría registrada exitosamente.'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+class VisorAcademicoView(RoleRequiredMixin, TemplateView):
+    allowed_roles = ['COORDINATOR', 'DIRECTOR']
+    template_name = 'coordinacion/visor_academico.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['total_salones'] = Salon.objects.count()
+        context['total_estudiantes'] = Estudiante.objects.count()
+        context['asignaciones'] = AsignacionClase.objects.select_related(
+            'asignatura', 'profesor', 'salon', 'seccion'
+        ).all().order_by('asignatura__nombre')
+        return context
+
+class ReportesAsistenciaView(RoleRequiredMixin, TemplateView):
+    allowed_roles = ['COORDINATOR', 'DIRECTOR']
+    template_name = 'coordinacion/reportes_asistencia.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Filtros de búsqueda
+        fecha_inicio = self.request.GET.get('fecha_inicio')
+        fecha_fin = self.request.GET.get('fecha_fin')
+        asignatura_id = self.request.GET.get('asignatura')
+        matricula = self.request.GET.get('matricula')
+        
+        queryset = RegistroAsistencia.objects.select_related(
+            'estudiante__user',
+            'sesion__asignacion_clase__asignatura'
+        ).all()
+        
+        if fecha_inicio:
+            queryset = queryset.filter(sesion__fecha__gte=fecha_inicio)
+        if fecha_fin:
+            queryset = queryset.filter(sesion__fecha__lte=fecha_fin)
+        if asignatura_id:
+            queryset = queryset.filter(sesion__asignacion_clase__asignatura_id=asignatura_id)
+        if matricula:
+            queryset = queryset.filter(estudiante__matricula__icontains=matricula)
+            
+        context['reportes'] = queryset.order_by('-sesion__fecha', '-hora_entrada')[:50]
+        context['asignaturas'] = Asignatura.objects.all()
+        return context
+
 

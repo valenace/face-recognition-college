@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Visor Académico | CV College{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Visor Académico</h2>
+    <p class="text-slate-500 dark:text-slate-400 mt-1">Supervisión de salones, asignaciones de clases y estudiantes.</p>
+</div>
+
+<!-- KPIs -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-12">
+    <!-- Card: Salones -->
+    <div class="glass-card p-6 shadow-sm rounded-2xl dark:bg-slate-800/80 bg-white/50 border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Salones</p>
+                <p class="text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">{{ total_salones }}</p>
+            </div>
+            <div class="w-14 h-14 bg-brand-blue/10 dark:bg-brand-blue/20 rounded-2xl flex items-center justify-center">
+                <svg class="w-7 h-7 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Estudiantes -->
+    <div class="glass-card p-6 shadow-sm rounded-2xl dark:bg-slate-800/80 bg-white/50 border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Estudiantes</p>
+                <p class="text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">{{ total_estudiantes }}</p>
+            </div>
+            <div class="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center">
+                <svg class="w-7 h-7 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="glass-card overflow-hidden border border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80 rounded-2xl">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700/60">
+        <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Asignaciones de Clases</h3>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-slate-100/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700/60">
+                    <th class="px-6 py-4">Asignatura</th>
+                    <th class="px-6 py-4">Profesor</th>
+                    <th class="px-6 py-4">Salón</th>
+                    <th class="px-6 py-4">Sección</th>
+                    <th class="px-6 py-4">Horario</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-150 dark:divide-slate-700/40 text-slate-700 dark:text-slate-350">
+                {% for asignacion in asignaciones %}
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-150">
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-800 dark:text-slate-100">{{ asignacion.asignatura.nombre }}</div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ asignacion.asignatura.codigo }}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        {{ asignacion.profesor.get_full_name|default:asignacion.profesor.username }}
+                    </td>
+                    <td class="px-6 py-4">
+                        {{ asignacion.salon.nombre }}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-1 bg-brand-blue-pastel dark:bg-brand-blue/20 text-brand-blue dark:text-brand-blue-accent font-semibold rounded-lg text-xs">
+                            {{ asignacion.seccion.codigo }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                        {{ asignacion.horario_inicio|time:"H:i" }} - {{ asignacion.horario_fin|time:"H:i" }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                        No hay asignaciones registradas en el sistema.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de Enrolamiento | CV College{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Panel de Enrolamiento Biométrico</h2>
+    <p class="text-slate-500 dark:text-slate-400 mt-1">Gestión y registro de biometría facial para estudiantes.</p>
+</div>
+
+<div class="glass-card overflow-hidden border border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80 rounded-2xl">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+        <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Estudiantes Registrados</h3>
+        <span class="px-3 py-1 bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-brand-blue-accent rounded-lg text-xs font-semibold">
+            Total: {{ estudiantes|length }}
+        </span>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-slate-100/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700/60">
+                    <th class="px-6 py-4">Estudiante</th>
+                    <th class="px-6 py-4">Matrícula</th>
+                    <th class="px-6 py-4">Estado Biométrico</th>
+                    <th class="px-6 py-4 text-right">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-150 dark:divide-slate-700/40 text-slate-700 dark:text-slate-350">
+                {% for estudiante in estudiantes %}
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-150">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-white font-bold shrink-0 border border-slate-300 dark:border-slate-600">
+                                {{ estudiante.user.first_name|first|upper }}{{ estudiante.user.last_name|first|upper }}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 dark:text-slate-100">{{ estudiante.user.get_full_name }}</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ estudiante.user.email }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-mono text-sm">{{ estudiante.matricula }}</td>
+                    <td class="px-6 py-4">
+                        {% if estudiante.tiene_rostro %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-full border border-emerald-200 dark:border-emerald-800/30">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Enrolado
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-semibold rounded-full border border-amber-200 dark:border-amber-800/30">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            Pendiente
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="openEnrollModal('{{ estudiante.user.id }}', '{{ estudiante.user.get_full_name }}')" class="px-4 py-2 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-150">
+                            {% if estudiante.tiene_rostro %}Re-enrolar{% else %}Enrolar Rostro{% endif %}
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                        No hay estudiantes registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal para Registro Biométrico -->
+<div id="enrollModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/50 backdrop-blur-sm">
+    <div class="glass-card max-w-lg w-full p-6 mx-4">
+        <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Enrolar Rostro</h3>
+        <p class="text-slate-500 dark:text-slate-400 mb-4 text-sm">Registrar datos biométricos para: <span id="modalStudentName" class="font-bold text-slate-700 dark:text-slate-200"></span></p>
+        
+        <!-- Tabs Header -->
+        <div class="flex border-b border-slate-200 dark:border-slate-700 mb-6 overflow-x-auto gap-2">
+            <button onclick="switchTab('webcam-tab')" id="webcam-tab-btn" class="tab-btn px-3 py-2 border-b-2 border-brand-blue text-brand-blue dark:text-brand-blue-accent font-semibold text-xs whitespace-nowrap">
+                Webcam (En vivo)
+            </button>
+            <button onclick="switchTab('video-tab')" id="video-tab-btn" class="tab-btn px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-semibold text-xs whitespace-nowrap">
+                Subir Video
+            </button>
+            <button onclick="switchTab('single-img-tab')" id="single-img-tab-btn" class="tab-btn px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-semibold text-xs whitespace-nowrap">
+                Imagen Única
+            </button>
+            <button onclick="switchTab('multi-img-tab')" id="multi-img-tab-btn" class="tab-btn px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-semibold text-xs whitespace-nowrap">
+                Múltiples Imágenes
+            </button>
+        </div>
+
+        <!-- Tab Containers -->
+        <!-- 1. Webcam Container -->
+        <div id="webcam-container" class="tab-container">
+            <div class="relative w-full aspect-video bg-black rounded-xl mb-6 overflow-hidden border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+                <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+                <div id="cameraError" class="absolute inset-0 bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center text-center p-4 text-slate-500 hidden">
+                    <svg class="w-12 h-12 text-rose-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-850 dark:text-slate-200">Error al acceder a la cámara</p>
+                    <p class="text-xs mt-1" id="cameraErrorMessage">Asegúrate de permitir el acceso a la cámara web.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Subir Video Container -->
+        <div id="video-container" class="tab-container hidden">
+            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors relative" onclick="document.getElementById('videoFile').click()">
+                <svg class="w-12 h-12 text-slate-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                <p class="text-xs font-semibold text-slate-750 dark:text-slate-300" id="videoLabel">Arrastra o haz clic para subir video</p>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Soporta MP4, M4V (Rotación facial recomendada)</p>
+                <input type="file" id="videoFile" accept="video/mp4,video/x-m4v,video/*" class="hidden" onchange="handleFileSelect(this, 'videoLabel', 'Video cargado con éxito')">
+            </div>
+        </div>
+
+        <!-- 3. Imagen Única Container -->
+        <div id="single-img-container" class="tab-container hidden">
+            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors relative" onclick="document.getElementById('singleImageFile').click()">
+                <svg class="w-12 h-12 text-slate-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <p class="text-xs font-semibold text-slate-750 dark:text-slate-300" id="singleImageLabel">Arrastra o haz clic para subir imagen</p>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Soporta JPG, PNG</p>
+                <input type="file" id="singleImageFile" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'singleImageLabel', 'Imagen cargada con éxito')">
+            </div>
+        </div>
+
+        <!-- 4. Múltiples Imágenes Container -->
+        <div id="multi-img-container" class="tab-container hidden">
+            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors relative" onclick="document.getElementById('multiImageFiles').click()">
+                <svg class="w-12 h-12 text-slate-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
+                </svg>
+                <p class="text-xs font-semibold text-slate-750 dark:text-slate-300" id="multiImageLabel">Arrastra o haz clic para subir múltiples imágenes</p>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Soporta múltiples archivos JPG, PNG</p>
+                <input type="file" id="multiImageFiles" accept="image/*" multiple class="hidden" onchange="handleMultiFileSelect(this, 'multiImageLabel')">
+            </div>
+        </div>
+        
+        <canvas id="snapshotCanvas" class="hidden"></canvas>
+
+        <div class="flex justify-end gap-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+            <button onclick="closeEnrollModal()" class="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                Cancelar
+            </button>
+            <button id="captureBtn" onclick="submitEnrollment()" class="px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-semibold shadow-md hover:bg-brand-blue/90 transition-colors">
+                Registrar Biometría
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeUserId = null;
+    let localStream = null;
+    let activeTab = 'webcam-tab';
+
+    function switchTab(tabId) {
+        activeTab = tabId;
+        
+        // Actualizar UI de los botones de pestañas
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('border-brand-blue', 'text-brand-blue', 'dark:text-brand-blue-accent');
+            btn.classList.add('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+        });
+        
+        const activeBtn = document.getElementById(tabId + '-btn');
+        activeBtn.classList.remove('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+        activeBtn.classList.add('border-brand-blue', 'text-brand-blue', 'dark:text-brand-blue-accent');
+        
+        // Mostrar / Ocultar contenedores
+        document.querySelectorAll('.tab-container').forEach(container => {
+            container.classList.add('hidden');
+        });
+        
+        if (tabId === 'webcam-tab') {
+            document.getElementById('webcam-container').classList.remove('hidden');
+            startCamera();
+        } else {
+            stopCamera();
+            if (tabId === 'video-tab') {
+                document.getElementById('video-container').classList.remove('hidden');
+            } else if (tabId === 'single-img-tab') {
+                document.getElementById('single-img-container').classList.remove('hidden');
+            } else if (tabId === 'multi-img-tab') {
+                document.getElementById('multi-img-container').classList.remove('hidden');
+            }
+        }
+    }
+
+    function handleFileSelect(input, labelId, successMsg) {
+        if (input.files && input.files[0]) {
+            document.getElementById(labelId).innerText = `${successMsg}: ${input.files[0].name}`;
+        }
+    }
+
+    function handleMultiFileSelect(input, labelId) {
+        if (input.files && input.files.length > 0) {
+            document.getElementById(labelId).innerText = `${input.files.length} imágenes seleccionadas`;
+        }
+    }
+
+    function openEnrollModal(userId, fullName) {
+        activeUserId = userId;
+        document.getElementById('modalStudentName').innerText = fullName;
+        document.getElementById('enrollModal').classList.remove('hidden');
+        
+        // Reset labels
+        document.getElementById('videoLabel').innerText = "Arrastra o haz clic para subir video";
+        document.getElementById('singleImageLabel').innerText = "Arrastra o haz clic para subir imagen";
+        document.getElementById('multiImageLabel').innerText = "Arrastra o haz clic para subir múltiples imágenes";
+        
+        // Reset inputs
+        document.getElementById('videoFile').value = '';
+        document.getElementById('singleImageFile').value = '';
+        document.getElementById('multiImageFiles').value = '';
+        
+        switchTab('webcam-tab');
+    }
+
+    function startCamera() {
+        document.getElementById('cameraError').classList.add('hidden');
+        const video = document.getElementById('webcam');
+        
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                localStream = stream;
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error al acceder a la cámara: ", err);
+                document.getElementById('cameraError').classList.remove('hidden');
+                document.getElementById('cameraErrorMessage').innerText = err.message || "Por favor, concede permisos de cámara en tu navegador.";
+            });
+    }
+
+    function closeEnrollModal() {
+        document.getElementById('enrollModal').classList.add('hidden');
+        stopCamera();
+        activeUserId = null;
+    }
+
+    function stopCamera() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+        const video = document.getElementById('webcam');
+        if (video) {
+            video.srcObject = null;
+        }
+    }
+
+    // Convertir archivo a Base64 Promise
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    async function submitEnrollment() {
+        if (!activeUserId) return;
+        
+        const captureBtn = document.getElementById('captureBtn');
+        let payload = {
+            user_id: activeUserId,
+            metodo: activeTab
+        };
+        
+        captureBtn.disabled = true;
+        captureBtn.innerText = "Procesando...";
+
+        try {
+            if (activeTab === 'webcam-tab') {
+                const video = document.getElementById('webcam');
+                const canvas = document.getElementById('snapshotCanvas');
+                
+                if (!localStream || video.readyState !== video.HAVE_ENOUGH_DATA) {
+                    throw new Error("La cámara no está lista o no tiene permisos.");
+                }
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                payload.imagen = canvas.toDataURL('image/jpeg');
+                console.log("Método: Webcam. Capturando 1 frame del video en vivo.");
+            }
+            else if (activeTab === 'video-tab') {
+                const fileInput = document.getElementById('videoFile');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    throw new Error("Por favor, selecciona un archivo de video.");
+                }
+                payload.imagen = await fileToBase64(fileInput.files[0]);
+                console.log(`Método: Subir Video. Archivo: ${fileInput.files[0].name}, Tamaño: ${fileInput.files[0].size} bytes.`);
+            }
+            else if (activeTab === 'single-img-tab') {
+                const fileInput = document.getElementById('singleImageFile');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    throw new Error("Por favor, selecciona un archivo de imagen.");
+                }
+                payload.imagen = await fileToBase64(fileInput.files[0]);
+                console.log(`Método: Imagen Única. Archivo: ${fileInput.files[0].name}, Tamaño: ${fileInput.files[0].size} bytes.`);
+            }
+            else if (activeTab === 'multi-img-tab') {
+                const fileInput = document.getElementById('multiImageFiles');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    throw new Error("Por favor, selecciona al menos una imagen.");
+                }
+                const promises = Array.from(fileInput.files).map(file => fileToBase64(file));
+                payload.imagenes = await Promise.all(promises);
+                console.log(`Método: Múltiples Imágenes. ${fileInput.files.length} archivos seleccionados.`);
+            }
+
+            // Realizar petición POST
+            const response = await fetch("{% url 'academic:api-enrolar-rostro' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            if (data.status === 'success') {
+                alert(data.message || "Biometría registrada exitosamente.");
+                closeEnrollModal();
+                location.reload();
+            } else {
+                throw new Error(data.message);
+            }
+
+        } catch (err) {
+            alert('Error: ' + err.message);
+            captureBtn.disabled = false;
+            captureBtn.innerText = "Registrar Biometría";
+        }
+    }
+</script>
+{% endblock %}
