@@ -124,3 +124,65 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         self.sesion.refresh_from_db()
         self.assertEqual(self.sesion.estado, SesionClase.Estado.EN_CURSO)
         self.assertEqual(self.sesion.notas_profesor, '')
+
+    def test_resolver_alerta_api_success(self):
+        import json
+        # Create assistance record marked as fraud
+        registro = RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=self.estudiante,
+            es_fraude=True
+        )
+        self.client.login(username="professor_owner", password="password123")
+        url = reverse('api-resolver-alerta')
+        
+        # Test falsa_alarma
+        data = {
+            "registro_id": registro.id,
+            "accion": "falsa_alarma"
+        }
+        response = self.client.post(url, data=json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "success"})
+        
+        registro.refresh_from_db()
+        self.assertFalse(registro.es_fraude)
+        self.assertTrue(registro.alerta_revisada)
+        self.assertEqual(registro.notas_auditoria, "Marcado como falsa alarma por el profesor")
+        
+        # Test confirmar_fraude
+        data = {
+            "registro_id": registro.id,
+            "accion": "confirmar_fraude"
+        }
+        response = self.client.post(url, data=json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "success"})
+        
+        registro.refresh_from_db()
+        self.assertTrue(registro.es_fraude)
+        self.assertTrue(registro.alerta_revisada)
+        self.assertEqual(registro.notas_auditoria, "Fraude confirmado por el profesor")
+
+    def test_resolver_alerta_api_unauthorized(self):
+        import json
+        registro = RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=self.estudiante,
+            es_fraude=True
+        )
+        self.client.login(username="professor_other", password="password123")
+        url = reverse('api-resolver-alerta')
+        
+        data = {
+            "registro_id": registro.id,
+            "accion": "falsa_alarma"
+        }
+        response = self.client.post(url, data=json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, 403)
+        
+        # Verify db has not changed
+        registro.refresh_from_db()
+        self.assertTrue(registro.es_fraude)
+        self.assertFalse(registro.alerta_revisada)
+        self.assertEqual(registro.notas_auditoria, "")

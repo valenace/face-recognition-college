@@ -11,6 +11,7 @@ urlpatterns = [
 
     # ── API Endpoints ──────────────────────────────────────────
     path("api/enrolar/", RegistroBiometricoView.as_view(), name="api_enrolar"),
+    path("api/resolver-alerta/", views.ResolverAlertaAPI.as_view(), name="api-resolver-alerta"),
 
     # Módulo de Dirección (Seguridad)
     path('direccion/auditoria/', views.AuditoriaSeguridadView.as_view(), name='auditoria-seguridad'),

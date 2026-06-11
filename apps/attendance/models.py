@@ -63,6 +63,8 @@ class RegistroAsistencia(models.Model):
         default=TipoEvento.ASISTENCIA_NORMAL,
         verbose_name="tipo de evento"
     )
+    alerta_revisada = models.BooleanField(default=False, verbose_name="¿alerta revisada?")
+    notas_auditoria = models.TextField(blank=True, default="", verbose_name="notas de auditoría")
 
     class Meta:
         verbose_name = "registro de asistencia"

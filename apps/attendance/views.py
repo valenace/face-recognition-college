@@ -4,6 +4,8 @@ from django.views import View
 from django.views.generic import ListView
 from django.db.models import Q
 from django.core.exceptions import PermissionDenied
+from django.http import JsonResponse
+import json
 from apps.users.permissions import RoleRequiredMixin
 from apps.attendance.models import RegistroAsistencia, SesionClase
 
@@ -97,3 +99,39 @@ class ClaseEnVivoView(RoleRequiredMixin, View):
                 ast.save()
         
         return redirect('academic:dashboard-profesor')
+
+
+class ResolverAlertaAPI(RoleRequiredMixin, View):
+    allowed_roles = [User.Role.PROFESSOR]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            registro_id = data.get("registro_id")
+            accion = data.get("accion")
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "JSON inválido."}, status=400)
+
+        if not registro_id or not accion:
+            return JsonResponse({"status": "error", "message": "Parámetros incompletos."}, status=400)
+
+        registro = get_object_or_404(RegistroAsistencia, pk=registro_id)
+
+        # Check permissions: only the assigned professor of the session (or superuser) can resolve
+        if not request.user.is_superuser and registro.sesion.asignacion_clase.profesor != request.user:
+            return JsonResponse({"status": "error", "message": "no tienes permiso para modificar este registro."}, status=403)
+
+        if accion == "falsa_alarma":
+            registro.es_fraude = False
+            registro.alerta_revisada = True
+            registro.notas_auditoria = "Marcado como falsa alarma por el profesor"
+            registro.save()
+        elif accion == "confirmar_fraude":
+            registro.es_fraude = True
+            registro.alerta_revisada = True
+            registro.notas_auditoria = "Fraude confirmado por el profesor"
+            registro.save()
+        else:
+            return JsonResponse({"status": "error", "message": "Acción no válida."}, status=400)
+
+        return JsonResponse({"status": "success"})
