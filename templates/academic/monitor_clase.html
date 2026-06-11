@@ -157,6 +157,38 @@
             <!-- Panel alto y scrolleable -->
             <div class="max-h-[580px] overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-350 dark:scrollbar-thumb-slate-800">
                 
+                <!-- Alertas Reales de la Base de Datos -->
+                {% for item in estudiantes_monitoreo %}
+                    {% if item.asistencia and item.asistencia.es_fraude %}
+                        <div id="alerta-card-{{ item.asistencia.id }}" class="rounded-2xl p-4.5 bg-rose-500/10 border border-rose-500/20 text-rose-950 dark:text-rose-300 flex gap-3.5 shadow-sm">
+                            <div class="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <div class="overflow-hidden w-full">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                                        {% if item.asistencia.tipo_evento == 'SPOOFING' %}Alerta de Spoofing{% elif item.asistencia.tipo_evento == 'INTRUSO' %}Intruso Desconocido{% else %}Alerta de Seguridad{% endif %}
+                                    </span>
+                                    <span class="text-[10px] text-slate-400 font-mono">{{ item.asistencia.hora_entrada|time:"H:i" }}</span>
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">{{ item.estudiante.user.get_full_name }}</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Alerta activa en la sesión.</p>
+                                
+                                <div id="botones-alerta-{{ item.asistencia.id }}" class="mt-3 flex gap-2">
+                                    {% if not item.asistencia.alerta_revisada %}
+                                        <button onclick="resolverAlerta({{ item.asistencia.id }}, 'falsa_alarma')" class="px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-colors cursor-pointer">Falsa Alarma</button>
+                                        <button onclick="resolverAlerta({{ item.asistencia.id }}, 'confirmar_fraude')" class="px-2.5 py-1.5 rounded bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] transition-colors cursor-pointer">Confirmar Fraude</button>
+                                    {% else %}
+                                        <span class="inline-flex px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">Revisado por Profesor</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
                 <!-- 1. Tarjeta Verde Pastel (Asistencia Confirmada) -->
                 <div class="rounded-2xl p-4.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-300 flex gap-3.5 shadow-sm">
                     <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-500 shrink-0">
@@ -181,13 +213,17 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                         </svg>
                     </div>
-                    <div class="overflow-hidden">
+                    <div class="overflow-hidden w-full">
                         <div class="flex items-center justify-between gap-2">
                             <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Alerta de Spoofing</span>
                             <span class="text-[10px] text-slate-400 font-mono">10:38</span>
                         </div>
                         <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">Carlos Mendoza</h4>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Intento de suplantación detectado (Fotografía impresa en papel).</p>
+                        <div id="mock-botones-spoofing" class="mt-3 flex gap-2">
+                            <button onclick="resolverMockAlerta('mock-botones-spoofing')" class="px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-colors cursor-pointer animate-[pulse_2s_infinite]">Falsa Alarma</button>
+                            <button onclick="resolverMockAlerta('mock-botones-spoofing')" class="px-2.5 py-1.5 rounded bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] transition-colors cursor-pointer">Confirmar Fraude</button>
+                        </div>
                     </div>
                 </div>
 
@@ -224,6 +260,10 @@
                         </div>
                         <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">Desconocido (No Registrado)</h4>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">No se encontró correspondencia biométrica en el sistema.</p>
+                        <div id="mock-botones-intruso" class="mt-3 flex gap-2">
+                            <button onclick="resolverMockAlerta('mock-botones-intruso')" class="px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-colors cursor-pointer">Falsa Alarma</button>
+                            <button onclick="resolverMockAlerta('mock-botones-intruso')" class="px-2.5 py-1.5 rounded bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] transition-colors cursor-pointer">Confirmar Fraude</button>
+                        </div>
                     </div>
                 </div>
 
@@ -330,6 +370,44 @@
     }
     setInterval(updateClock, 1000);
     updateClock();
+
+    // Resolucion de alertas reales via API
+    function resolverAlerta(registroId, accion) {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch('/api/resolver-alerta/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                registro_id: registroId,
+                accion: accion
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                const container = document.getElementById('botones-alerta-' + registroId);
+                if (container) {
+                    container.innerHTML = '<span class="inline-flex px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">Revisado por Profesor</span>';
+                }
+            } else {
+                alert("Error al resolver la alerta.");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Error de conexión con el servidor.");
+        });
+    }
+
+    // Resolucion de alertas mockeadas (simuladas en la interfaz)
+    function resolverMockAlerta(id) {
+        const container = document.getElementById(id);
+        if (container) {
+            container.innerHTML = '<span class="inline-flex px-2.5 py-1.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">Revisado por Profesor</span>';
+        }
+    }
 </script>
 
 <style>
