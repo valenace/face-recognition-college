@@ -16,9 +16,12 @@ def role_required(*roles):
             
             # los desarrolladores siempre tienen acceso completo
             if request.user.is_superuser or request.user.role in roles:
-                return view_func(request, *args, **kwargs)
+                try:
+                    return view_func(request, *args, **kwargs)
+                except PermissionDenied:
+                    return redirect('dashboard')
                 
-            raise PermissionDenied
+            return redirect('dashboard')
         return _wrapped_view
     return decorator
 
@@ -36,6 +39,9 @@ class RoleRequiredMixin(AccessMixin):
         
         # los desarrolladores tienen acceso completo
         if request.user.is_superuser or request.user.role in self.allowed_roles:
-            return super().dispatch(request, *args, **kwargs)
+            try:
+                return super().dispatch(request, *args, **kwargs)
+            except PermissionDenied:
+                return redirect('dashboard')
             
-        raise PermissionDenied
+        return redirect('dashboard')

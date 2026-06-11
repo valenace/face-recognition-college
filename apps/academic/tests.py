@@ -84,16 +84,16 @@ class CoordinationViewsTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
         
-        # Estudiante -> 403 Forbidden
+        # Estudiante -> Redirecciona a Dashboard
         self.client.login(username="student1", password="password123")
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 403)
+        self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
         self.client.logout()
         
-        # Profesor -> 403 Forbidden
+        # Profesor -> Redirecciona a Dashboard
         self.client.login(username="professor", password="password123")
         response = self.client.get(url)
-        self.assertEqual(response.status_code, 403)
+        self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
         self.client.logout()
         
         # Coordinador -> 200 OK
