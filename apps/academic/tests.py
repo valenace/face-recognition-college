@@ -84,12 +84,6 @@ class CoordinationViewsTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 302)
         
-        # Estudiante -> Redirecciona a Dashboard
-        self.client.login(username="student1", password="password123")
-        response = self.client.get(url)
-        self.assertRedirects(response, reverse('dashboard'), fetch_redirect_response=False)
-        self.client.logout()
-        
         # Profesor -> Redirecciona a Dashboard
         self.client.login(username="professor", password="password123")
         response = self.client.get(url)
@@ -107,6 +101,11 @@ class CoordinationViewsTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.client.logout()
+
+    def test_student_login_is_blocked(self):
+        # El estudiante no debe poder iniciar sesión en la plataforma
+        login_successful = self.client.login(username="student1", password="password123")
+        self.assertFalse(login_successful)
 
     def test_panel_enrolamiento_query(self):
         self.client.login(username="coordinator", password="password123")

@@ -9,8 +9,7 @@ from apps.attendance.models import RegistroAsistencia
 User = get_user_model()
 
 
-def registration(request):
-    return render(request, "attendance/registration.html")
+
 
 
 def live_attendance(request):

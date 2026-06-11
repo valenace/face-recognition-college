@@ -1,11 +1,10 @@
 from django.urls import path
 from . import views
-from apps.attendance.views import registration, live_attendance, directorio
+from apps.attendance.views import live_attendance, directorio
 from apps.attendance.api import RegistroBiometricoView
 
 urlpatterns = [
     # ── Páginas HTML ───────────────────────────────────────────
-    path("registro-facial/", registration, name="facial_registration"),
     path("en-vivo/", live_attendance, name="live_attendance"),
     path("directorio/", directorio, name="directorio"),
 
