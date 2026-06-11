@@ -1,9 +1,11 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import get_user_model
+from django.views import View
 from django.views.generic import ListView
 from django.db.models import Q
+from django.core.exceptions import PermissionDenied
 from apps.users.permissions import RoleRequiredMixin
-from apps.attendance.models import RegistroAsistencia
+from apps.attendance.models import RegistroAsistencia, SesionClase
 
 
 User = get_user_model()
@@ -68,3 +70,30 @@ class ReportesAsistenciaView(RoleRequiredMixin, ListView):
             queryset = queryset.filter(sesion__fecha=fecha)
             
         return queryset
+
+
+class ClaseEnVivoView(RoleRequiredMixin, View):
+    allowed_roles = [User.Role.PROFESSOR]
+
+    def get(self, request, session_id):
+        # Redirect to the existing MonitorClaseView
+        return redirect('academic:monitor-clase', session_id=session_id)
+
+    def post(self, request, session_id):
+        sesion = get_object_or_404(SesionClase, pk=session_id)
+        # Check permissions: only the assigned professor (or a superuser) can finalize the session
+        if not request.user.is_superuser and sesion.asignacion_clase.profesor != request.user:
+            raise PermissionDenied("no tienes permiso para modificar esta sesión de clase.")
+        
+        notas = request.POST.get('notas_profesor', '')
+        sesion.notas_profesor = notas
+        sesion.estado = SesionClase.Estado.FINALIZADA
+        sesion.save()
+
+        # Iterate over attendance records and copy last seen time to exit time
+        for ast in RegistroAsistencia.objects.filter(sesion=sesion):
+            if ast.ultima_vez_visto:
+                ast.hora_salida = ast.ultima_vez_visto
+                ast.save()
+        
+        return redirect('academic:dashboard-profesor')

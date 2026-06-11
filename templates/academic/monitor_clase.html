@@ -1,194 +1,357 @@
 {% extends "base.html" %}
 
-{% block title %}Monitoreo de Clase | CV College{% endblock %}
+{% block title %}Centro de Mando | CV College{% endblock %}
 
 {% block content %}
-<div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+<!-- Hidden form connected to ClaseEnVivoView -->
+<form id="finalizar-form" method="post" action="{% url 'clase-en-vivo' sesion.id %}">
+    {% csrf_token %}
+</form>
+
+<!-- Header del Dashboard -->
+<div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-6">
     <div>
-        <a href="{% url 'academic:dashboard-profesor' %}" class="inline-flex items-center text-sm font-semibold text-brand-blue dark:text-brand-yellow hover:underline mb-3">
+        <a href="{% url 'academic:dashboard-profesor' %}" class="inline-flex items-center text-sm font-semibold text-brand-blue hover:text-brand-blue/80 dark:text-brand-yellow dark:hover:text-brand-yellow/85 transition-colors mb-3">
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
             Volver al Dashboard
         </a>
-        <h2 class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+        <h2 class="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">
             {{ sesion.asignacion_clase.asignatura.nombre }}
         </h2>
-        <p class="text-slate-500 dark:text-slate-400 mt-2 font-medium">
-            Sección: {{ sesion.asignacion_clase.seccion.codigo }} | Aula: {{ sesion.asignacion_clase.salon.nombre }} | Fecha: {{ sesion.fecha }}
+        <p class="text-slate-500 dark:text-slate-400 mt-1.5 font-medium flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs border border-slate-200 dark:border-slate-700">Sección {{ sesion.asignacion_clase.seccion.codigo }}</span>
+            <span class="text-slate-300 dark:text-slate-700">|</span>
+            <span>Aula: {{ sesion.asignacion_clase.salon.nombre }}</span>
+            <span class="text-slate-300 dark:text-slate-700">|</span>
+            <span>Fecha: {{ sesion.fecha }}</span>
         </p>
     </div>
     
-    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-        <span class="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm h-fit
-            {% if sesion.estado == 'EN_CURSO' %}
-                bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800
-            {% else %}
-                bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/50 dark:border-slate-700
-            {% endif %}">
-            <span class="w-2.5 h-2.5 rounded-full mr-2.5 
-                {% if sesion.estado == 'EN_CURSO' %}bg-emerald-500 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
-            {{ sesion.get_estado_display }}
+    <div>
+        {% if sesion.estado == 'EN_CURSO' %}
+        <span class="inline-flex items-center px-4 py-2.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2.5 animate-pulse"></span>
+            Clase en Curso
         </span>
-
-        {% if sesion.estado == 'PROGRAMADA' %}
-        <button class="inline-flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl px-6 py-2.5 transition-colors shadow-sm shadow-emerald-500/20">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            Iniciar Sesión
-        </button>
-        {% elif sesion.estado == 'EN_CURSO' %}
-        <button class="inline-flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl px-6 py-2.5 transition-colors shadow-sm shadow-rose-500/20">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
-            Finalizar Sesión
-        </button>
+        {% else %}
+        <span class="inline-flex items-center px-4 py-2.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-600 mr-2.5"></span>
+            Clase Finalizada
+        </span>
         {% endif %}
     </div>
 </div>
 
+<!-- Layout Principal (Grid 2 Columnas) -->
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-    <!-- Columna de Asistencia (lg:col-span-8) -->
-    <div class="lg:col-span-8 glass-card overflow-hidden shadow-sm rounded-2xl h-fit border border-slate-100 dark:border-slate-700 dark:bg-slate-800/50">
-        <div class="px-8 py-5 border-b border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80">
-            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100">Control de Asistencia</h3>
-        </div>
+    
+    <!-- Columna Izquierda (Video y Notas) -->
+    <div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
         
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
-                        <th class="px-3 py-4 md:px-8 md:py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Nombre</th>
-                        <th class="px-3 py-4 md:px-8 md:py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Carnet</th>
-                        <th class="px-3 py-4 md:px-8 md:py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Historial</th>
-                        <th class="px-3 py-4 md:px-8 md:py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400 text-center">Estado</th>
-                        <th class="px-3 py-4 md:px-8 md:py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400 text-right">Verificación</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700 bg-white/50 dark:bg-transparent">
-                    {% for item in estudiantes_monitoreo %}
-                    <tr class="transition-colors {% if item.asistencia and item.asistencia.es_fraude %}bg-rose-50/50 text-rose-800 dark:bg-rose-900/20 dark:text-rose-300 hover:bg-rose-100/50 dark:hover:bg-rose-900/30 border-l-4 border-rose-400{% else %}hover:bg-slate-50 dark:hover:bg-slate-700/30{% endif %}">
-                        <td class="px-3 py-4 md:px-8 md:py-5 whitespace-nowrap">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full {% if item.asistencia and item.asistencia.es_fraude %}bg-rose-200 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300{% else %}bg-brand-blue/10 text-brand-blue dark:bg-brand-blue/20 dark:text-brand-yellow{% endif %} font-bold flex items-center justify-center text-sm border {% if item.asistencia and item.asistencia.es_fraude %}border-rose-300 dark:border-rose-800{% else %}border-transparent{% endif %}">
-                                    {{ item.estudiante.user.first_name|first|upper }}{{ item.estudiante.user.last_name|first|upper }}
-                                </div>
-                                <div class="font-bold text-sm {% if not item.asistencia or not item.asistencia.es_fraude %}text-slate-900 dark:text-slate-100{% endif %}">
-                                    {{ item.estudiante.user.get_full_name }}
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-3 py-4 md:px-8 md:py-5 whitespace-nowrap text-sm font-mono font-medium {% if not item.asistencia or not item.asistencia.es_fraude %}text-slate-500 dark:text-slate-400{% endif %}">
-                            {{ item.estudiante.matricula }}
-                        </td>
-                        <td class="px-3 py-4 md:px-8 md:py-5 whitespace-nowrap text-sm">
-                            <div class="flex flex-wrap gap-2 justify-start">
-                                {% if item.asistencia %}
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 text-xs font-bold shadow-sm">
-                                        Entrada: {{ item.asistencia.hora_entrada|time:"H:i" }}
-                                    </span>
-                                    {% if item.asistencia.es_fraude %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 text-xs font-bold shadow-sm">
-                                            Alerta: 08:35
-                                        </span>
-                                    {% elif item.asistencia.hora_salida %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 text-xs font-bold shadow-sm">
-                                            Salida: {{ item.asistencia.hora_salida|time:"H:i" }}
-                                        </span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-slate-400 dark:text-slate-500 italic">Sin registros</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td class="px-3 py-4 md:px-8 md:py-5 whitespace-nowrap text-center">
-                            {% if item.asistencia %}
-                                {% if item.asistencia.es_fraude %}
-                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                        Fraude
-                                    </span>
-                                {% else %}
-                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                        Presente
-                                    </span>
-                                {% endif %}
-                            {% else %}
-                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                                    Ausente
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-3 py-4 md:px-8 md:py-5 whitespace-nowrap text-right text-sm">
-                            <button class="inline-flex items-center gap-1.5 text-slate-500 hover:text-brand-blue dark:text-slate-400 dark:hover:text-brand-yellow font-bold transition-colors" title="Verificar alumno">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                <span>Verificar</span>
-                            </button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="px-8 py-12 text-center text-slate-500 dark:text-slate-500 font-medium">
-                            No hay estudiantes registrados en esta sesión.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+        <!-- Contenedor del Feed de Video IA -->
+        <div class="aspect-video bg-slate-900 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden border border-slate-800 shadow-2xl group">
+            <!-- Overlay de Líneas de Escaneo / Grid de Cámara -->
+            <div class="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_95%,rgba(0,0,0,0.3)_95%)] bg-[size:100%_24px] pointer-events-none opacity-20"></div>
+            <div class="absolute inset-0 bg-radial-gradient from-transparent to-black/40 pointer-events-none"></div>
+            
+            <!-- Crop marks en las esquinas -->
+            <div class="absolute top-6 left-6 w-6 h-6 border-t-2 border-l-2 border-slate-600"></div>
+            <div class="absolute top-6 right-6 w-6 h-6 border-t-2 border-r-2 border-slate-600"></div>
+            <div class="absolute bottom-6 left-6 w-6 h-6 border-b-2 border-l-2 border-slate-600"></div>
+            <div class="absolute bottom-6 right-6 w-6 h-6 border-b-2 border-r-2 border-slate-600"></div>
+            
+            <!-- HUD Info -->
+            <div class="absolute top-6 left-16 flex items-center gap-3 font-mono text-xs text-slate-400 select-none">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                    <span class="font-bold text-rose-500">REC</span>
+                </span>
+                <span>•</span>
+                <span>CAM_01_RECOGNITION</span>
+                <span>•</span>
+                <span>FPS: 30</span>
+            </div>
+            
+            <div class="absolute top-6 right-16 font-mono text-xs text-slate-400 select-none hidden sm:block">
+                <span>IA ACTIVE: 99.8% PREC.</span>
+            </div>
 
-    <!-- Columna de Seguridad (lg:col-span-4) -->
-    <div class="lg:col-span-4 flex flex-col gap-6 mt-6 lg:mt-0">
-        <div class="glass-card p-6 rounded-2xl shadow-sm bg-white/50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
-            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <svg class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                Alertas de Seguridad
-            </h3>
-        </div>
-        
-        <div class="space-y-4">
-            {% for item in estudiantes_monitoreo %}
-                {% if item.asistencia and item.asistencia.es_fraude %}
-                <!-- Tarjeta de Alerta -->
-                <div class="border border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-900/30 rounded-2xl p-5 shadow-sm">
-                    <div class="flex items-start gap-4 mb-4">
-                        <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-200 dark:border-rose-800">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                        </div>
-                        <div>
-                            <h4 class="text-sm font-bold text-rose-800 dark:text-rose-400">Alerta de Suplantación</h4>
-                            <p class="text-sm text-rose-600 dark:text-rose-300 font-bold mt-0.5">{{ item.estudiante.user.get_full_name }}</p>
-                            <p class="text-xs text-rose-500 dark:text-rose-400/80 mt-1 font-medium">Hora detectada: {{ item.asistencia.hora_entrada|time:"H:i:s" }}</p>
-                        </div>
-                    </div>
-                    
-                    {% if item.asistencia.captura_fraude %}
-                    <div class="mt-4 aspect-video rounded-xl overflow-hidden border-2 border-rose-200 dark:border-rose-900/50 relative group shadow-sm">
-                        <img src="{{ item.asistencia.captura_fraude.url }}" alt="Captura Liveness" class="w-full h-full object-cover">
-                        <a href="{{ item.asistencia.captura_fraude.url }}" target="_blank" class="absolute inset-0 bg-rose-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-sm font-bold backdrop-blur-sm">
-                            Ver Captura
-                        </a>
-                    </div>
-                    {% else %}
-                    <div class="mt-4 aspect-video bg-white/50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-rose-200 dark:border-rose-900/30 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
-                        <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <span class="text-xs font-bold text-center px-4">Captura no disponible en este momento</span>
-                    </div>
-                    {% endif %}
+            <!-- Contenido Principal Central -->
+            <div class="text-center z-10 flex flex-col items-center gap-4 px-6">
+                <div class="w-16 h-16 rounded-full bg-brand-blue/10 dark:bg-brand-blue/20 border border-brand-blue/30 flex items-center justify-center text-brand-blue animate-pulse mb-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
                 </div>
-                {% endif %}
-            {% endfor %}
-        </div>
+                <h4 class="text-lg font-bold text-slate-200 tracking-wide uppercase">Monitoreo Biométrico Activo</h4>
+                <p class="text-sm text-slate-500 max-w-sm">Escaneando rostros y aplicando detección de liveness en tiempo real.</p>
+            </div>
+            
+            <!-- Cuadros de Selección IA Simulados -->
+            <div class="absolute inset-0 pointer-events-none z-10">
+                <!-- Caja de cara 1 -->
+                <div class="absolute top-[25%] left-[20%] w-[12%] aspect-square border-2 border-emerald-500 rounded-lg">
+                    <span class="absolute -top-6 left-0 bg-emerald-500 text-white font-mono text-[9px] px-1 py-0.5 rounded shadow">
+                        VALENTINA R. 98.4%
+                    </span>
+                </div>
+                <!-- Caja de cara 2 -->
+                <div class="absolute top-[40%] right-[30%] w-[11%] aspect-square border-2 border-rose-500 rounded-lg animate-pulse">
+                    <span class="absolute -top-6 left-0 bg-rose-500 text-white font-mono text-[9px] px-1 py-0.5 rounded shadow">
+                        SPOOFING ALERT
+                    </span>
+                </div>
+            </div>
 
-        <!-- Caja de Notas del Profesor -->
-        <div class="glass-card p-8 rounded-2xl shadow-sm bg-white/50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
-            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-2">
-                <svg class="w-6 h-6 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                Bitácora de la Clase
+            <!-- Footer del Feed -->
+            <div class="absolute bottom-6 left-16 right-16 flex items-center justify-between font-mono text-[10px] text-slate-500 select-none">
+                <span>ESTADO: SEGURO</span>
+                <span id="live-time">Cargando fecha...</span>
+            </div>
+        </div>
+        
+        <!-- Formulario y Notas -->
+        <div class="glass-card p-6 md:p-8 border-slate-200/60 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/30">
+            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <svg class="w-6 h-6 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Notas del Profesor
             </h3>
-            <textarea rows="4" placeholder="Ej: Pérez faltó con justificativo médico..." class="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all resize-none shadow-inner"></textarea>
-            <button class="mt-4 w-full bg-brand-blue/10 hover:bg-brand-blue/20 dark:bg-slate-700 dark:hover:bg-slate-600 text-brand-blue dark:text-brand-yellow font-bold text-sm py-3 rounded-xl transition-colors shadow-sm">
-                Guardar Notas
-            </button>
+            
+            <textarea 
+                form="finalizar-form" 
+                name="notas_profesor" 
+                rows="4" 
+                placeholder="Ingresar bitácora o incidentes del salón..." 
+                class="w-full bg-slate-50/50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-sm text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all resize-none shadow-inner"
+                {% if sesion.estado == 'FINALIZADA' %}readonly{% endif %}>{{ sesion.notas_profesor }}</textarea>
+            
+            {% if sesion.estado != 'FINALIZADA' %}
+            <div class="mt-5 flex flex-col sm:flex-row gap-4">
+                <button form="finalizar-form" type="submit" class="w-full inline-flex items-center justify-center bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-6 py-3.5 transition-all shadow-lg shadow-rose-600/20 hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Finalizar Clase
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
+    
+    <!-- Columna Derecha (Log de Eventos en Tiempo Real) -->
+    <div class="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+        
+        <div class="glass-card p-6 border-slate-200/60 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/30">
+            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2.5 mb-5">
+                <svg class="w-5 h-5 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Log de Eventos Real-Time
+            </h3>
+            
+            <!-- Panel alto y scrolleable -->
+            <div class="max-h-[580px] overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-350 dark:scrollbar-thumb-slate-800">
+                
+                <!-- 1. Tarjeta Verde Pastel (Asistencia Confirmada) -->
+                <div class="rounded-2xl p-4.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-300 flex gap-3.5 shadow-sm">
+                    <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-500 shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Asistencia Confirmada</span>
+                            <span class="text-[10px] text-slate-400 font-mono">10:42</span>
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">Valentina Rojas</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Entrada validada correctamente via FaceID.</p>
+                    </div>
+                </div>
+
+                <!-- 2. Tarjeta Roja Suave (Alerta de Spoofing) -->
+                <div class="rounded-2xl p-4.5 bg-rose-500/10 border border-rose-500/20 text-rose-950 dark:text-rose-300 flex gap-3.5 shadow-sm">
+                    <div class="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Alerta de Spoofing</span>
+                            <span class="text-[10px] text-slate-400 font-mono">10:38</span>
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">Carlos Mendoza</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Intento de suplantación detectado (Fotografía impresa en papel).</p>
+                    </div>
+                </div>
+
+                <!-- 3. Tarjeta Naranja (Estudiante de otra sección) -->
+                <div class="rounded-2xl p-4.5 bg-amber-500/10 border border-amber-500/20 text-amber-950 dark:text-amber-300 flex gap-3.5 shadow-sm">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="overflow-hidden">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Otra Sección</span>
+                            <span class="text-[10px] text-slate-400 font-mono">10:35</span>
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">Diego Fernández</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">El estudiante pertenece a la Sección B (Paralelo).</p>
+                    </div>
+                </div>
+
+                <!-- 4. Tarjeta Gris/Amarilla (Intruso Desconocido) -->
+                <div class="rounded-2xl p-4.5 bg-yellow-500/10 border border-yellow-500/20 text-yellow-950 dark:text-yellow-300 flex gap-3.5 shadow-sm">
+                    <!-- Placeholder de foto o scanner -->
+                    <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/50 flex items-center justify-center text-yellow-500 shrink-0 overflow-hidden relative group">
+                        <div class="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_45%,#eab308_50%,transparent_55%)] bg-[size:100%_200%] animate-[scan_2s_linear_infinite] opacity-60"></div>
+                        <svg class="w-5 h-5 z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="overflow-hidden w-full">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-yellow-600 dark:text-yellow-400">Intruso Desconocido</span>
+                            <span class="text-[10px] text-slate-400 font-mono">10:30</span>
+                        </div>
+                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">Desconocido (No Registrado)</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">No se encontró correspondencia biométrica en el sistema.</p>
+                    </div>
+                </div>
+
+                <!-- Separador / Sección de Registros en Base de Datos -->
+                <div class="border-t border-slate-200/50 dark:border-slate-800/60 pt-4 pb-2">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Registros de Asistencia del Salón</span>
+                </div>
+
+                <!-- Lista de Registros Reales de la Base de Datos -->
+                {% for item in estudiantes_monitoreo %}
+                    {% if item.asistencia %}
+                        <div class="rounded-xl p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-850 flex flex-col gap-2.5 shadow-xs">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-600 dark:text-slate-300">
+                                        {{ item.estudiante.user.first_name|first|upper }}{{ item.estudiante.user.last_name|first|upper }}
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.estudiante.user.get_full_name }}</h5>
+                                        <p class="text-[10px] text-slate-400 truncate">{{ item.estudiante.matricula }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    {% if item.asistencia.es_fraude %}
+                                        <span class="inline-flex px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold">Fraude</span>
+                                    {% else %}
+                                        <span class="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-bold">Presente</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Datos de Entrada y Último Avistamiento -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/50 dark:border-slate-800/60 pt-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                <div class="flex gap-2">
+                                    <span>Entrada: <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ item.asistencia.hora_entrada|time:"H:i" }}</strong></span>
+                                    <span>•</span>
+                                    <span>Visto: <strong class="text-slate-700 dark:text-slate-300 font-mono">{% if item.asistencia.ultima_vez_visto %}{{ item.asistencia.ultima_vez_visto|time:"H:i" }}{% else %}Ausente{% endif %}</strong></span>
+                                </div>
+                                {% if item.asistencia.posible_fuga %}
+                                    <span class="inline-flex px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold tracking-tight">Posible Fuga/Ausencia Breve</span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Permanencia y Estado -->
+                            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/40 pt-2">
+                                <span>Permanencia: <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ item.asistencia.porcentaje_permanencia }}%</strong></span>
+                                <div>
+                                    {% if item.asistencia.porcentaje_permanencia < 50 %}
+                                        <span class="inline-flex px-1.5 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-[9px] font-bold tracking-tight">Asistencia Parcial</span>
+                                    {% else %}
+                                        <span class="inline-flex px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold tracking-tight">Estable</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- Ausente -->
+                        <div class="rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800/80 flex flex-col gap-2.5 opacity-60">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 font-medium text-xs">
+                                        {{ item.estudiante.user.first_name|first|upper }}{{ item.estudiante.user.last_name|first|upper }}
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <h5 class="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{{ item.estudiante.user.get_full_name }}</h5>
+                                        <p class="text-[10px] text-slate-505 truncate">{{ item.estudiante.matricula }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="inline-flex px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 text-[10px] font-medium">Ausente</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Datos de Entrada y Último Avistamiento -->
+                            <div class="flex items-center border-t border-dashed border-slate-200/50 dark:border-slate-800/60 pt-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                <span>Último Avistamiento: <strong class="text-slate-400 dark:text-slate-500 font-mono">Ausente</strong></span>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <div class="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
+                        No hay estudiantes inscritos en esta clase.
+                    </div>
+                {% endfor %}
+
+            </div>
+        </div>
+
+    </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Reloj digital en vivo para simular HUD
+    function updateClock() {
+        const timeSpan = document.getElementById('live-time');
+        if (timeSpan) {
+            const now = new Date();
+            const formatOption = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            timeSpan.innerText = now.toLocaleString('es-ES', formatOption).replace(',', ' |');
+        }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+</script>
+
+<style>
+    /* Estilos personalizados para animaciones y scrollbar */
+    @keyframes scan {
+        0% { background-position: 0% 0%; }
+        50% { background-position: 0% 100%; }
+        100% { background-position: 0% 0%; }
+    }
+    
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background-color: rgb(156 163 175 / 0.3);
+        border-radius: 9999px;
+    }
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+        background-color: rgb(63 63 70 / 0.5);
+    }
+</style>
 {% endblock %}

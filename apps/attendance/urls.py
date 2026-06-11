@@ -6,6 +6,7 @@ from apps.attendance.api import RegistroBiometricoView
 urlpatterns = [
     # ── Páginas HTML ───────────────────────────────────────────
     path("en-vivo/", live_attendance, name="live_attendance"),
+    path("clase-en-vivo/<int:session_id>/", views.ClaseEnVivoView.as_view(), name="clase-en-vivo"),
     path("directorio/", directorio, name="directorio"),
 
     # ── API Endpoints ──────────────────────────────────────────
