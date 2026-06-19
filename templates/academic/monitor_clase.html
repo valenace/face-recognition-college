@@ -4,14 +4,14 @@
 
 {% block content %}
 <!-- Hidden form connected to ClaseEnVivoView -->
-<form id="finalizar-form" method="post" action="{% url 'clase-en-vivo' sesion.id %}">
+<form id="finalizar-form" method="post" action="{% url 'academic:monitor-clase' sesion.id %}">
     {% csrf_token %}
 </form>
 
 <!-- Header del Dashboard -->
 <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-6">
     <div>
-        <a href="{% url 'academic:dashboard-profesor' %}" class="inline-flex items-center text-sm font-semibold text-brand-blue hover:text-brand-blue/80 dark:text-brand-yellow dark:hover:text-brand-yellow/85 transition-colors mb-3">
+        <a href="{% url 'academic:panel-profesor' %}" class="inline-flex items-center text-sm font-semibold text-brand-blue hover:text-brand-blue/80 dark:text-brand-yellow dark:hover:text-brand-yellow/85 transition-colors mb-3">
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
@@ -272,22 +272,53 @@
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Registros de Asistencia del Salón</span>
                 </div>
 
-                <!-- Lista de Registros Reales de la Base de Datos -->
-                {% for item in estudiantes_monitoreo %}
-                    {% if item.asistencia %}
+                <!-- SECCIÓN PRESENTES -->
+                <div class="mb-2 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Presentes ({{ registros_asistencia|length }})</span>
+                </div>
+
+                <div class="space-y-4">
+                    {% for registro in registros_asistencia %}
                         <div class="rounded-xl p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-850 flex flex-col gap-2.5 shadow-xs">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-3 overflow-hidden">
                                     <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-600 dark:text-slate-300">
-                                        {{ item.estudiante.user.first_name|first|upper }}{{ item.estudiante.user.last_name|first|upper }}
+                                        {% if registro.estudiante %}
+                                            {{ registro.estudiante.user.first_name|first|upper }}{{ registro.estudiante.user.last_name|first|upper }}
+                                        {% else %}
+                                            ?
+                                        {% endif %}
                                     </div>
                                     <div class="overflow-hidden">
-                                        <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.estudiante.user.get_full_name }}</h5>
-                                        <p class="text-[10px] text-slate-400 truncate">{{ item.estudiante.matricula }}</p>
+                                        <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                            {% if registro.estudiante %}
+                                                {{ registro.estudiante.user.get_full_name }}
+                                            {% else %}
+                                                Desconocido
+                                            {% endif %}
+                                        </h5>
+                                        <p class="text-[10px] text-slate-400 truncate">
+                                            {% if registro.estudiante %}
+                                                {{ registro.estudiante.matricula }}
+                                            {% else %}
+                                                No Registrado
+                                            {% endif %}
+                                        </p>
+                                        
+                                        <!-- Historial de Intervalos -->
+                                        {% if registro.historial_intervalos %}
+                                            <div class="flex flex-wrap gap-1 mt-1.5">
+                                                {% for intervalo in registro.historial_intervalos %}
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium font-mono">
+                                                        {{ intervalo.inicio }} - {{ intervalo.fin }}
+                                                    </span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="text-right shrink-0">
-                                    {% if item.asistencia.es_fraude %}
+                                    {% if registro.es_fraude %}
                                         <span class="inline-flex px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold">Fraude</span>
                                     {% else %}
                                         <span class="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-bold">Presente</span>
@@ -298,56 +329,63 @@
                             <!-- Datos de Entrada y Último Avistamiento -->
                             <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/50 dark:border-slate-800/60 pt-2 text-[10px] text-slate-500 dark:text-slate-400">
                                 <div class="flex gap-2">
-                                    <span>Entrada: <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ item.asistencia.hora_entrada|time:"H:i" }}</strong></span>
+                                    <span>Entrada: <strong class="text-slate-700 dark:text-slate-300 font-mono">{% if registro.hora_entrada %}{{ registro.hora_entrada|time:"H:i" }}{% else %}--:--{% endif %}</strong></span>
                                     <span>•</span>
-                                    <span>Visto: <strong class="text-slate-700 dark:text-slate-300 font-mono">{% if item.asistencia.ultima_vez_visto %}{{ item.asistencia.ultima_vez_visto|time:"H:i" }}{% else %}Ausente{% endif %}</strong></span>
+                                    <span>Visto: <strong class="text-slate-700 dark:text-slate-300 font-mono">{% if registro.ultima_vez_visto %}{{ registro.ultima_vez_visto|time:"H:i" }}{% else %}Ausente{% endif %}</strong></span>
                                 </div>
-                                {% if item.asistencia.posible_fuga %}
+                                {% if registro.posible_fuga %}
                                     <span class="inline-flex px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold tracking-tight">Posible Fuga/Ausencia Breve</span>
                                 {% endif %}
                             </div>
 
                             <!-- Permanencia y Estado -->
-                            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/40 pt-2">
-                                <span>Permanencia: <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ item.asistencia.porcentaje_permanencia }}%</strong></span>
+                            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-850 pt-2">
+                                <span>Permanencia:</span>
                                 <div>
-                                    {% if item.asistencia.porcentaje_permanencia < 50 %}
-                                        <span class="inline-flex px-1.5 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-[9px] font-bold tracking-tight">Asistencia Parcial</span>
+                                    {% if registro.porcentaje_permanencia < 50 %}
+                                        <span class="inline-flex px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold font-mono">{{ registro.porcentaje_permanencia }}% - Asistencia Parcial</span>
                                     {% else %}
-                                        <span class="inline-flex px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold tracking-tight">Estable</span>
+                                        <span class="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold font-mono">{{ registro.porcentaje_permanencia }}% - Estable</span>
                                     {% endif %}
                                 </div>
                             </div>
                         </div>
-                    {% else %}
-                        <!-- Ausente -->
+                    {% empty %}
+                        <div class="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
+                            No hay estudiantes presentes en esta clase.
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- SECCIÓN AUSENTES -->
+                <div class="border-t border-slate-200/50 dark:border-slate-800/60 pt-6 mt-6 mb-2 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Ausentes ({{ estudiantes_ausentes|length }})</span>
+                </div>
+
+                <div class="space-y-4">
+                    {% for estudiante in estudiantes_ausentes %}
                         <div class="rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800/80 flex flex-col gap-2.5 opacity-60">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-3 overflow-hidden">
                                     <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 font-medium text-xs">
-                                        {{ item.estudiante.user.first_name|first|upper }}{{ item.estudiante.user.last_name|first|upper }}
+                                        {{ estudiante.user.first_name|first|upper }}{{ estudiante.user.last_name|first|upper }}
                                     </div>
                                     <div class="overflow-hidden">
-                                        <h5 class="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{{ item.estudiante.user.get_full_name }}</h5>
-                                        <p class="text-[10px] text-slate-505 truncate">{{ item.estudiante.matricula }}</p>
+                                        <h5 class="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{{ estudiante.user.get_full_name }}</h5>
+                                        <p class="text-[10px] text-slate-400 truncate">{{ estudiante.matricula }}</p>
                                     </div>
                                 </div>
                                 <div class="text-right shrink-0">
-                                    <span class="inline-flex px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 text-[10px] font-medium">Ausente</span>
+                                    <span class="inline-flex px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 text-[10px] font-medium">No ha llegado</span>
                                 </div>
                             </div>
-                            
-                            <!-- Datos de Entrada y Último Avistamiento -->
-                            <div class="flex items-center border-t border-dashed border-slate-200/50 dark:border-slate-800/60 pt-2 text-[10px] text-slate-500 dark:text-slate-400">
-                                <span>Último Avistamiento: <strong class="text-slate-400 dark:text-slate-500 font-mono">Ausente</strong></span>
-                            </div>
                         </div>
-                    {% endif %}
-                {% empty %}
-                    <div class="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
-                        No hay estudiantes inscritos en esta clase.
-                    </div>
-                {% endfor %}
+                    {% empty %}
+                        <div class="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
+                            No hay estudiantes ausentes.
+                        </div>
+                    {% endfor %}
+                </div>
 
             </div>
         </div>
@@ -374,7 +412,7 @@
     // Resolucion de alertas reales via API
     function resolverAlerta(registroId, accion) {
         const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        fetch('/api/resolver-alerta/', {
+        fetch("{% url 'academic:api-resolver-alerta' %}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

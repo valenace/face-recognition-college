@@ -107,7 +107,9 @@
                                 {{ clase.asignatura.nombre|first }}
                             </div>
                             <div class="ml-4">
-                                <div class="text-sm font-bold text-slate-900 dark:text-slate-100">{{ clase.asignatura.nombre }}</div>
+                                <div class="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                    <a href="{% url 'detalle-asignacion' clase.id %}" class="hover:underline text-brand-blue dark:text-brand-yellow">{{ clase.asignatura.nombre }}</a>
+                                </div>
                                 <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cód: {{ clase.asignatura.codigo }}</div>
                             </div>
                         </div>
@@ -130,18 +132,10 @@
                         </div>
                     </td>
                     <td class="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
-                        {% with latest_session=clase.sesiones.last %}
-                        {% if latest_session %}
-                        <a href="{% url 'academic:monitor-clase' latest_session.id %}" class="inline-flex items-center bg-brand-blue hover:bg-brand-blue-accent text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-all duration-200 shadow-sm hover:shadow-md">
-                            Monitorear Clase
+                        <a href="{% url 'detalle-asignacion' clase.id %}" class="inline-flex items-center bg-brand-blue hover:bg-brand-blue-accent text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-all duration-200 shadow-sm hover:shadow-md">
+                            Gestionar Clase
                             <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                         </a>
-                        {% else %}
-                        <button disabled class="inline-flex items-center bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 font-medium rounded-xl px-5 py-2.5 text-sm cursor-not-allowed border border-slate-200 dark:border-slate-600">
-                            Sin Sesión
-                        </button>
-                        {% endif %}
-                        {% endwith %}
                     </td>
                 </tr>
                 {% empty %}

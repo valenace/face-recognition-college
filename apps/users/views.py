@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 @login_required
 def dashboard(request):
     if request.user.is_professor:
-        return redirect("academic:dashboard-profesor")
+        return redirect("academic:panel-profesor")
     return render(request, "dashboard.html")
 
 

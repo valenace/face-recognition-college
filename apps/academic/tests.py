@@ -156,7 +156,7 @@ class CoordinationViewsTestCase(TestCase):
         self.assertEqual(len(response.context['salones']), 1)
 
     def test_auditoria_seguridad(self):
-        url = reverse('auditoria-seguridad')
+        url = reverse('academic:auditoria-seguridad')
         
         # Director -> 200 OK
         self.client.login(username="director", password="password123")
@@ -173,7 +173,7 @@ class CoordinationViewsTestCase(TestCase):
         self.client.logout()
 
     def test_reportes_asistencia(self):
-        url = reverse('reportes-asistencia')
+        url = reverse('academic:reportes-asistencia')
         
         # Anonimo -> Redirecciona
         response = self.client.get(url)
@@ -192,4 +192,34 @@ class CoordinationViewsTestCase(TestCase):
         response = self.client.get(url, {'q': 'NON-EXISTENT'})
         self.assertEqual(len(response.context['reportes']), 0)
         self.client.logout()
+
+    def test_professor_panel_and_sessions(self):
+        # 1. Test PanelProfesorView
+        url_panel = reverse('academic:panel-profesor')
+        self.client.login(username="professor", password="password123")
+        response = self.client.get(url_panel)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.asignacion, response.context['clases'])
+
+        # 2. Test DetalleAsignacionView
+        url_detalle = reverse('academic:detalle-asignacion', kwargs={'pk': self.asignacion.id})
+        response = self.client.get(url_detalle)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['asignacion'], self.asignacion)
+        # Should contain active session (self.sesion)
+        self.assertEqual(response.context['sesion_activa'], self.sesion)
+
+        # 3. Test IniciarSesionView
+        # If there is already an active session today, post should redirect to it
+        url_iniciar = reverse('academic:iniciar-sesion', kwargs={'asignacion_id': self.asignacion.id})
+        response = self.client.post(url_iniciar)
+        self.assertRedirects(response, reverse('academic:monitor-clase', kwargs={'session_id': self.sesion.id}))
+
+        # If there is no active session today, post should create one and redirect
+        # Delete today's active session first
+        self.sesion.delete()
+        response = self.client.post(url_iniciar)
+        new_session = SesionClase.objects.filter(asignacion_clase=self.asignacion, estado=SesionClase.Estado.EN_CURSO).first()
+        self.assertIsNotNone(new_session)
+        self.assertRedirects(response, reverse('academic:monitor-clase', kwargs={'session_id': new_session.id}))
 

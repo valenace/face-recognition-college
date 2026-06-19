@@ -68,11 +68,11 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         self.assertIn("Desconocido", str(registro))
         self.assertIn("Fisica", str(registro))
 
-    def test_clase_en_vivo_view_get_redirects(self):
+    def test_clase_en_vivo_view_get_renders_directly(self):
         self.client.login(username="professor_owner", password="password123")
-        url = reverse('clase-en-vivo', kwargs={'session_id': self.sesion.id})
+        url = reverse('academic:monitor-clase', kwargs={'session_id': self.sesion.id})
         response = self.client.get(url)
-        self.assertRedirects(response, reverse('academic:monitor-clase', kwargs={'session_id': self.sesion.id}))
+        self.assertEqual(response.status_code, 200)
 
     def test_clase_en_vivo_view_post_finalizes_session(self):
         from datetime import time
@@ -85,14 +85,18 @@ class AttendanceModelsAndViewsTestCase(TestCase):
             es_fraude=False
         )
         self.client.login(username="professor_owner", password="password123")
-        url = reverse('clase-en-vivo', kwargs={'session_id': self.sesion.id})
+        url = reverse('academic:monitor-clase', kwargs={'session_id': self.sesion.id})
+        post_data = {
+            'notes_profesor': 'Todo en orden con la clase de hoy.'
+        }
+        # Wait, the field in the view is notas_profesor, let's keep 'notas_profesor'
         post_data = {
             'notas_profesor': 'Todo en orden con la clase de hoy.'
         }
         response = self.client.post(url, data=post_data)
         
         # Verify redirect to professor dashboard
-        self.assertRedirects(response, reverse('academic:dashboard-profesor'))
+        self.assertRedirects(response, reverse('academic:panel-profesor'))
         
         # Verify db changes
         self.sesion.refresh_from_db()
@@ -112,7 +116,7 @@ class AttendanceModelsAndViewsTestCase(TestCase):
 
     def test_clase_en_vivo_view_unauthorized_professor(self):
         self.client.login(username="professor_other", password="password123")
-        url = reverse('clase-en-vivo', kwargs={'session_id': self.sesion.id})
+        url = reverse('academic:monitor-clase', kwargs={'session_id': self.sesion.id})
         post_data = {
             'notas_profesor': 'Intento de modificar notas.'
         }
@@ -134,7 +138,7 @@ class AttendanceModelsAndViewsTestCase(TestCase):
             es_fraude=True
         )
         self.client.login(username="professor_owner", password="password123")
-        url = reverse('api-resolver-alerta')
+        url = reverse('academic:api-resolver-alerta')
         
         # Test falsa_alarma
         data = {
@@ -172,7 +176,7 @@ class AttendanceModelsAndViewsTestCase(TestCase):
             es_fraude=True
         )
         self.client.login(username="professor_other", password="password123")
-        url = reverse('api-resolver-alerta')
+        url = reverse('academic:api-resolver-alerta')
         
         data = {
             "registro_id": registro.id,
@@ -186,3 +190,41 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         self.assertTrue(registro.es_fraude)
         self.assertFalse(registro.alerta_revisada)
         self.assertEqual(registro.notas_auditoria, "")
+
+    def test_registrar_ping_and_porcentaje_permanencia_intervals(self):
+        from datetime import time
+        registro = RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=self.estudiante,
+            hora_entrada=time(9, 0)
+        )
+        # 1. Ping on empty history
+        registro.registrar_ping(time(9, 5))
+        self.assertEqual(registro.historial_intervalos, [{"inicio": "09:05", "fin": "09:05"}])
+        self.assertEqual(registro.ultima_vez_visto, time(9, 5))
+
+        # 2. Ping <= 3 minutes (9:07 - 9:05 = 2 minutes)
+        registro.registrar_ping("09:07")
+        self.assertEqual(registro.historial_intervalos, [{"inicio": "09:05", "fin": "09:07"}])
+
+        # 3. Ping > 3 minutes (9:12 - 9:07 = 5 minutes)
+        registro.registrar_ping("09:12")
+        self.assertEqual(registro.historial_intervalos, [
+            {"inicio": "09:05", "fin": "09:07"},
+            {"inicio": "09:12", "fin": "09:12"}
+        ])
+
+        # 4. Another ping <= 3 minutes to extend the new block (9:15 - 9:12 = 3 minutes)
+        registro.registrar_ping(time(9, 15))
+        self.assertEqual(registro.historial_intervalos, [
+            {"inicio": "09:05", "fin": "09:07"},
+            {"inicio": "09:12", "fin": "09:15"}
+        ])
+
+        # 5. Check porcentaje_permanencia calculation:
+        # Interval 1: 09:05 to 09:07 -> 2 minutes
+        # Interval 2: 09:12 to 09:15 -> 3 minutes
+        # Total active minutes: 5 minutes
+        # Total class duration: 9:00 to 11:00 -> 120 minutes
+        # (5 / 120) * 100 = 4.16% -> rounded to 4%
+        self.assertEqual(registro.porcentaje_permanencia, 4)

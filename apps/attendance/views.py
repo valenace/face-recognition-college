@@ -1,13 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import get_user_model
 from django.views import View
-from django.views.generic import ListView
+from django.views.generic import ListView, DetailView
 from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 import json
 from apps.users.permissions import RoleRequiredMixin
 from apps.attendance.models import RegistroAsistencia, SesionClase
+from apps.academic.models import Inscripcion
 
 
 User = get_user_model()
@@ -74,12 +75,49 @@ class ReportesAsistenciaView(RoleRequiredMixin, ListView):
         return queryset
 
 
-class ClaseEnVivoView(RoleRequiredMixin, View):
+class ClaseEnVivoView(RoleRequiredMixin, DetailView):
+    model = SesionClase
+    template_name = "academic/monitor_clase.html"
+    context_object_name = "sesion"
     allowed_roles = [User.Role.PROFESSOR]
+    pk_url_kwarg = "session_id"
 
-    def get(self, request, session_id):
-        # Redirect to the existing MonitorClaseView
-        return redirect('academic:monitor-clase', session_id=session_id)
+    def get_object(self, queryset=None):
+        sesion = super().get_object(queryset)
+        if not self.request.user.is_superuser and sesion.asignacion_clase.profesor != self.request.user:
+            raise PermissionDenied("no tienes permiso para visualizar esta sesión de clase.")
+        return sesion
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        sesion = self.object
+        
+        # obtener asistencias
+        asistencias = RegistroAsistencia.objects.filter(sesion=sesion).select_related("estudiante__user")
+        asistencias_map = {ast.estudiante_id: ast for ast in asistencias}
+        
+        # obtener estudiantes inscritos
+        inscripciones = Inscripcion.objects.filter(
+            asignacion_clase=sesion.asignacion_clase
+        ).select_related("estudiante__user")
+        
+        # pre-procesar estudiantes con su asistencia correspondiente para el template
+        estudiantes_monitoreo = []
+        for insc in inscripciones:
+            estudiantes_monitoreo.append({
+                "estudiante": insc.estudiante,
+                "asistencia": asistencias_map.get(insc.estudiante_id)
+            })
+        context["estudiantes_monitoreo"] = estudiantes_monitoreo
+
+        # estudiantes_ausentes: filtra los estudiantes inscritos en la sección que NO tienen un RegistroAsistencia para la sesión actual
+        asistencia_student_ids = asistencias.values_list("estudiante_id", flat=True)
+        context["estudiantes_ausentes"] = [
+            insc.estudiante for insc in inscripciones if insc.estudiante_id not in asistencia_student_ids
+        ]
+        context["registros_asistencia"] = asistencias
+        
+        return context
 
     def post(self, request, session_id):
         sesion = get_object_or_404(SesionClase, pk=session_id)
@@ -98,7 +136,7 @@ class ClaseEnVivoView(RoleRequiredMixin, View):
                 ast.hora_salida = ast.ultima_vez_visto
                 ast.save()
         
-        return redirect('academic:dashboard-profesor')
+        return redirect('academic:panel-profesor')
 
 
 class ResolverAlertaAPI(RoleRequiredMixin, View):

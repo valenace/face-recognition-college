@@ -1,6 +1,6 @@
 from django.views.generic import ListView, DetailView, TemplateView
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from apps.users.permissions import RoleRequiredMixin
 from apps.users.models import User
@@ -11,88 +11,6 @@ from django.db.models import Count
 from django.http import JsonResponse
 import json
 from apps.academic.models import Estudiante, AsignacionClase, Salon
-
-class DashboardProfesorView(RoleRequiredMixin, ListView):
-    """
-    vista tipo dashboard para que el profesor vea todas sus clases asignadas.
-    """
-    model = AsignacionClase
-    template_name = "academic/dashboard_profesor.html"
-    context_object_name = "clases"
-    allowed_roles = [User.Role.PROFESSOR]
-
-    def get_queryset(self):
-        # retornar únicamente las asignaciones vinculadas al profesor actual
-        return AsignacionClase.objects.filter(profesor=self.request.user)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        clases = self.get_queryset()
-        
-        # Total de clases asignadas
-        context["total_clases"] = clases.count()
-        
-        # Total de estudiantes (únicos) registrados en las clases del profesor
-        context["total_estudiantes"] = Inscripcion.objects.filter(
-            asignacion_clase__in=clases
-        ).values('estudiante').distinct().count()
-        
-        # Total de alertas de fraude en las sesiones del profesor
-        context["total_alertas"] = RegistroAsistencia.objects.filter(
-            sesion__asignacion_clase__in=clases,
-            es_fraude=True
-        ).count()
-
-        # Próxima clase
-        ahora = timezone.localtime().time()
-        proxima = clases.filter(horario_inicio__gt=ahora).order_by('horario_inicio').first()
-        if not proxima:
-            proxima = clases.order_by('horario_inicio').first()
-        context["proxima_clase"] = proxima
-        
-        return context
-
-
-class MonitorClaseView(RoleRequiredMixin, DetailView):
-    """
-    vista para monitorear una sesión de clase en tiempo real.
-    """
-    model = SesionClase
-    template_name = "academic/monitor_clase.html"
-    context_object_name = "sesion"
-    allowed_roles = [User.Role.PROFESSOR]
-    pk_url_kwarg = "session_id"
-
-    def get_object(self, queryset=None):
-        sesion = super().get_object(queryset)
-        # validar regla de negocio: que la sesión pertenezca al profesor actual
-        if sesion.asignacion_clase.profesor != self.request.user:
-            raise PermissionDenied("no tienes permiso para visualizar esta sesión de clase.")
-        return sesion
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        sesion = self.object
-        
-        # obtener asistencias indexadas por el id del estudiante
-        asistencias = RegistroAsistencia.objects.filter(sesion=sesion).select_related("estudiante__user")
-        asistencias_map = {ast.estudiante_id: ast for ast in asistencias}
-        
-        # obtener estudiantes inscritos
-        inscripciones = Inscripcion.objects.filter(
-            asignacion_clase=sesion.asignacion_clase
-        ).select_related("estudiante__user")
-        
-        # pre-procesar estudiantes con su asistencia correspondiente para el template
-        estudiantes_monitoreo = []
-        for insc in inscripciones:
-            estudiantes_monitoreo.append({
-                "estudiante": insc.estudiante,
-                "asistencia": asistencias_map.get(insc.estudiante_id)
-            })
-            
-        context["estudiantes_monitoreo"] = estudiantes_monitoreo
-        return context
 
 
 class HistorialClasesView(RoleRequiredMixin, ListView):
@@ -218,5 +136,94 @@ class VisorAcademicoView(RoleRequiredMixin, TemplateView):
             'asignaciones_salon__seccion'
         ).all().order_by('nombre')
         return context
+
+
+class PanelProfesorView(RoleRequiredMixin, ListView):
+    model = AsignacionClase
+    template_name = "profesor/panel_principal.html"
+    context_object_name = "clases"
+    allowed_roles = [User.Role.PROFESSOR]
+
+    def get_queryset(self):
+        return AsignacionClase.objects.filter(profesor=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        clases = self.get_queryset()
+        context["total_clases"] = clases.count()
+        context["total_estudiantes"] = Inscripcion.objects.filter(
+            asignacion_clase__in=clases
+        ).values('estudiante').distinct().count()
+        context["total_alertas"] = RegistroAsistencia.objects.filter(
+            sesion__asignacion_clase__in=clases,
+            es_fraude=True
+        ).count()
+        ahora = timezone.localtime().time()
+        proxima = clases.filter(horario_inicio__gt=ahora).order_by('horario_inicio').first()
+        if not proxima:
+            proxima = clases.order_by('horario_inicio').first()
+        context["proxima_clase"] = proxima
+        return context
+
+
+class DetalleAsignacionView(RoleRequiredMixin, DetailView):
+    model = AsignacionClase
+    template_name = "profesor/detalle_asignacion.html"
+    context_object_name = "asignacion"
+    allowed_roles = [User.Role.PROFESSOR]
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        if not self.request.user.is_superuser and obj.profesor != self.request.user:
+            raise PermissionDenied("No tienes permiso para ver esta asignación.")
+        return obj
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        asignacion = self.object
+        
+        from datetime import date
+        today = timezone.localtime().date()
+        
+        sesion_activa = SesionClase.objects.filter(
+            asignacion_clase=asignacion,
+            estado=SesionClase.Estado.EN_CURSO,
+            fecha=today
+        ).first()
+        
+        sesiones_pasadas = SesionClase.objects.filter(
+            asignacion_clase=asignacion,
+            estado=SesionClase.Estado.FINALIZADA
+        ).order_by("-fecha", "-id")
+        
+        context["sesion_activa"] = sesion_activa
+        context["sesiones_pasadas"] = sesiones_pasadas
+        return context
+
+
+class IniciarSesionView(RoleRequiredMixin, View):
+    allowed_roles = [User.Role.PROFESSOR]
+
+    def post(self, request, asignacion_id):
+        asignacion = get_object_or_404(AsignacionClase, pk=asignacion_id)
+        if not request.user.is_superuser and asignacion.profesor != request.user:
+            raise PermissionDenied("No tienes permiso para iniciar sesión en esta clase.")
+
+        from datetime import date
+        today = timezone.localtime().date()
+        
+        sesion = SesionClase.objects.filter(
+            asignacion_clase=asignacion,
+            estado=SesionClase.Estado.EN_CURSO,
+            fecha=today
+        ).first()
+        
+        if not sesion:
+            sesion = SesionClase.objects.create(
+                asignacion_clase=asignacion,
+                estado=SesionClase.Estado.EN_CURSO,
+                fecha=today
+            )
+            
+        return redirect('academic:monitor-clase', session_id=sesion.id)
 
 

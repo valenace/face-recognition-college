@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de Profesor | CV College{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+        <h2 class="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">Panel de Profesor</h2>
+        <p class="text-slate-500 dark:text-slate-400 mt-1.5 font-medium">Gestiona tus materias asignadas y controla las sesiones de clase en vivo.</p>
+    </div>
+</div>
+
+<!-- Banner de Próxima Clase -->
+{% if proxima_clase %}
+<div class="bg-gradient-to-r from-brand-blue to-blue-900 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-8 shadow-sm mb-12 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:shadow-md border border-brand-yellow/30 dark:border-slate-700 border-l-4 border-l-brand-yellow">
+    <div>
+        <span class="inline-block px-3 py-1 bg-brand-yellow text-brand-blue dark:bg-brand-yellow/20 dark:text-brand-yellow rounded-lg text-xs font-extrabold uppercase tracking-wider mb-3">Próxima Clase</span>
+        <h3 class="text-2xl font-bold text-white dark:text-slate-100">{{ proxima_clase.asignatura.nombre }}</h3>
+        <p class="text-blue-100 dark:text-slate-400 mt-1.5 flex items-center gap-2">
+            <svg class="w-4 h-4 text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+            {{ proxima_clase.salon.nombre }} <span class="text-brand-yellow/90 dark:text-brand-yellow font-medium">(Sección: {{ proxima_clase.seccion.codigo }})</span>
+        </p>
+    </div>
+    <div class="flex items-center gap-6 bg-white/10 dark:bg-slate-700/40 rounded-2xl p-5 backdrop-blur-sm shrink-0 border border-white/10 dark:border-slate-600/40">
+        <div class="text-center">
+            <p class="text-xs text-blue-200 dark:text-slate-400 uppercase tracking-wider font-semibold">Inicia</p>
+            <p class="text-3xl font-bold text-brand-yellow mt-0.5">{{ proxima_clase.horario_inicio|time:"H:i" }}</p>
+        </div>
+        <div class="w-px h-12 bg-white/20 dark:bg-slate-600/50"></div>
+        <div class="text-center">
+            <p class="text-xs text-blue-200 dark:text-slate-400 uppercase tracking-wider font-semibold">Finaliza</p>
+            <p class="text-3xl font-bold text-white dark:text-slate-200 mt-0.5">{{ proxima_clase.horario_fin|time:"H:i" }}</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Grid de Materias Asignadas -->
+<h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+    <svg class="w-6 h-6 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+    </svg>
+    Materias Asignadas
+</h3>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    {% for clase in clases %}
+    <div class="glass-card hover-glow rounded-2xl p-6 dark:bg-slate-800/80 bg-white border border-slate-200/60 dark:border-slate-700/80 flex flex-col justify-between transition-all duration-300 shadow-sm hover:shadow-lg">
+        <div>
+            <!-- Icon/Letter Box & Section -->
+            <div class="flex items-center justify-between gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-brand-blue/10 dark:bg-brand-blue/20 flex items-center justify-center text-brand-blue dark:text-brand-yellow font-bold text-xl select-none">
+                    {{ clase.asignatura.nombre|first }}
+                </div>
+                <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-pastel-blue text-brand-blue dark:bg-slate-700 dark:text-brand-yellow border border-brand-blue/10 dark:border-slate-600">
+                    Sección {{ clase.seccion.codigo }}
+                </span>
+            </div>
+
+            <!-- Subject Details -->
+            <h4 class="text-lg font-bold text-slate-800 dark:text-white mb-2 leading-snug">{{ clase.asignatura.nombre }}</h4>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mb-4 font-mono">Código: {{ clase.asignatura.codigo }}</p>
+            
+            <div class="space-y-2.5 text-sm text-slate-600 dark:text-slate-350 mb-6">
+                <!-- Aula -->
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <span>Aula: <strong class="text-slate-700 dark:text-slate-200">{{ clase.salon.nombre }}</strong></span>
+                </div>
+                <!-- Horario -->
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Horario: <strong class="text-slate-700 dark:text-slate-200 font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="w-full inline-flex items-center justify-center bg-brand-blue hover:bg-brand-blue-accent text-white font-bold rounded-xl px-4 py-3 text-sm transition-all shadow-sm hover:shadow-md hover:scale-[1.01]">
+                Gestionar Sesiones
+                <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-12 text-slate-400 dark:text-slate-500 font-medium">
+        No tienes materias asignadas actualmente.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -25,6 +25,10 @@ class Command(BaseCommand):
 
         try:
             with transaction.atomic():
+                self.stdout.write("Clearing existing attendance sessions and records...")
+                RegistroAsistencia.objects.all().delete()
+                SesionClase.objects.all().delete()
+
                 # 1. Cargar usuarios administrativos
                 self.stdout.write("Loading administrative users...")
                 for admin_data in data.get("usuarios_administrativos", []):
@@ -178,15 +182,18 @@ class Command(BaseCommand):
                         self.stderr.write(self.style.WARNING(f"Assignment not found for subject {asignatura.codigo} and section {seccion.codigo}"))
                         continue
                     
-                    # Crear o buscar la sesión de clase
-                    sesion, sesion_created = SesionClase.objects.get_or_create(
+                    # Crear o buscar la sesión de clase (bypassing auto_now_add using update)
+                    sesion = SesionClase.objects.filter(
                         asignacion_clase=asignacion,
-                        fecha=hist["fecha"],
-                        defaults={
-                            "estado": SesionClase.Estado.FINALIZADA
-                        }
-                    )
-                    if sesion_created:
+                        fecha=hist["fecha"]
+                    ).first()
+                    if not sesion:
+                        sesion = SesionClase.objects.create(
+                            asignacion_clase=asignacion,
+                            estado=SesionClase.Estado.FINALIZADA
+                        )
+                        SesionClase.objects.filter(pk=sesion.pk).update(fecha=hist["fecha"])
+                        sesion.refresh_from_db()
                         self.stdout.write(f"Created past class session for {asignatura.nombre} on {hist['fecha']}")
                     
                     # Cargar los registros de asistencia de la sesión
@@ -206,6 +213,110 @@ class Command(BaseCommand):
                         )
                         if reg_created:
                             self.stdout.write(f"Created attendance record for {reg['username']}")
+
+                # Programmatic fallback: ensure all assignments have past finalized sessions, live sessions, and future sessions
+                self.stdout.write("Ensuring all assignments have past finalized sessions, live sessions, and future sessions...")
+                from datetime import date, timedelta
+                for asignacion in AsignacionClase.objects.all():
+                    # 1. Create 3 past finalized sessions
+                    for days_ago in [21, 14, 7]:
+                        past_date = date.today() - timedelta(days=days_ago)
+                        sesion = SesionClase.objects.filter(
+                            asignacion_clase=asignacion,
+                            fecha=past_date
+                        ).first()
+                        if not sesion:
+                            sesion = SesionClase.objects.create(
+                                asignacion_clase=asignacion,
+                                estado=SesionClase.Estado.FINALIZADA,
+                                notas_profesor=f"Clase dictada el {past_date}. Todo en orden."
+                            )
+                            SesionClase.objects.filter(pk=sesion.pk).update(fecha=past_date)
+                            sesion.refresh_from_db()
+                            self.stdout.write(f"Created programmatic past session for {asignacion} on {past_date}")
+                            
+                            # Add present/absent students
+                            inscritos = Inscripcion.objects.filter(asignacion_clase=asignacion)
+                            for i, insc in enumerate(inscritos):
+                                if i % 2 == 0:
+                                    # Present
+                                    RegistroAsistencia.objects.create(
+                                        sesion=sesion,
+                                        estudiante=insc.estudiante,
+                                        hora_entrada="09:05:00",
+                                        hora_salida="10:55:00",
+                                        ultima_vez_visto="10:55:00",
+                                        similitud_ia=0.92,
+                                        es_fraude=False,
+                                        historial_intervalos=[
+                                            {"inicio": "09:05", "fin": "09:40"},
+                                            {"inicio": "09:45", "fin": "10:55"}
+                                        ]
+                                    )
+
+                    # 2. Create a live session (today)
+                    today_date = date.today()
+                    sesion_en_curso = SesionClase.objects.filter(
+                        asignacion_clase=asignacion,
+                        fecha=today_date
+                    ).first()
+                    if not sesion_en_curso:
+                        sesion_en_curso = SesionClase.objects.create(
+                            asignacion_clase=asignacion,
+                            estado=SesionClase.Estado.EN_CURSO,
+                            notas_profesor=""
+                        )
+                        # today_date doesn't need to be updated with update() but we can still do it to be safe
+                        SesionClase.objects.filter(pk=sesion_en_curso.pk).update(fecha=today_date)
+                        sesion_en_curso.refresh_from_db()
+                        self.stdout.write(f"Created active live session for {asignacion} on {today_date}")
+                        
+                        # Add some active registrations
+                        inscritos = Inscripcion.objects.filter(asignacion_clase=asignacion)
+                        for i, insc in enumerate(inscritos):
+                            if i == 0:
+                                # Present
+                                RegistroAsistencia.objects.create(
+                                    sesion=sesion_en_curso,
+                                    estudiante=insc.estudiante,
+                                    hora_entrada="09:02:00",
+                                    ultima_vez_visto="09:15:00",
+                                    similitud_ia=0.94,
+                                    es_fraude=False,
+                                    historial_intervalos=[
+                                        {"inicio": "09:02", "fin": "09:15"}
+                                    ]
+                                )
+                            elif i == 1:
+                                # Fraud / spoofing alert active
+                                RegistroAsistencia.objects.create(
+                                    sesion=sesion_en_curso,
+                                    estudiante=insc.estudiante,
+                                    hora_entrada="09:05:00",
+                                    ultima_vez_visto="09:05:00",
+                                    similitud_ia=0.38,
+                                    es_fraude=True,
+                                    tipo_evento=RegistroAsistencia.TipoEvento.SPOOFING,
+                                    historial_intervalos=[
+                                        {"inicio": "09:05", "fin": "09:05"}
+                                    ]
+                                )
+
+                    # 3. Create a future session (e.g. in 2 days)
+                    future_date = date.today() + timedelta(days=2)
+                    sesion_futura = SesionClase.objects.filter(
+                        asignacion_clase=asignacion,
+                        fecha=future_date
+                    ).first()
+                    if not sesion_futura:
+                        sesion_futura = SesionClase.objects.create(
+                            asignacion_clase=asignacion,
+                            estado=SesionClase.Estado.EN_CURSO,
+                            notas_profesor="Sesión programada a futuro."
+                        )
+                        SesionClase.objects.filter(pk=sesion_futura.pk).update(fecha=future_date)
+                        sesion_futura.refresh_from_db()
+                        self.stdout.write(f"Created future scheduled session for {asignacion} on {future_date}")
 
             self.stdout.write(self.style.SUCCESS("Database seeding completed successfully!"))
         except Exception as e:
