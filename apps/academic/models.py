@@ -141,6 +141,21 @@ class AsignacionClase(models.Model):
     def __str__(self):
         return f"{self.asignatura.nombre} - Sec: {self.seccion.codigo} ({self.horario_inicio.strftime('%H:%M')} - {self.horario_fin.strftime('%H:%M')})"
 
+    @property
+    def tiene_sesion_activa_hoy(self):
+        from apps.attendance.models import SesionClase
+        from django.utils import timezone
+        today = timezone.localtime().date()
+        return self.sesiones.filter(estado=SesionClase.Estado.EN_CURSO, fecha=today).exists()
+
+    @property
+    def obtener_sesion_hoy(self):
+        from apps.attendance.models import SesionClase
+        from django.utils import timezone
+        today = timezone.localtime().date()
+        return self.sesiones.filter(fecha=today).first()
+
+
 
 class Inscripcion(models.Model):
     estudiante = models.ForeignKey(

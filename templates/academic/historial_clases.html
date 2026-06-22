@@ -76,14 +76,13 @@
                     </td>
                     <!-- Acción -->
                     <td class="px-4 py-3 md:px-6 md:py-4 whitespace-nowrap text-right text-sm">
-                        <button type="button" 
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-blue hover:bg-brand-blue-accent text-white font-medium rounded-lg text-xs transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
-                            onclick="alert('Resumen para la sesión del {{ sesion.fecha }}: Asistencia exitosa')">
-                            <span>Ver Resumen</span>
+                        <a href="{% url 'academic:monitor-clase' sesion.id %}" 
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-blue hover:bg-brand-blue-accent text-white font-semibold rounded-lg text-xs transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30">
+                            <span>Ver Reporte</span>
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                             </svg>
-                        </button>
+                        </a>
                     </td>
                 </tr>
                 {% empty %}

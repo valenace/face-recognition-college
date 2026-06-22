@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     PanelProfesorView, DetalleAsignacionView, IniciarSesionView,
     MetricasAlumnoView, HistorialClasesView,
-    PanelEnrolamientoView, VisorAcademicoView, EnrolarRostroAPI
+    PanelEnrolamientoView, VisorAcademicoView, EnrolarRostroAPI,
+    MiHorarioView, MateriasProfesorView
 )
 from apps.attendance.views import (
     ClaseEnVivoView, ResolverAlertaAPI,
@@ -14,6 +15,8 @@ app_name = "academic"
 urlpatterns = [
     # ── PROFESOR ──────────────────────────────────────────────
     path("profesor/panel/", PanelProfesorView.as_view(), name="panel-profesor"),
+    path("profesor/horario/", MiHorarioView.as_view(), name="mi-horario"),
+    path("profesor/materias/", MateriasProfesorView.as_view(), name="materias-profesor"),
     path("profesor/asignacion/<int:pk>/", DetalleAsignacionView.as_view(), name="detalle-asignacion"),
     path("profesor/iniciar-sesion/<int:asignacion_id>/", IniciarSesionView.as_view(), name="iniciar-sesion"),
     path("profesor/monitor-clase/<int:session_id>/", ClaseEnVivoView.as_view(), name="monitor-clase"),

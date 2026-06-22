@@ -158,11 +158,79 @@ class PanelProfesorView(RoleRequiredMixin, ListView):
             sesion__asignacion_clase__in=clases,
             es_fraude=True
         ).count()
+
         ahora = timezone.localtime().time()
-        proxima = clases.filter(horario_inicio__gt=ahora).order_by('horario_inicio').first()
-        if not proxima:
-            proxima = clases.order_by('horario_inicio').first()
-        context["proxima_clase"] = proxima
+        today = timezone.localtime().date()
+
+        # Get active session today for this professor, if any
+        sesion_activa = SesionClase.objects.filter(
+            asignacion_clase__profesor=self.request.user,
+            estado=SesionClase.Estado.EN_CURSO,
+            fecha=today
+        ).select_related(
+            "asignacion_clase__asignatura",
+            "asignacion_clase__seccion",
+            "asignacion_clase__salon"
+        ).first()
+
+        # Map weekday to Spanish names in DiaSemana choices
+        weekday = today.weekday()
+        days_map = {
+            0: "LUNES",
+            1: "MARTES",
+            2: "MIERCOLES",
+            3: "JUEVES",
+            4: "VIERNES",
+            5: "SABADO",
+            6: "DOMINGO",
+        }
+        dia_hoy = days_map.get(weekday)
+
+        # Classes scheduled for today
+        clases_hoy = clases.filter(dia_semana=dia_hoy).order_by('horario_inicio')
+
+        clase_a_comenzar = None
+        for c in clases_hoy:
+            # Check if there is a session today and it is finalized
+            sesion_hoy = c.sesiones.filter(fecha=today).first()
+            if sesion_hoy and sesion_hoy.estado == SesionClase.Estado.FINALIZADA:
+                continue
+
+            # If this is the active session class, it's already "en curso" so we skip it
+            if sesion_activa and sesion_activa.asignacion_clase_id == c.id:
+                continue
+
+            if clase_a_comenzar is None:
+                if c.horario_fin > ahora:
+                    clase_a_comenzar = c
+
+        # Dynamic chronological upcoming scheduled classes (next 3 future sessions)
+        day_to_num = {
+            "LUNES": 0,
+            "MARTES": 1,
+            "MIERCOLES": 2,
+            "JUEVES": 3,
+            "VIERNES": 4,
+            "SABADO": 5,
+            "DOMINGO": 6,
+        }
+        ahora_sec = ahora.hour * 3600 + ahora.minute * 60 + ahora.second
+
+        def get_distance(clase_obj):
+            class_day_idx = day_to_num.get(clase_obj.dia_semana, 0)
+            class_start_sec = clase_obj.horario_inicio.hour * 3600 + clase_obj.horario_inicio.minute * 60
+            days_diff = (class_day_idx - weekday) % 7
+            # If the class is today but its start time has passed, it belongs to the next week's occurrence (7 days diff)
+            if days_diff == 0 and class_start_sec <= ahora_sec:
+                days_diff = 7
+            return days_diff * 86400 + (class_start_sec - ahora_sec)
+
+        proximas_sesiones = sorted(clases, key=get_distance)[:3]
+
+        context["sesion_activa"] = sesion_activa
+        context["clase_a_comenzar"] = clase_a_comenzar
+        context["proximas_sesiones"] = proximas_sesiones
+        context["dia_hoy"] = dia_hoy
         return context
 
 
@@ -189,6 +257,11 @@ class DetalleAsignacionView(RoleRequiredMixin, DetailView):
             estado=SesionClase.Estado.EN_CURSO,
             fecha=today
         ).first()
+
+        sesion_hoy = SesionClase.objects.filter(
+            asignacion_clase=asignacion,
+            fecha=today
+        ).first()
         
         sesiones_pasadas = SesionClase.objects.filter(
             asignacion_clase=asignacion,
@@ -196,6 +269,7 @@ class DetalleAsignacionView(RoleRequiredMixin, DetailView):
         ).order_by("-fecha", "-id")
         
         context["sesion_activa"] = sesion_activa
+        context["sesion_hoy"] = sesion_hoy
         context["sesiones_pasadas"] = sesiones_pasadas
         return context
 
@@ -225,5 +299,58 @@ class IniciarSesionView(RoleRequiredMixin, View):
             )
             
         return redirect('academic:monitor-clase', session_id=sesion.id)
+
+
+class MiHorarioView(RoleRequiredMixin, ListView):
+    model = AsignacionClase
+    template_name = "profesor/mi_horario.html"
+    context_object_name = "clases"
+    allowed_roles = [User.Role.PROFESSOR]
+
+    def get_queryset(self):
+        return AsignacionClase.objects.filter(profesor=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        clases = self.get_queryset()
+        
+        # Group classes by day of week
+        context["lunes_clases"] = clases.filter(dia_semana="LUNES").order_by("horario_inicio")
+        context["martes_clases"] = clases.filter(dia_semana="MARTES").order_by("horario_inicio")
+        context["miercoles_clases"] = clases.filter(dia_semana="MIERCOLES").order_by("horario_inicio")
+        context["jueves_clases"] = clases.filter(dia_semana="JUEVES").order_by("horario_inicio")
+        context["viernes_clases"] = clases.filter(dia_semana="VIERNES").order_by("horario_inicio")
+        context["sabado_clases"] = clases.filter(dia_semana="SABADO").order_by("horario_inicio")
+        context["domingo_clases"] = clases.filter(dia_semana="DOMINGO").order_by("horario_inicio")
+        
+        return context
+
+
+class MateriasProfesorView(RoleRequiredMixin, ListView):
+    model = AsignacionClase
+    template_name = "profesor/materias.html"
+    context_object_name = "clases"
+    allowed_roles = [User.Role.PROFESSOR]
+
+    def get_queryset(self):
+        return AsignacionClase.objects.filter(profesor=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.localtime().date()
+        weekday = today.weekday()
+        days_map = {
+            0: "LUNES",
+            1: "MARTES",
+            2: "MIERCOLES",
+            3: "JUEVES",
+            4: "VIERNES",
+            5: "SABADO",
+            6: "DOMINGO",
+        }
+        dia_hoy = days_map.get(weekday)
+        context["dia_hoy"] = dia_hoy
+        return context
+
 
 

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Materias y Secciones | CV College{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">Mis Materias y Secciones</h2>
+    <p class="text-slate-500 dark:text-slate-400 mt-1.5 font-medium">Listado de todas tus secciones y materias asignadas. Selecciona "Ver Detalles" para ver el historial y configurar sesiones.</p>
+</div>
+
+<!-- Grid de Materias Asignadas -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    {% for clase in clases %}
+    <div class="glass-card hover-glow rounded-2xl p-6 dark:bg-slate-800/80 bg-white border border-slate-200/60 dark:border-slate-700/80 flex flex-col justify-between transition-all duration-300 shadow-sm hover:shadow-lg">
+        <div>
+            <!-- Icon/Letter Box & Section -->
+            <div class="flex items-center justify-between gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl bg-brand-blue/10 dark:bg-brand-blue/20 flex items-center justify-center text-brand-blue dark:text-brand-yellow font-bold text-xl select-none">
+                    {{ clase.asignatura.nombre|first }}
+                </div>
+                <div class="flex gap-2">
+                    {% if clase.tiene_sesion_activa_hoy %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 animate-pulse">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                        EN VIVO
+                    </span>
+                    {% elif clase.obtener_sesion_hoy and clase.obtener_sesion_hoy.estado == 'FINALIZADA' %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-850 dark:text-slate-450 border border-slate-200 dark:border-slate-750">
+                        FINALIZADA
+                    </span>
+                    {% elif clase.dia_semana == dia_hoy %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/15 text-brand-blue dark:text-brand-blue-accent border border-brand-blue/20">
+                        HOY
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-750/50 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 uppercase">
+                        {{ clase.dia_semana|lower }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Subject Details -->
+            <h4 class="text-lg font-bold text-slate-800 dark:text-white mb-2 leading-snug">{{ clase.asignatura.nombre }}</h4>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mb-4 font-mono">Código: {{ clase.asignatura.codigo }} | Sección {{ clase.seccion.codigo }}</p>
+            
+            <div class="space-y-2.5 text-sm text-slate-600 dark:text-slate-350 mb-6">
+                <!-- Aula -->
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                    <span>Aula: <strong class="text-slate-700 dark:text-slate-200">{{ clase.salon.nombre }}</strong></span>
+                </div>
+                <!-- Horario -->
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Horario: <strong class="text-slate-700 dark:text-slate-200 font-mono">{{ clase.dia_semana|lower|capfirst }} {{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="w-full inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl px-4 py-2.5 text-sm transition-all shadow-sm border border-slate-250 dark:border-slate-650/40">
+                Ver Detalles
+                <svg class="ml-2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center py-12 text-slate-400 dark:text-slate-500 font-medium">
+        No tienes materias asignadas actualmente.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

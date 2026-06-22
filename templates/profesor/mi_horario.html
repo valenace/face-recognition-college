@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Horario Semanal | CV College{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">Mi Horario Semanal</h2>
+    <p class="text-slate-500 dark:text-slate-400 mt-1.5 font-medium">Revisa la distribución y horarios de tus clases asignadas de lunes a domingo.</p>
+</div>
+
+<!-- Horario Semanal Grid -->
+<div class="glass-card shadow-sm rounded-2xl overflow-hidden dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+    <div class="px-8 py-5 bg-slate-50/80 dark:bg-slate-800/80 font-bold text-lg text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-blue/10 dark:bg-brand-yellow/10 flex items-center justify-center">
+            <svg class="w-5 h-5 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+        </div>
+        Calendario de Clases Semanales
+    </div>
+    
+    <div class="p-8 bg-white/30 dark:bg-slate-800/30">
+        <!-- Grid de Lunes a Domingo -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-7 gap-6">
+            
+            <!-- LUNES -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Lunes</div>
+                {% for clase in lunes_clases %}
+                <div class="bg-brand-blue-pastel/40 dark:bg-brand-blue/10 border border-brand-blue/15 dark:border-brand-blue/30 rounded-xl p-4 text-sm hover:shadow-md transition-shadow relative">
+                    <p class="font-bold text-brand-blue dark:text-brand-blue-pastel line-clamp-2" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-brand-blue/80 dark:text-brand-blue-pastel/80 mt-2 font-semibold font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-brand-blue/60 dark:text-brand-blue-pastel/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }} (Sec: {{ clase.seccion.codigo }})
+                    </p>
+                    <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="absolute inset-0 rounded-xl cursor-pointer" title="Gestionar clase"></a>
+                </div>
+                {% empty %}
+                <div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+                    Sin clases
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- MARTES -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Martes</div>
+                {% for clase in martes_clases %}
+                <div class="bg-brand-yellow-pastel/40 dark:bg-brand-yellow/5 border border-brand-yellow/30 dark:border-brand-yellow/20 rounded-xl p-4 text-sm hover:shadow-md transition-shadow relative">
+                    <p class="font-bold text-slate-800 dark:text-brand-yellow line-clamp-2" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-slate-600 dark:text-brand-yellow/80 mt-2 font-semibold font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-brand-yellow/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }} (Sec: {{ clase.seccion.codigo }})
+                    </p>
+                    <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="absolute inset-0 rounded-xl cursor-pointer" title="Gestionar clase"></a>
+                </div>
+                {% empty %}
+                <div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+                    Sin clases
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- MIÉRCOLES -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Miércoles</div>
+                {% for clase in miercoles_clases %}
+                <div class="bg-brand-blue-pastel/40 dark:bg-brand-blue/10 border border-brand-blue/15 dark:border-brand-blue/30 rounded-xl p-4 text-sm hover:shadow-md transition-shadow relative">
+                    <p class="font-bold text-brand-blue dark:text-brand-blue-pastel line-clamp-2" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-brand-blue/80 dark:text-brand-blue-pastel/80 mt-2 font-semibold font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-brand-blue/60 dark:text-brand-blue-pastel/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }} (Sec: {{ clase.seccion.codigo }})
+                    </p>
+                    <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="absolute inset-0 rounded-xl cursor-pointer" title="Gestionar clase"></a>
+                </div>
+                {% empty %}
+                <div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+                    Sin clases
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- JUEVES -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Jueves</div>
+                {% for clase in jueves_clases %}
+                <div class="bg-brand-yellow-pastel/40 dark:bg-brand-yellow/5 border border-brand-yellow/30 dark:border-brand-yellow/20 rounded-xl p-4 text-sm hover:shadow-md transition-shadow relative">
+                    <p class="font-bold text-slate-800 dark:text-brand-yellow line-clamp-2" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-slate-600 dark:text-brand-yellow/80 mt-2 font-semibold font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-brand-yellow/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }} (Sec: {{ clase.seccion.codigo }})
+                    </p>
+                    <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="absolute inset-0 rounded-xl cursor-pointer" title="Gestionar clase"></a>
+                </div>
+                {% empty %}
+                <div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+                    Sin clases
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- VIERNES -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Viernes</div>
+                {% for clase in viernes_clases %}
+                <div class="bg-brand-blue-pastel/40 dark:bg-brand-blue/10 border border-brand-blue/15 dark:border-brand-blue/30 rounded-xl p-4 text-sm hover:shadow-md transition-shadow relative">
+                    <p class="font-bold text-brand-blue dark:text-brand-blue-pastel line-clamp-2" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-brand-blue/80 dark:text-brand-blue-pastel/80 mt-2 font-semibold font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-brand-blue/60 dark:text-brand-blue-pastel/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }} (Sec: {{ clase.seccion.codigo }})
+                    </p>
+                    <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="absolute inset-0 rounded-xl cursor-pointer" title="Gestionar clase"></a>
+                </div>
+                {% empty %}
+                <div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+                    Sin clases
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- SÁBADO -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Sábado</div>
+                {% for clase in sabado_clases %}
+                <div class="bg-brand-yellow-pastel/40 dark:bg-brand-yellow/5 border border-brand-yellow/30 dark:border-brand-yellow/20 rounded-xl p-4 text-sm hover:shadow-md transition-shadow relative">
+                    <p class="font-bold text-slate-800 dark:text-brand-yellow line-clamp-2" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-slate-600 dark:text-brand-yellow/80 mt-2 font-semibold font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-brand-yellow/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }} (Sec: {{ clase.seccion.codigo }})
+                    </p>
+                    <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="absolute inset-0 rounded-xl cursor-pointer" title="Gestionar clase"></a>
+                </div>
+                {% empty %}
+                <div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+                    Sin clases
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- DOMINGO -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Domingo</div>
+                {% for clase in domingo_clases %}
+                <div class="bg-brand-blue-pastel/40 dark:bg-brand-blue/10 border border-brand-blue/15 dark:border-brand-blue/30 rounded-xl p-4 text-sm hover:shadow-md transition-shadow relative">
+                    <p class="font-bold text-brand-blue dark:text-brand-blue-pastel line-clamp-2" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-brand-blue/80 dark:text-brand-blue-pastel/80 mt-2 font-semibold font-mono">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-brand-blue/60 dark:text-brand-blue-pastel/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }} (Sec: {{ clase.seccion.codigo }})
+                    </p>
+                    <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="absolute inset-0 rounded-xl cursor-pointer" title="Gestionar clase"></a>
+                </div>
+                {% empty %}
+                <div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic border border-dashed border-slate-200 dark:border-slate-700/60 rounded-xl">
+                    Sin clases
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
