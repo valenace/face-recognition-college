@@ -20,6 +20,11 @@ body {
     font-weight: 500; /* font-medium */
     border-radius: 0.75rem; /* rounded-xl */
     transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    color: #475569; /* text-slate-600 */
+}
+
+.dark .sidebar-link {
+    color: #cbd5e1; /* text-slate-300 */
 }
 
 /* Light mode sidebar link hover */

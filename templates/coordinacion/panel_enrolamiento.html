@@ -26,7 +26,7 @@
                     <th class="px-6 py-4 text-right">Acción</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-150 dark:divide-slate-700/40 text-slate-700 dark:text-slate-350">
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-700/40 text-slate-700 dark:text-slate-300">
                 {% for estudiante in estudiantes %}
                 <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-150">
                     <td class="px-6 py-4">
@@ -103,7 +103,7 @@
                     <svg class="w-12 h-12 text-rose-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                     </svg>
-                    <p class="text-sm font-semibold text-slate-850 dark:text-slate-200">Error al acceder a la cámara</p>
+                    <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">Error al acceder a la cámara</p>
                     <p class="text-xs mt-1" id="cameraErrorMessage">Asegúrate de permitir el acceso a la cámara web.</p>
                 </div>
             </div>
@@ -111,11 +111,11 @@
 
         <!-- 2. Subir Video Container -->
         <div id="video-container" class="tab-container hidden">
-            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors relative" onclick="document.getElementById('videoFile').click()">
+            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative" onclick="document.getElementById('videoFile').click()">
                 <svg class="w-12 h-12 text-slate-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                 </svg>
-                <p class="text-xs font-semibold text-slate-750 dark:text-slate-300" id="videoLabel">Arrastra o haz clic para subir video</p>
+                <p class="text-xs font-semibold text-slate-700 dark:text-slate-300" id="videoLabel">Arrastra o haz clic para subir video</p>
                 <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Soporta MP4, M4V (Rotación facial recomendada)</p>
                 <input type="file" id="videoFile" accept="video/mp4,video/x-m4v,video/*" class="hidden" onchange="handleFileSelect(this, 'videoLabel', 'Video cargado con éxito')">
             </div>
@@ -123,11 +123,11 @@
 
         <!-- 3. Imagen Única Container -->
         <div id="single-img-container" class="tab-container hidden">
-            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors relative" onclick="document.getElementById('singleImageFile').click()">
+            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative" onclick="document.getElementById('singleImageFile').click()">
                 <svg class="w-12 h-12 text-slate-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
-                <p class="text-xs font-semibold text-slate-750 dark:text-slate-300" id="singleImageLabel">Arrastra o haz clic para subir imagen</p>
+                <p class="text-xs font-semibold text-slate-700 dark:text-slate-300" id="singleImageLabel">Arrastra o haz clic para subir imagen</p>
                 <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Soporta JPG, PNG</p>
                 <input type="file" id="singleImageFile" accept="image/*" class="hidden" onchange="handleFileSelect(this, 'singleImageLabel', 'Imagen cargada con éxito')">
             </div>
@@ -135,11 +135,11 @@
 
         <!-- 4. Múltiples Imágenes Container -->
         <div id="multi-img-container" class="tab-container hidden">
-            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-850 transition-colors relative" onclick="document.getElementById('multiImageFiles').click()">
+            <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl mb-6 flex flex-col items-center justify-center p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative" onclick="document.getElementById('multiImageFiles').click()">
                 <svg class="w-12 h-12 text-slate-400 dark:text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path>
                 </svg>
-                <p class="text-xs font-semibold text-slate-750 dark:text-slate-300" id="multiImageLabel">Arrastra o haz clic para subir múltiples imágenes</p>
+                <p class="text-xs font-semibold text-slate-700 dark:text-slate-300" id="multiImageLabel">Arrastra o haz clic para subir múltiples imágenes</p>
                 <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Soporta múltiples archivos JPG, PNG</p>
                 <input type="file" id="multiImageFiles" accept="image/*" multiple class="hidden" onchange="handleMultiFileSelect(this, 'multiImageLabel')">
             </div>

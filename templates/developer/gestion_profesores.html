@@ -27,7 +27,7 @@
                     <th class="px-6 py-4 text-right">Acciones</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-150 dark:divide-slate-700/40 text-slate-700 dark:text-slate-350">
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-700/40 text-slate-700 dark:text-slate-300">
                 {% for prof in profesores %}
                 <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-150">
                     <td class="px-6 py-4">
@@ -116,43 +116,43 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                     </svg>
                     <h4 class="font-bold text-slate-200 mb-1 text-sm">Error de Cámara</h4>
-                    <p id="cameraErrorMessage" class="text-xs text-slate-450 max-w-xs">No se pudo acceder a la cámara. Por favor verifica los permisos.</p>
+                    <p id="cameraErrorMessage" class="text-xs text-slate-400 max-w-xs">No se pudo acceder a la cámara. Por favor verifica los permisos.</p>
                 </div>
             </div>
         </div>
 
         <!-- 2. Video Upload Container -->
         <div id="video-container" class="tab-container hidden">
-            <div class="border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl p-6 text-center hover:border-brand-blue cursor-pointer mb-6" onclick="document.getElementById('videoFile').click()">
+            <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center hover:border-brand-blue cursor-pointer mb-6" onclick="document.getElementById('videoFile').click()">
                 <input type="file" id="videoFile" accept="video/*" class="hidden" onchange="updateFileLabel('videoFile', 'videoLabel')">
                 <svg class="w-10 h-10 mx-auto mb-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                 </svg>
-                <p class="text-xs font-semibold text-slate-600 dark:text-slate-350" id="videoLabel">Arrastra o haz clic para subir video</p>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300" id="videoLabel">Arrastra o haz clic para subir video</p>
                 <p class="text-[10px] text-slate-400 mt-1">MP4, WebM - máximo 50MB</p>
             </div>
         </div>
 
         <!-- 3. Single Image Container -->
         <div id="single-img-container" class="tab-container hidden">
-            <div class="border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl p-6 text-center hover:border-brand-blue cursor-pointer mb-6" onclick="document.getElementById('singleImageFile').click()">
+            <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center hover:border-brand-blue cursor-pointer mb-6" onclick="document.getElementById('singleImageFile').click()">
                 <input type="file" id="singleImageFile" accept="image/*" class="hidden" onchange="updateFileLabel('singleImageFile', 'singleImageLabel')">
                 <svg class="w-10 h-10 mx-auto mb-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
-                <p class="text-xs font-semibold text-slate-600 dark:text-slate-350" id="singleImageLabel">Arrastra o haz clic para subir imagen</p>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300" id="singleImageLabel">Arrastra o haz clic para subir imagen</p>
                 <p class="text-[10px] text-slate-400 mt-1">JPG, PNG - máximo 10MB</p>
             </div>
         </div>
 
         <!-- 4. Multiple Images Container -->
         <div id="multi-img-container" class="tab-container hidden">
-            <div class="border-2 border-dashed border-slate-350 dark:border-slate-700 rounded-xl p-6 text-center hover:border-brand-blue cursor-pointer mb-6" onclick="document.getElementById('multiImageFiles').click()">
+            <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-6 text-center hover:border-brand-blue cursor-pointer mb-6" onclick="document.getElementById('multiImageFiles').click()">
                 <input type="file" id="multiImageFiles" accept="image/*" multiple class="hidden" onchange="updateFilesLabel('multiImageFiles', 'multiImageLabel')">
                 <svg class="w-10 h-10 mx-auto mb-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2"></path>
                 </svg>
-                <p class="text-xs font-semibold text-slate-600 dark:text-slate-350" id="multiImageLabel">Arrastra o haz clic para subir múltiples imágenes</p>
+                <p class="text-xs font-semibold text-slate-600 dark:text-slate-300" id="multiImageLabel">Arrastra o haz clic para subir múltiples imágenes</p>
                 <p class="text-[10px] text-slate-400 mt-1">Múltiples JPG, PNG - máximo 10MB c/u</p>
             </div>
         </div>
@@ -177,8 +177,8 @@
         
         <div class="space-y-4">
             <div>
-                <label for="inputEmail" class="block text-xs font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider mb-2">Correo Electrónico</label>
-                <input type="email" id="inputEmail" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-850 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition text-sm" placeholder="ejemplo@correo.com">
+                <label for="inputEmail" class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Correo Electrónico</label>
+                <input type="email" id="inputEmail" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition text-sm" placeholder="ejemplo@correo.com">
             </div>
             
             <div class="flex gap-3 pt-2">
@@ -203,11 +203,11 @@
         </div>
         <div class="flex-1">
             <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm">Clave Temporal Generada</h4>
-            <p class="text-xs text-slate-500 dark:text-slate-450 mt-1">Se ha simulado el envío por correo. Copia la clave temporal para pruebas:</p>
-            <div class="flex items-center gap-2 mt-3 bg-white dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-slate-150 dark:border-zinc-800 font-mono text-sm font-bold text-brand-blue">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Se ha simulado el envío por correo. Copia la clave temporal para pruebas:</p>
+            <div class="flex items-center gap-2 mt-3 bg-white dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-800 font-mono text-sm font-bold text-brand-blue">
                 <span id="tempPasswordVal" class="select-all"></span>
             </div>
-            <button onclick="document.getElementById('credentialAlert').classList.add('hidden')" class="mt-4 text-xs font-bold text-emerald-600 dark:text-emerald-450 hover:underline">
+            <button onclick="document.getElementById('credentialAlert').classList.add('hidden')" class="mt-4 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
                 Entendido / Cerrar
             </button>
         </div>

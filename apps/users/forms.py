@@ -31,15 +31,15 @@ class UserProfileForm(forms.ModelForm):
         fields = ["first_name", "last_name", "email"]
         widgets = {
             "first_name": forms.TextInput(attrs={
-                "class": "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-850 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition-all text-sm",
+                "class": "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition-all text-sm",
                 "placeholder": "Nombre"
             }),
             "last_name": forms.TextInput(attrs={
-                "class": "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-850 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition-all text-sm",
+                "class": "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition-all text-sm",
                 "placeholder": "Apellido"
             }),
             "email": forms.EmailInput(attrs={
-                "class": "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-850 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition-all text-sm",
+                "class": "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition-all text-sm",
                 "placeholder": "Correo electrónico"
             }),
         }

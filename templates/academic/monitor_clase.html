@@ -192,7 +192,7 @@
             </h3>
             
             <!-- Panel alto y scrolleable -->
-            <div class="max-h-[580px] overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-350 dark:scrollbar-thumb-slate-800">
+            <div class="max-h-[580px] overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800">
                 
                 <!-- Alertas Reales de la Base de Datos -->
                 {% for item in estudiantes_monitoreo %}
@@ -327,7 +327,7 @@
 
                 <div class="space-y-4">
                     {% for registro in registros_asistencia %}
-                        <div class="rounded-xl p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-850 flex flex-col gap-2.5 shadow-xs">
+                        <div class="rounded-xl p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 flex flex-col gap-2.5 shadow-xs">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-3 overflow-hidden">
                                     <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-600 dark:text-slate-300">
@@ -387,7 +387,7 @@
                             </div>
 
                             <!-- Permanencia y Estado -->
-                            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-850 pt-2">
+                            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
                                 <span>Permanencia:</span>
                                 <div>
                                     {% if registro.porcentaje_permanencia < 50 %}

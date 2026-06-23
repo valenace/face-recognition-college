@@ -25,7 +25,7 @@
                         EN VIVO
                     </span>
                     {% elif clase.obtener_sesion_hoy and clase.obtener_sesion_hoy.estado == 'FINALIZADA' %}
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-850 dark:text-slate-450 border border-slate-200 dark:border-slate-750">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-750 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         FINALIZADA
                     </span>
                     {% elif clase.dia_semana == dia_hoy %}
@@ -33,7 +33,7 @@
                         HOY
                     </span>
                     {% else %}
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-750/50 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 uppercase">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-700/50 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 uppercase">
                         {{ clase.dia_semana|lower }}
                     </span>
                     {% endif %}
@@ -44,7 +44,7 @@
             <h4 class="text-lg font-bold text-slate-800 dark:text-white mb-2 leading-snug">{{ clase.asignatura.nombre }}</h4>
             <p class="text-xs text-slate-400 dark:text-slate-500 mb-4 font-mono">Código: {{ clase.asignatura.codigo }} | Sección {{ clase.seccion.codigo }}</p>
             
-            <div class="space-y-2.5 text-sm text-slate-600 dark:text-slate-350 mb-6">
+            <div class="space-y-2.5 text-sm text-slate-600 dark:text-slate-300 mb-6">
                 <!-- Aula -->
                 <div class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +63,7 @@
         </div>
 
         <div>
-            <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="w-full inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl px-4 py-2.5 text-sm transition-all shadow-sm border border-slate-250 dark:border-slate-650/40">
+            <a href="{% url 'academic:detalle-asignacion' clase.id %}" class="w-full inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold rounded-xl px-4 py-2.5 text-sm transition-all shadow-sm border border-slate-200 dark:border-slate-600/40">
                 Ver Detalles
                 <svg class="ml-2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
