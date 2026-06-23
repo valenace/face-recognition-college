@@ -41,33 +41,8 @@
         }
     </script>
 
-    <style type="text/tailwindcss">
-        @layer base {
-            body {
-                @apply font-sans bg-amber-50/30 text-slate-900 transition-colors duration-300;
-            }
-            .dark body {
-                @apply bg-slate-900 text-slate-100;
-            }
-        }
-        @layer components {
-            .sidebar-link {
-                @apply flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 rounded-xl hover:bg-brand-blue-pastel hover:text-brand-blue;
-            }
-            .dark .sidebar-link {
-                @apply hover:bg-zinc-800 hover:text-brand-yellow;
-            }
-            .sidebar-link.active {
-                @apply bg-brand-blue text-white shadow-lg shadow-brand-blue/20;
-            }
-            .glass-card {
-                @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl rounded-2xl;
-            }
-            .dark .glass-card {
-                @apply bg-zinc-900/80 border-zinc-800/50 shadow-2xl;
-            }
-        }
-    </style>
+    <!-- Estilos Personalizados e Independientes -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
     {% block extra_head %}{% endblock %}
 </head>
