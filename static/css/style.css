@@ -1,6 +1,6 @@
 /* Core & Layout Base Styles */
 body {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Roboto', sans-serif;
     background-color: rgba(254, 243, 199, 0.3); /* bg-amber-50/30 */
     color: #0f172a; /* text-slate-900 */
     transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1), color 300ms cubic-bezier(0.4, 0, 0.2, 1);
