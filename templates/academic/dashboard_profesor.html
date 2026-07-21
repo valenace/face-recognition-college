@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Profesor | CV College{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Panel de Profesor</h2>
+    <p class="text-slate-500 dark:text-slate-400 mt-1">Bienvenido, aquí puedes gestionar tus clases y monitorear la asistencia.</p>
+</div>
+
+<!-- Banner de Próxima Clase -->
+{% if proxima_clase %}
+<div class="bg-gradient-to-r from-brand-blue to-blue-900 dark:from-slate-800 dark:to-slate-900 rounded-2xl p-8 shadow-sm mb-12 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all hover:shadow-md border border-brand-yellow/30 dark:border-slate-700 border-l-4 border-l-brand-yellow">
+    <div>
+        <span class="inline-block px-3 py-1 bg-brand-yellow text-brand-blue dark:bg-brand-yellow/20 dark:text-brand-yellow rounded-lg text-xs font-extrabold uppercase tracking-wider mb-3">Próxima Clase</span>
+        <h3 class="text-2xl font-bold text-white dark:text-slate-100">{{ proxima_clase.asignatura.nombre }}</h3>
+        <p class="text-blue-100 dark:text-slate-400 mt-1.5 flex items-center gap-2">
+            <svg class="w-4 h-4 text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+            {{ proxima_clase.salon.nombre }} <span class="text-brand-yellow/90 dark:text-brand-yellow font-medium">(Sección: {{ proxima_clase.seccion.codigo }})</span>
+        </p>
+    </div>
+    <div class="flex items-center gap-6 bg-white/10 dark:bg-slate-700/40 rounded-2xl p-5 backdrop-blur-sm shrink-0 border border-white/10 dark:border-slate-600/40">
+        <div class="text-center">
+            <p class="text-xs text-blue-200 dark:text-slate-400 uppercase tracking-wider font-semibold">Inicia</p>
+            <p class="text-3xl font-bold text-brand-yellow mt-0.5">{{ proxima_clase.horario_inicio|time:"H:i" }}</p>
+        </div>
+        <div class="w-px h-12 bg-white/20 dark:bg-slate-600/50"></div>
+        <div class="text-center">
+            <p class="text-xs text-blue-200 dark:text-slate-400 uppercase tracking-wider font-semibold">Finaliza</p>
+            <p class="text-3xl font-bold text-white dark:text-slate-200 mt-0.5">{{ proxima_clase.horario_fin|time:"H:i" }}</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Grid de Métricas -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+    <!-- Card: Clases de Hoy -->
+    <div class="glass-card p-8 shadow-sm rounded-2xl dark:bg-slate-800/80 bg-white/50 border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Clases de Hoy</p>
+                <p class="text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">{{ total_clases|default:"0" }}</p>
+            </div>
+            <div class="w-14 h-14 bg-brand-blue/10 dark:bg-brand-blue/20 rounded-2xl flex items-center justify-center">
+                <svg class="w-7 h-7 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Estudiantes Registrados -->
+    <div class="glass-card p-8 shadow-sm rounded-2xl dark:bg-slate-800/80 bg-white/50 border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estudiantes</p>
+                <p class="text-4xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">{{ total_estudiantes|default:"0" }}</p>
+            </div>
+            <div class="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center">
+                <svg class="w-7 h-7 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 15.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Alertas -->
+    <div class="glass-card p-8 shadow-sm rounded-2xl dark:bg-slate-800/80 bg-white/50 border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Alertas Activas</p>
+                <p class="text-4xl font-extrabold {% if total_alertas and total_alertas > 0 %}text-red-600 dark:text-red-400{% else %}text-slate-800 dark:text-slate-100{% endif %} mt-2">{{ total_alertas|default:"0" }}</p>
+            </div>
+            <div class="w-14 h-14 {% if total_alertas and total_alertas > 0 %}bg-red-50 dark:bg-red-900/30{% else %}bg-slate-50 dark:bg-slate-700/50{% endif %} rounded-2xl flex items-center justify-center">
+                <svg class="w-7 h-7 {% if total_alertas and total_alertas > 0 %}text-red-600 dark:text-red-400{% else %}text-slate-400 dark:text-slate-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Clases del Día -->
+<div class="glass-card shadow-sm rounded-2xl overflow-hidden mb-12 border border-slate-100 dark:border-slate-700 dark:bg-slate-800/50">
+    <div class="px-8 py-5 border-b border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80">
+        <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100">Mis Clases de Hoy</h3>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse divide-y divide-slate-100 dark:divide-slate-700">
+            <thead class="bg-slate-50/50 dark:bg-slate-800/50">
+                <tr>
+                    <th scope="col" class="px-8 py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Materia</th>
+                    <th scope="col" class="px-8 py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Sección</th>
+                    <th scope="col" class="px-8 py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Aula</th>
+                    <th scope="col" class="px-8 py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Horario</th>
+                    <th scope="col" class="px-8 py-5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400 text-right">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700 bg-white/50 dark:bg-transparent">
+                {% for clase in clases %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <td class="px-8 py-5 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-brand-blue/10 dark:bg-brand-blue/20 flex items-center justify-center text-brand-blue dark:text-brand-yellow font-bold text-lg">
+                                {{ clase.asignatura.nombre|first }}
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                    <a href="{% url 'detalle-asignacion' clase.id %}" class="hover:underline text-brand-blue dark:text-brand-yellow">{{ clase.asignatura.nombre }}</a>
+                                </div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cód: {{ clase.asignatura.codigo }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-8 py-5 whitespace-nowrap">
+                        <span class="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-pastel-blue text-brand-blue dark:bg-slate-700 dark:text-brand-yellow border border-brand-blue/10 dark:border-slate-600">
+                            {{ clase.seccion.codigo }}
+                        </span>
+                    </td>
+                    <td class="px-8 py-5 whitespace-nowrap">
+                        <div class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                            <svg class="w-4 h-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            {{ clase.salon.nombre }}
+                        </div>
+                    </td>
+                    <td class="px-8 py-5 whitespace-nowrap">
+                        <div class="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                            <svg class="w-4 h-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            {{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}
+                        </div>
+                    </td>
+                    <td class="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="{% url 'detalle-asignacion' clase.id %}" class="inline-flex items-center bg-brand-blue hover:bg-brand-blue-accent text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-all duration-200 shadow-sm hover:shadow-md">
+                            Gestionar Clase
+                            <svg class="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-8 py-16 text-center text-slate-500 dark:text-slate-400">
+                        <div class="w-20 h-20 bg-slate-100 dark:bg-slate-700/50 rounded-3xl flex items-center justify-center mx-auto mb-5 border border-slate-200 dark:border-slate-600">
+                            <svg class="w-10 h-10 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                            </svg>
+                        </div>
+                        <p class="text-xl font-bold text-slate-800 dark:text-slate-200">No tienes clases asignadas hoy</p>
+                        <p class="mt-2 text-sm">Disfruta tu día libre o consulta tu horario semanal.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Horario Semanal Colapsable -->
+<details class="group glass-card shadow-sm rounded-2xl overflow-hidden cursor-pointer dark:bg-slate-800 border border-slate-100 dark:border-slate-700" open>
+    <summary class="flex items-center justify-between px-8 py-5 bg-slate-50/80 dark:bg-slate-800/80 font-bold text-lg text-slate-800 dark:text-slate-100 list-none hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-brand-blue/10 dark:bg-brand-yellow/10 flex items-center justify-center">
+                <svg class="w-5 h-5 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+            Horario Completo de la Semana
+        </div>
+        <svg class="w-6 h-6 text-slate-400 group-open:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+    </summary>
+    
+    <div class="p-8 border-t border-slate-100 dark:border-slate-700 bg-white/30 dark:bg-slate-800/30 cursor-default">
+        <!-- Grid de Lunes a Viernes -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+            
+            <!-- Lunes -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Lunes</div>
+                {% for clase in clases %}
+                <div class="bg-brand-blue-pastel/40 dark:bg-brand-blue/10 border border-brand-blue/15 dark:border-brand-blue/30 rounded-xl p-4 text-sm hover:shadow-md transition-shadow">
+                    <p class="font-bold text-brand-blue dark:text-brand-blue-pastel line-clamp-1" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-brand-blue/80 dark:text-brand-blue-pastel/80 mt-1.5 font-medium">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-brand-blue/60 dark:text-brand-blue-pastel/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Martes -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Martes</div>
+                {% for clase in clases reversed %}
+                <div class="bg-brand-yellow-pastel/40 dark:bg-brand-yellow/5 border border-brand-yellow/30 dark:border-brand-yellow/20 rounded-xl p-4 text-sm hover:shadow-md transition-shadow">
+                    <p class="font-bold text-slate-800 dark:text-brand-yellow line-clamp-1" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-slate-600 dark:text-brand-yellow/80 mt-1.5 font-medium">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-brand-yellow/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Miércoles -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Miércoles</div>
+                {% for clase in clases %}
+                <div class="bg-brand-blue-pastel/40 dark:bg-brand-blue/10 border border-brand-blue/15 dark:border-brand-blue/30 rounded-xl p-4 text-sm hover:shadow-md transition-shadow">
+                    <p class="font-bold text-brand-blue dark:text-brand-blue-pastel line-clamp-1" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-brand-blue/80 dark:text-brand-blue-pastel/80 mt-1.5 font-medium">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-brand-blue/60 dark:text-brand-blue-pastel/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Jueves -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Jueves</div>
+                {% for clase in clases reversed %}
+                <div class="bg-brand-yellow-pastel/40 dark:bg-brand-yellow/5 border border-brand-yellow/30 dark:border-brand-yellow/20 rounded-xl p-4 text-sm hover:shadow-md transition-shadow">
+                    <p class="font-bold text-slate-800 dark:text-brand-yellow line-clamp-1" title="{{ clase.asignatura.nombre }}">{{ clase.asignatura.nombre }}</p>
+                    <p class="text-xs text-slate-600 dark:text-brand-yellow/80 mt-1.5 font-medium">{{ clase.horario_inicio|time:"H:i" }} - {{ clase.horario_fin|time:"H:i" }}</p>
+                    <p class="text-[11px] text-slate-500 dark:text-brand-yellow/60 mt-1 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        {{ clase.salon.nombre }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Viernes -->
+            <div class="flex flex-col gap-4">
+                <div class="text-center font-bold text-sm text-slate-500 dark:text-slate-400 uppercase pb-3 border-b border-slate-200 dark:border-slate-700">Viernes</div>
+                <div class="h-full flex items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                    <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Día Libre</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</details>
+
+{% endblock %}

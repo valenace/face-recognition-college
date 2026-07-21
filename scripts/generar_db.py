@@ -1,5 +1,5 @@
 """
-generar_db.py — Procesamiento Masivo del Dataset (UniFace v2)
+generar_db.py — Procesamiento Masivo del Dataset (CV College v2)
 """
 
 import cv2
@@ -19,16 +19,16 @@ DB_FILE = "data/database_embeddings.pkl"
 # 🚀 INICIALIZACIÓN
 # ============================================================
 print("=" * 60)
-print("  GENERACIÓN DE BASE DE DATOS BIOMÉTRICA — UniFace v2")
+print("  GENERACIÓN DE BASE DE DATOS BIOMÉTRICA — CV College v2")
 print("=" * 60)
 
 if not os.path.exists(DATASET_PATH):
     print(f"❌ Error: No existe la carpeta '{DATASET_PATH}'")
     exit()
 
-print("\n[INFO] Cargando motores UniFace (ONNX Runtime)...")
-detector = create_detector('retinaface')
-recognizer = create_recognizer('arcface')
+print("\n[INFO] Cargando motores CV College (ONNX Runtime)...")
+detector = create_detector("retinaface")
+recognizer = create_recognizer("arcface")
 print("[OK] Motores listos.\n")
 
 db_embeddings = {}
@@ -43,37 +43,44 @@ for persona in carpetas_personas:
     ruta_persona = os.path.join(DATASET_PATH, persona)
     if not os.path.isdir(ruta_persona):
         continue
-        
+
     print(f"👉 Procesando: {persona}...")
     vectores_temporales = []
-    
-    archivos_imagen = sorted([f for f in os.listdir(ruta_persona) 
-                             if f.lower().endswith(('.jpg', '.jpeg', '.png'))])
-    
+
+    archivos_imagen = sorted(
+        [
+            f
+            for f in os.listdir(ruta_persona)
+            if f.lower().endswith((".jpg", ".jpeg", ".png"))
+        ]
+    )
+
     for i, archivo in enumerate(archivos_imagen):
         ruta_imagen = os.path.join(ruta_persona, archivo)
-        
+
         img = cv2.imread(ruta_imagen)
         if img is None:
             continue
-            
+
         img_limpia = aplicar_clahe(img)
         rostros = detector.detect(img_limpia)
-        
+
         if rostros:
             rostro = rostros[0]
             vector = recognizer.get_normalized_embedding(img_limpia, rostro.landmarks)
             vectores_temporales.append(vector)
-    
+
     # ============================================================
     # 🧠 CENTROIDE
     # ============================================================
     if vectores_temporales:
         centroide = np.mean(vectores_temporales, axis=0)
         centroide_final = centroide / np.linalg.norm(centroide)
-        
+
         db_embeddings[persona] = centroide_final
-        print(f"   ✅ Éxito! {len(vectores_temporales)} fotos procesadas. Centroide generado.")
+        print(
+            f"   ✅ Éxito! {len(vectores_temporales)} fotos procesadas. Centroide generado."
+        )
     else:
         print(f"   ⚠️ Advertencia: No se encontraron rostros válidos para {persona}.")
 
@@ -82,7 +89,7 @@ for persona in carpetas_personas:
 # ============================================================
 with open(DB_FILE, "wb") as f:
     pickle.dump(db_embeddings, f)
-    
+
 print("\n" + "=" * 60)
 print(f"  [OK] Base de datos guardada en: {DB_FILE}")
 print(f"  Total de identidades en el 'cerebro': {len(db_embeddings)}")

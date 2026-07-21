@@ -1,0 +1,628 @@
+{% extends "base.html" %}
+
+{% block title %}Centro de Mando | CV College{% endblock %}
+
+{% block content %}
+<!-- Hidden form connected to ClaseEnVivoView -->
+<form id="finalizar-form" method="post" action="{% url 'academic:monitor-clase' sesion.id %}">
+    {% csrf_token %}
+</form>
+
+<!-- Header del Dashboard -->
+<div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-6">
+    <div>
+        <a href="{% url 'academic:panel-profesor' %}" class="inline-flex items-center text-sm font-semibold text-brand-blue hover:text-brand-blue/80 dark:text-brand-yellow dark:hover:text-brand-yellow/85 transition-colors mb-3">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Volver al Dashboard
+        </a>
+        <h2 class="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">
+            {{ sesion.asignacion_clase.asignatura.nombre }}
+        </h2>
+        <p class="text-slate-500 dark:text-slate-400 mt-1.5 font-medium flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs border border-slate-200 dark:border-slate-700">Sección {{ sesion.asignacion_clase.seccion.codigo }}</span>
+            <span class="text-slate-300 dark:text-slate-700">|</span>
+            <span>Aula: {{ sesion.asignacion_clase.salon.nombre }}</span>
+            <span class="text-slate-300 dark:text-slate-700">|</span>
+            <span>Fecha: {{ sesion.fecha }}</span>
+        </p>
+    </div>
+    
+    <div>
+        {% if sesion.estado == 'EN_CURSO' %}
+        <span class="inline-flex items-center px-4 py-2.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2.5 animate-pulse"></span>
+            Clase en Curso
+        </span>
+        {% else %}
+        <span class="inline-flex items-center px-4 py-2.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-600 mr-2.5"></span>
+            Clase Finalizada
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Layout Principal (Grid 2 Columnas) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Columna Izquierda (Video y Notas) -->
+    <div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
+                <!-- Contenedor del Feed de Video IA -->
+        <div class="aspect-video bg-slate-900 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden border border-slate-800 shadow-2xl group">
+            <!-- Imagen dinámica para procesamiento batch -->
+            <img id="batch-feed-img" src="" class="absolute inset-0 w-full h-full object-cover hidden z-20 animate-fade-in" alt="Procesamiento Batch">
+            <!-- Overlay de Líneas de Escaneo / Grid de Cámara -->
+            {% if sesion.estado == 'EN_CURSO' %}
+            <div class="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_95%,rgba(0,0,0,0.3)_95%)] bg-[size:100%_24px] pointer-events-none opacity-20"></div>
+            {% endif %}
+            <div class="absolute inset-0 bg-radial-gradient from-transparent to-black/40 pointer-events-none"></div>
+            
+            <!-- Crop marks en las esquinas -->
+            <div class="absolute top-6 left-6 w-6 h-6 border-t-2 border-l-2 border-slate-600"></div>
+            <div class="absolute top-6 right-6 w-6 h-6 border-t-2 border-r-2 border-slate-600"></div>
+            <div class="absolute bottom-6 left-6 w-6 h-6 border-b-2 border-l-2 border-slate-600"></div>
+            <div class="absolute bottom-6 right-6 w-6 h-6 border-b-2 border-r-2 border-slate-600"></div>
+            
+            <!-- HUD Info -->
+            <div class="absolute top-6 left-16 flex items-center gap-3 font-mono text-xs text-slate-400 select-none">
+                {% if sesion.estado == 'EN_CURSO' %}
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                    <span class="font-bold text-rose-500">REC</span>
+                </span>
+                <span>•</span>
+                <span>CAM_01_RECOGNITION</span>
+                <span>•</span>
+                <span>FPS: 30</span>
+                {% else %}
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                    <span class="font-bold text-slate-500">OFFLINE</span>
+                </span>
+                <span>•</span>
+                <span>CAM_DESCONECTADA</span>
+                <span>•</span>
+                <span>SESIÓN GUARDADA</span>
+                {% endif %}
+            </div>
+            
+            <div class="absolute top-6 right-16 font-mono text-xs text-slate-400 select-none hidden sm:block">
+                {% if sesion.estado == 'EN_CURSO' %}
+                <span>IA ACTIVE: 99.8% PREC.</span>
+                {% else %}
+                <span>IA INACTIVA</span>
+                {% endif %}
+            </div>
+ 
+            <!-- Contenido Principal Central -->
+            <div class="text-center z-10 flex flex-col items-center gap-4 px-6">
+                {% if sesion.estado == 'EN_CURSO' %}
+                <div class="w-16 h-16 rounded-full bg-brand-blue/10 dark:bg-brand-blue/20 border border-brand-blue/30 flex items-center justify-center text-brand-blue animate-pulse mb-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h4 class="text-lg font-bold text-slate-200 tracking-wide uppercase">Monitoreo Biométrico Activo</h4>
+                <p class="text-sm text-slate-500 max-w-sm">Escaneando rostros y aplicando detección de liveness en tiempo real.</p>
+                {% else %}
+                <div class="w-16 h-16 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 mb-2">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                </div>
+                <h4 class="text-lg font-bold text-slate-400 tracking-wide uppercase">Sesión de Monitoreo Finalizada</h4>
+                <p class="text-sm text-slate-500 max-w-sm">El registro biométrico se guardó y el reporte de asistencia ha sido cerrado.</p>
+                {% endif %}
+            </div>
+            
+            <!-- Cuadros de Selección IA Simulados -->
+            {% if sesion.estado == 'EN_CURSO' %}
+            <div class="absolute inset-0 pointer-events-none z-10">
+                <!-- Caja de cara 1 -->
+                <div class="absolute top-[25%] left-[20%] w-[12%] aspect-square border-2 border-emerald-500 rounded-lg">
+                    <span class="absolute -top-6 left-0 bg-emerald-500 text-white font-mono text-[9px] px-1 py-0.5 rounded shadow">
+                        VALENTINA R. 98.4%
+                    </span>
+                </div>
+                <!-- Caja de cara 2 -->
+                <div class="absolute top-[40%] right-[30%] w-[11%] aspect-square border-2 border-rose-500 rounded-lg animate-pulse">
+                    <span class="absolute -top-6 left-0 bg-rose-500 text-white font-mono text-[9px] px-1 py-0.5 rounded shadow">
+                        SPOOFING ALERT
+                    </span>
+                </div>
+            </div>
+            {% endif %}
+ 
+            <!-- Footer del Feed -->
+            <div class="absolute bottom-6 left-16 right-16 flex items-center justify-between font-mono text-[10px] text-slate-500 select-none">
+                {% if sesion.estado == 'EN_CURSO' %}
+                <span>ESTADO: SEGURO</span>
+                <span id="live-time">Cargando fecha...</span>
+                {% else %}
+                <span>ESTADO: GRABACIÓN GUARDADA</span>
+                <span>FECHA: {{ sesion.fecha }}</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Formulario y Notas -->
+        <div class="glass-card p-6 md:p-8 border-slate-200/60 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/30">
+            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                <svg class="w-6 h-6 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Notas del Profesor
+            </h3>
+            
+            <textarea 
+                form="finalizar-form" 
+                name="notas_profesor" 
+                rows="4" 
+                placeholder="Ingresar bitácora o incidentes del salón..." 
+                class="w-full bg-slate-50/50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-sm text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all resize-none shadow-inner"
+                {% if sesion.estado == 'FINALIZADA' %}readonly{% endif %}>{{ sesion.notas_profesor }}</textarea>
+            
+            <!-- Barra de Progreso de Procesamiento Batch -->
+            <div id="batch-progress-container" class="hidden mt-5 p-4.5 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-xl">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="animate-spin h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Procesando Dataset...
+                    </span>
+                    <span id="batch-progress-text" class="text-xs font-mono font-bold text-indigo-700 dark:text-indigo-400">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                    <div id="batch-progress-bar" class="bg-indigo-600 dark:bg-indigo-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2">
+                    Analizando cuadros, aplicando modelos de detección facial e identificando alumnos...
+                </p>
+            </div>
+
+            {% if sesion.estado != 'FINALIZADA' %}
+            <div class="mt-5 flex flex-col sm:flex-row gap-4">
+                <button type="button" id="btn-procesar-batch" onclick="procesarBatchDataset()" class="w-full inline-flex items-center justify-center border border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-950/20 font-bold rounded-xl px-6 py-3.5 transition-all shadow-sm hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    Procesar Dataset de Imágenes
+                </button>
+                <button type="button" id="btn-limpiar-procesamiento" onclick="limpiarProcesamiento()" class="w-full inline-flex items-center justify-center border border-rose-500/50 text-rose-600 hover:bg-rose-50 dark:border-rose-500/50 dark:text-rose-400 dark:hover:bg-rose-950/20 font-bold rounded-xl px-6 py-3.5 transition-all shadow-sm hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Limpiar Resultados
+                </button>
+                <button form="finalizar-form" type="submit" class="w-full inline-flex items-center justify-center bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-6 py-3.5 transition-all shadow-lg shadow-rose-600/20 hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Finalizar Clase
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Columna Derecha (Log de Eventos en Tiempo Real) -->
+    <div class="lg:col-span-5 xl:col-span-4 flex flex-col gap-6">
+        
+        <div class="glass-card p-6 border-slate-200/60 dark:border-slate-800/80 bg-white/60 dark:bg-slate-900/30">
+            <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100 flex items-center gap-2.5 mb-5">
+                <svg class="w-5 h-5 text-brand-blue dark:text-brand-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                {% if sesion.estado == 'EN_CURSO' %}
+                Log de Eventos Real-Time
+                {% else %}
+                Reporte de Eventos de la Sesión
+                {% endif %}
+            </h3>
+            
+            <!-- Panel alto y scrolleable -->
+            <div class="max-h-[580px] overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800">
+                
+                <!-- Alertas Reales de la Base de Datos -->
+                {% for asistencia in registros_asistencia %}
+                    {% if asistencia.es_fraude %}
+                        <div id="alerta-card-{{ asistencia.id }}" class="rounded-2xl p-4.5 bg-rose-500/10 border border-rose-500/20 text-rose-950 dark:text-rose-300 flex gap-3.5 shadow-sm animate-fade-in">
+                            <div class="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-500 shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <div class="overflow-hidden w-full">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                                        {% if asistencia.tipo_evento == 'SPOOFING' %}Alerta de Spoofing{% elif asistencia.tipo_evento == 'INTRUSO' %}Intruso Desconocido{% else %}Alerta de Seguridad{% endif %}
+                                    </span>
+                                    <span class="text-[10px] text-slate-400 font-mono">{% if asistencia.hora_entrada %}{{ asistencia.hora_entrada|time:"H:i" }}{% else %}Procesamiento Batch{% endif %}</span>
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">
+                                    {% if asistencia.estudiante %}
+                                        {{ asistencia.estudiante.user.get_full_name }}
+                                    {% else %}
+                                        Persona Desconocida
+                                    {% endif %}
+                                </h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    {% if asistencia.estudiante %}
+                                        Intento de suplantación o suplantación en aula.
+                                    {% else %}
+                                        Rostro no registrado en el sistema detectado en el aula.
+                                    {% endif %}
+                                </p>
+                                
+                                {% if asistencia.captura_fraude %}
+                                <div class="mt-3 w-full max-h-48 rounded-lg overflow-hidden border border-rose-200/50 dark:border-rose-800/30">
+                                    <img src="{{ asistencia.captura_fraude.url }}" class="w-full h-full object-cover" alt="Captura de Fraude">
+                                </div>
+                                {% endif %}
+                                
+                                <div id="botones-alerta-{{ asistencia.id }}" class="mt-3 flex gap-2">
+                                    {% if sesion.estado == 'EN_CURSO' %}
+                                        {% if not asistencia.alerta_revisada %}
+                                            <button onclick="resolverAlerta({{ asistencia.id }}, 'falsa_alarma')" class="px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-colors cursor-pointer">Falsa Alarma</button>
+                                            <button onclick="resolverAlerta({{ asistencia.id }}, 'confirmar_fraude')" class="px-2.5 py-1.5 rounded bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] transition-colors cursor-pointer">Confirmar Fraude</button>
+                                        {% else %}
+                                            <span class="inline-flex px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">Revisado por Profesor</span>
+                                        {% endif %}
+                                    {% else %}
+                                        {% if asistencia.alerta_revisada %}
+                                            <span class="inline-flex px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">{{ asistencia.notas_auditoria }}</span>
+                                        {% else %}
+                                            <span class="inline-flex px-2.5 py-1 rounded bg-rose-500/10 text-rose-500 text-[10px] font-bold">Alerta No Revisada</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+ 
+                {% if not registros_asistencia %}
+                <div id="no-events-placeholder" class="text-center py-8 text-slate-400 dark:text-slate-500 text-xs">
+                    Esperando inicio de procesamiento. No hay eventos registrados en tiempo real.
+                </div>
+                {% endif %} </div>
+                </div>
+
+                <!-- Separador / Sección de Registros en Base de Datos -->
+                <div class="border-t border-slate-200/50 dark:border-slate-800/60 pt-4 pb-2">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Registros de Asistencia del Salón</span>
+                </div>
+
+                <!-- SECCIÓN PRESENTES -->
+                <div class="mb-2 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Presentes de la Sección ({{ presentes_seccion|length }})</span>
+                </div>
+
+                <div class="space-y-4">
+                    {% for registro in presentes_seccion %}
+                        <div class="rounded-xl p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 flex flex-col gap-2.5 shadow-xs animate-fade-in">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-xs text-slate-600 dark:text-slate-300">
+                                        {{ registro.estudiante.user.first_name|first|upper }}{{ registro.estudiante.user.last_name|first|upper }}
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                                            {{ registro.estudiante.user.get_full_name }}
+                                        </h5>
+                                        <p class="text-[10px] text-slate-400 truncate">
+                                            {{ registro.estudiante.matricula }}
+                                        </p>
+                                        
+                                        <!-- Historial de Intervalos -->
+                                        {% if registro.historial_intervalos %}
+                                            <div class="flex flex-wrap gap-1 mt-1.5">
+                                                {% for intervalo in registro.historial_intervalos %}
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium font-mono">
+                                                        {{ intervalo.inicio }} - {{ intervalo.fin }}
+                                                    </span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    {% if registro.es_fraude %}
+                                        <span class="inline-flex px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold">Fraude</span>
+                                    {% else %}
+                                        <span class="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-bold">Presente</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Datos de Entrada y Último Avistamiento -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/50 dark:border-slate-800/60 pt-2 text-[10px] text-slate-500 dark:text-slate-400">
+                                {% if registro.notas_auditoria == "Detección por Imagen" %}
+                                    <div class="flex gap-2">
+                                        <span>Origen: <strong class="text-indigo-600 dark:text-indigo-400 font-bold">Procesamiento Batch</strong></span>
+                                        <span>•</span>
+                                        <span>Asistencia: <strong class="text-slate-700 dark:text-slate-300 font-mono">Presente</strong></span>
+                                    </div>
+                                {% else %}
+                                    <div class="flex gap-2">
+                                        <span>Entrada: <strong class="text-slate-700 dark:text-slate-300 font-mono">{% if registro.hora_entrada %}{{ registro.hora_entrada|time:"H:i" }}{% else %}--:--{% endif %}</strong></span>
+                                        <span>•</span>
+                                        <span>Visto: <strong class="text-slate-700 dark:text-slate-300 font-mono">{% if registro.ultima_vez_visto %}{{ registro.ultima_vez_visto|time:"H:i" }}{% else %}Ausente{% endif %}</strong></span>
+                                    </div>
+                                    {% if registro.posible_fuga %}
+                                        <span class="inline-flex px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold tracking-tight">Posible Fuga/Ausencia Breve</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+
+                            <!-- Permanencia y Estado -->
+                            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+                                <span>Permanencia:</span>
+                                <div>
+                                    {% if registro.notas_auditoria == "Detección por Imagen" %}
+                                        <span class="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold font-mono">100% - Estable (Fotos)</span>
+                                    {% else %}
+                                        {% if registro.porcentaje_permanencia < 50 %}
+                                            <span class="inline-flex px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold font-mono">{{ registro.porcentaje_permanencia }}% - Asistencia Parcial</span>
+                                        {% else %}
+                                            <span class="inline-flex px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold font-mono">{{ registro.porcentaje_permanencia }}% - Estable</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
+                            No hay estudiantes presentes de la sección en esta clase.
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- SECCIÓN DESCONOCIDOS / INTRUSOS -->
+                <div class="border-t border-slate-200/50 dark:border-slate-800/60 pt-6 mt-6 mb-2 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">Desconocidos / Intrusos ({{ desconocidos_detectados|length }})</span>
+                </div>
+
+                <div class="space-y-4">
+                    {% for registro in desconocidos_detectados %}
+                        <div class="rounded-xl p-3 bg-rose-500/5 dark:bg-rose-950/10 border border-rose-500/20 flex flex-col gap-2.5 shadow-xs animate-fade-in">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center font-bold text-xs text-rose-600 shrink-0">
+                                        ?
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <h5 class="text-xs font-bold text-rose-950 dark:text-rose-300 truncate">
+                                            Persona Desconocida
+                                        </h5>
+                                        <p class="text-[10px] text-rose-500/80 truncate">
+                                            Rostro No Registrado
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="inline-flex px-2 py-0.5 rounded bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-bold">Alerta de Seguridad</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Datos de Entrada y Último Avistamiento -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 border-t border-rose-500/10 pt-2 text-[10px] text-rose-600/80 dark:text-rose-400/80">
+                                <div>
+                                    <span>Visto: <strong class="font-mono">{% if registro.hora_entrada %}{{ registro.hora_entrada|time:"H:i" }}{% else %}Procesamiento Batch{% endif %}</strong></span>
+                                </div>
+                                {% if registro.captura_fraude %}
+                                    <span class="inline-flex px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 text-[9px] font-bold">Captura Guardada</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
+                            No se detectaron personas desconocidas en esta clase.
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- SECCIÓN AUSENTES -->
+                <div class="border-t border-slate-200/50 dark:border-slate-800/60 pt-6 mt-6 mb-2 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Ausentes ({{ estudiantes_ausentes|length }})</span>
+                </div>
+
+                <div class="space-y-4">
+                    {% for estudiante in estudiantes_ausentes %}
+                        <div class="rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800/80 flex flex-col gap-2.5 opacity-60">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 font-medium text-xs">
+                                        {{ estudiante.user.first_name|first|upper }}{{ estudiante.user.last_name|first|upper }}
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <h5 class="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{{ estudiante.user.get_full_name }}</h5>
+                                        <p class="text-[10px] text-slate-400 truncate">{{ estudiante.matricula }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="inline-flex px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 text-[10px] font-medium">No ha llegado</span>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
+                            No hay estudiantes ausentes.
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Reloj digital en vivo para simular HUD
+    function updateClock() {
+        const timeSpan = document.getElementById('live-time');
+        if (timeSpan) {
+            const now = new Date();
+            const formatOption = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            timeSpan.innerText = now.toLocaleString('es-ES', formatOption).replace(',', ' |');
+        }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Resolucion de alertas reales via API
+    function resolverAlerta(registroId, accion) {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch("{% url 'academic:api-resolver-alerta' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                registro_id: registroId,
+                accion: accion
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                const container = document.getElementById('botones-alerta-' + registroId);
+                if (container) {
+                    container.innerHTML = '<span class="inline-flex px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">Revisado por Profesor</span>';
+                }
+            } else {
+                alert("Error al resolver la alerta.");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Error de conexión con el servidor.");
+        });
+    }
+
+    // Resolucion de alertas mockeadas (simuladas en la interfaz)
+    function resolverMockAlerta(id) {
+        const container = document.getElementById(id);
+        if (container) {
+            container.innerHTML = '<span class="inline-flex px-2.5 py-1.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">Revisado por Profesor</span>';
+        }
+    }
+
+    // Procesamiento batch de dataset de imagenes
+    function procesarBatchDataset() {
+        const btn = document.getElementById('btn-procesar-batch');
+        const progressContainer = document.getElementById('batch-progress-container');
+        const progressBar = document.getElementById('batch-progress-bar');
+        const progressText = document.getElementById('batch-progress-text');
+        const feedImg = document.getElementById('batch-feed-img');
+        
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        progressContainer.classList.remove('hidden');
+        
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch("{% url 'academic:api-procesar-dataset' sesion.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                ruta_carpeta: 'data/images/'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Iniciar polling de estado cada 800ms
+                let intervalId = setInterval(() => {
+                    const t = new Date().getTime();
+                    
+                    fetch(`/media/batch_processed/{{ sesion.id }}/status.json?t=${t}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Status file not ready");
+                        return res.json();
+                    })
+                    .then(statusData => {
+                        const percent = statusData.percent;
+                        progressBar.style.width = percent + '%';
+                        progressText.innerText = percent + '%';
+                        
+                        // Actualizar feed de video con el frame procesado actual
+                        feedImg.src = `/media/batch_processed/{{ sesion.id }}/latest.jpg?t=${t}`;
+                        feedImg.classList.remove('hidden');
+                        
+                        if (statusData.state === 'completed' || percent >= 100) {
+                            clearInterval(intervalId);
+                            setTimeout(() => {
+                                alert("Procesamiento batch finalizado exitosamente.");
+                                location.reload();
+                            }, 500);
+                        }
+                    })
+                    .catch(err => {
+                        console.log("Esperando inicio de procesamiento...", err);
+                    });
+                }, 800);
+            } else {
+                alert("Error: " + data.message);
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                progressContainer.classList.add('hidden');
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Error de conexión con el servidor.");
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            progressContainer.classList.add('hidden');
+        });
+    }
+
+    function limpiarProcesamiento() {
+        const btn = document.getElementById('btn-limpiar-procesamiento');
+        if (!confirm("¿Estás seguro de que deseas limpiar y resetear la asistencia de esta clase?")) {
+            return;
+        }
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch("{% url 'academic:api-limpiar-sesion' sesion.id %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert("Error: " + data.message);
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Error de conexión con el servidor.");
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        });
+    }
+</script>
+
+{% endblock %}

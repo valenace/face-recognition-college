@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Métricas del Estudiante | CV College{% endblock %}
+
+{% block content %}
+<!-- Volver Link -->
+<div class="mb-6">
+    <a href="{% url 'academic:panel-profesor' %}" class="inline-flex items-center text-sm font-semibold text-brand-blue dark:text-brand-yellow hover:underline">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Volver al Dashboard
+    </a>
+</div>
+
+<!-- 1. Perfil Superior -->
+<div class="glass-card p-6 rounded-2xl shadow-sm mb-8 border border-slate-100 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div class="flex items-center gap-4">
+        <div class="w-16 h-16 rounded-full bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-brand-yellow font-black flex items-center justify-center text-2xl border-2 border-brand-yellow/30">
+            {{ estudiante.user.first_name|first|upper }}{{ estudiante.user.last_name|first|upper }}
+        </div>
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800 dark:text-zinc-100 tracking-tight">{{ estudiante.user.get_full_name }}</h2>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-slate-500 dark:text-zinc-400">
+                <span class="font-mono bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-xs">{{ estudiante.matricula }}</span>
+                <span class="hidden md:inline">•</span>
+                <span>Asignatura: <strong class="text-slate-700 dark:text-zinc-300">{{ asignacion.asignatura.nombre }}</strong></span>
+                <span>(Sección: <strong class="text-slate-700 dark:text-zinc-300">{{ asignacion.seccion.codigo }}</strong>)</span>
+            </div>
+        </div>
+    </div>
+    <div class="shrink-0 flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full {% if estudiante.activo %}bg-emerald-500{% else %}bg-slate-400{% endif %}"></span>
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+            {% if estudiante.activo %}Estudiante Activo{% else %}Inactivo{% endif %}
+        </span>
+    </div>
+</div>
+
+<!-- 2. Grid de KPIs -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+    <!-- Card: Faltas Acumuladas -->
+    <div class="glass-card p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 flex flex-col justify-between min-h-[140px]">
+        <div>
+            <p class="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Faltas Acumuladas</p>
+            <h3 class="text-4xl font-extrabold mt-2 {% if total_faltas > 3 %}text-rose-600 dark:text-rose-400{% else %}text-slate-800 dark:text-zinc-100{% endif %}">
+                {{ total_faltas }}
+            </h3>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">
+            {% if total_faltas > 3 %}
+                ⚠️ Alerta: Límite de inasistencias excedido.
+            {% else %}
+                Dentro del límite permitido.
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Card: Salidas Tempranas Injustificadas -->
+    <div class="glass-card p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 flex flex-col justify-between min-h-[140px]">
+        <div>
+            <p class="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Salidas Tempranas</p>
+            <h3 class="text-4xl font-extrabold text-amber-500 mt-2">
+                {{ salidas_tempranas }}
+            </h3>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Registros de salida antes del fin de la clase.</p>
+    </div>
+
+    <!-- Card: Alertas de Fraude -->
+    <div class="glass-card p-6 rounded-2xl shadow-sm border {% if fraudes_historicos > 0 %}border-red-200 bg-red-50/40 dark:border-red-950/40 dark:bg-red-950/10{% else %}border-slate-100 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50{% endif %} flex flex-col justify-between min-h-[140px]">
+        <div>
+            <p class="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Alertas de Fraude</p>
+            <h3 class="text-4xl font-extrabold mt-2 {% if fraudes_historicos > 0 %}text-red-600 dark:text-red-400{% else %}text-slate-800 dark:text-zinc-100{% endif %}">
+                {{ fraudes_historicos }}
+            </h3>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Intentos históricos de fraude por suplantación.</p>
+    </div>
+</div>
+
+<!-- 3. Barra de Progreso y Asistencia Global -->
+<div class="glass-card p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h3 class="text-lg font-bold text-slate-800 dark:text-zinc-100">Porcentaje de Asistencia Global</h3>
+            <p class="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Calculado sobre {{ total_dictadas }} clases finalizadas.</p>
+        </div>
+        <div class="text-right">
+            <span class="text-2xl font-black text-brand-blue dark:text-brand-yellow" id="asistencia-pct-val">0%</span>
+        </div>
+    </div>
+    
+    <!-- Barra de Progreso Track -->
+    <div class="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-3 overflow-hidden">
+        <div id="asistencia-progress-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500 w-0"></div>
+    </div>
+</div>
+
+<!-- Datos Adicionales / Resumen de Sesiones -->
+<div class="glass-card p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50">
+    <h3 class="text-lg font-bold text-slate-800 dark:text-zinc-100 mb-4">Métricas de Clases</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="p-4 bg-slate-50 dark:bg-zinc-800/40 rounded-xl border border-slate-100 dark:border-zinc-800/80">
+            <p class="text-xs text-slate-500 dark:text-zinc-400 uppercase font-semibold">Dictadas</p>
+            <p class="text-xl font-bold text-slate-800 dark:text-zinc-200 mt-1">{{ total_dictadas }}</p>
+        </div>
+        <div class="p-4 bg-slate-50 dark:bg-zinc-800/40 rounded-xl border border-slate-100 dark:border-zinc-800/80">
+            <p class="text-xs text-slate-500 dark:text-zinc-400 uppercase font-semibold">Asistidas</p>
+            <!-- Clases asistidas = dictadas - faltas -->
+            <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1" id="clases-asistidas-val">0</p>
+        </div>
+        <div class="p-4 bg-slate-50 dark:bg-zinc-800/40 rounded-xl border border-slate-100 dark:border-zinc-800/80">
+            <p class="text-xs text-slate-500 dark:text-zinc-400 uppercase font-semibold">Tolerancia Faltas</p>
+            <p class="text-xl font-bold text-slate-800 dark:text-zinc-200 mt-1">3/10</p>
+        </div>
+        <div class="p-4 bg-slate-50 dark:bg-zinc-800/40 rounded-xl border border-slate-100 dark:border-zinc-800/80">
+            <p class="text-xs text-slate-500 dark:text-zinc-400 uppercase font-semibold">Estado de Regularidad</p>
+            <p class="text-xl font-bold mt-1 {% if total_faltas > 3 %}text-rose-500{% else %}text-emerald-500{% endif %}">
+                {% if total_faltas > 3 %}Irregular{% else %}Regular{% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Cálculo del porcentaje de asistencia de forma segura
+        const totalDictadas = parseInt("{{ total_dictadas }}") || 0;
+        const totalFaltas = parseInt("{{ total_faltas }}") || 0;
+        const asistidas = Math.max(0, totalDictadas - totalFaltas);
+        
+        document.getElementById('clases-asistidas-val').textContent = asistidas;
+
+        let pct = 0;
+        if (totalDictadas > 0) {
+            pct = Math.round((asistidas / totalDictadas) * 100);
+        } else {
+            pct = 100; // si no se han dictado clases, se considera regular al 100%
+        }
+
+        const pctVal = document.getElementById('asistencia-pct-val');
+        const progressBar = document.getElementById('asistencia-progress-bar');
+
+        // Micro-animación para cargar la barra
+        setTimeout(() => {
+            pctVal.textContent = pct + '%';
+            progressBar.style.width = pct + '%';
+            
+            // Cambiar color de la barra según porcentaje
+            if (pct < 70) {
+                progressBar.classList.remove('bg-emerald-500');
+                progressBar.classList.add('bg-rose-500');
+            } else if (pct < 85) {
+                progressBar.classList.remove('bg-emerald-500');
+                progressBar.classList.add('bg-amber-500');
+            }
+        }, 100);
+    });
+</script>
+{% endblock %}

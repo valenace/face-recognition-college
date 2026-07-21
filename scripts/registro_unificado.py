@@ -46,7 +46,7 @@ class RegistroBiometrico:
     def _evaluar_calidad(self, frame, rostro):
         x1, y1, x2, y2 = map(int, rostro.bbox)
         
-        # Tamano minimo
+        # Tamaño mínimo
         if (x2 - x1) < 60 or (y2 - y1) < 60:
             return False, "MUY LEJOS", (0, 165, 255)
 
@@ -62,12 +62,12 @@ class RegistroBiometrico:
         if es_imagen_borrosa(rostro_alineado, umbral=self.umbral_blur):
             return False, "BORROSO", (0, 0, 255)
 
-        # Iluminacion
+        # Iluminación
         gray = cv2.cvtColor(rostro_alineado, cv2.COLOR_BGR2GRAY)
         if np.mean(gray) < self.umbral_brillo:
             return False, "MUY OSCURO", (0, 0, 255)
 
-        # Liveness
+        # Liveness Gatekeeper
         try:
             resultado_spoof = self.spoofer.predict(frame, rostro.bbox)
             if not resultado_spoof.is_real or resultado_spoof.confidence < self.umbral_liveness:
@@ -79,7 +79,7 @@ class RegistroBiometrico:
 
     def enrolar_usuario(self, id_usuario, origen_video):
         if id_usuario in self.db_embeddings:
-            resp = input(f"Usuario {id_usuario} ya existe. Sobrescribir? (s/n): ").lower()
+            resp = input(f"Usuario {id_usuario} ya existe. ¿Sobrescribir? (s/n): ").lower()
             if resp != 's': return
 
         cap = cv2.VideoCapture(origen_video)
@@ -100,7 +100,7 @@ class RegistroBiometrico:
                 
                 frames_procesados += 1
                 
-                # Muestreo espaciado para videos pregrabados
+                # Muestreo espaciado para videos pregrabados (salta frames idénticos)
                 if es_video_archivo and frames_procesados % 5 != 0:
                     continue
 
@@ -148,15 +148,106 @@ class RegistroBiometrico:
             cap.release()
             cv2.destroyAllWindows()
 
-        # Vectorizacion final
+        # Vectorizacion final y promediado (Centroide)
         if len(vectores_extraidos) > 0:
             centroide = np.mean(vectores_extraidos, axis=0)
             centroide_normalizado = centroide / np.linalg.norm(centroide)
             self.db_embeddings[id_usuario] = centroide_normalizado
             self._guardar_db()
-            print("Registro exitoso.")
+            print("\nRegistro exitoso y guardado en la base de datos.")
         else:
-            print("Fallo el registro.")
+            print("\nFallo el registro. No se capturaron suficientes frames de calidad.")
+
+    def enrolar_usuario_headless(self, id_usuario, ruta_video, sobrescribir=False):
+        """
+        Versión headless de enrolar_usuario para uso dentro de Django/web.
+        NO abre ventanas GUI (cv2.imshow) ni pide input() interactivo.
+
+        Args:
+            id_usuario: ID único para el estudiante (ej. "12345_Juan_Perez")
+            ruta_video: Ruta absoluta al archivo de video (.mp4)
+            sobrescribir: Si True, sobrescribe si el usuario ya existe
+
+        Returns:
+            dict: {"exito": bool, "muestras": int, "mensaje": str, "embedding": list|None}
+        """
+        if id_usuario in self.db_embeddings and not sobrescribir:
+            return {
+                "exito": False,
+                "muestras": 0,
+                "mensaje": f"El usuario '{id_usuario}' ya existe en la base biométrica.",
+                "embedding": None,
+            }
+
+        cap = cv2.VideoCapture(ruta_video)
+        if not cap.isOpened():
+            return {
+                "exito": False,
+                "muestras": 0,
+                "mensaje": "No se pudo abrir el archivo de video.",
+                "embedding": None,
+            }
+
+        vectores_extraidos = []
+        frames_procesados = 0
+
+        try:
+            while len(vectores_extraidos) < self.max_muestras:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                frames_procesados += 1
+
+                # Muestreo espaciado para videos pregrabados
+                if frames_procesados % 5 != 0:
+                    continue
+
+                rostros = self.detector.detect(frame)
+
+                if len(rostros) != 1:
+                    continue
+
+                rostro = rostros[0]
+                es_valido, msj_qa, color_qa, *data_extra = self._evaluar_calidad(
+                    frame, rostro
+                )
+
+                if not es_valido:
+                    continue
+
+                rostro_alineado = data_extra[0]
+                img_limpia = aplicar_clahe(rostro_alineado)
+                rostros_crop = self.detector.detect(img_limpia)
+
+                if rostros_crop:
+                    vec = self.recognizer.get_normalized_embedding(
+                        img_limpia, rostros_crop[0].landmarks
+                    )
+                    vectores_extraidos.append(vec)
+        finally:
+            cap.release()
+
+        # Vectorización final
+        if len(vectores_extraidos) > 0:
+            centroide = np.mean(vectores_extraidos, axis=0)
+            centroide_normalizado = centroide / np.linalg.norm(centroide)
+            self.db_embeddings[id_usuario] = centroide_normalizado
+            self._guardar_db()
+
+            return {
+                "exito": True,
+                "muestras": len(vectores_extraidos),
+                "mensaje": f"Registro exitoso con {len(vectores_extraidos)} muestras de {frames_procesados} frames.",
+                "embedding": centroide_normalizado.tolist(),
+            }
+        else:
+            return {
+                "exito": False,
+                "muestras": 0,
+                "mensaje": f"No se pudieron extraer embeddings del video ({frames_procesados} frames analizados). Verifica iluminación y calidad.",
+                "embedding": None,
+            }
 
 if __name__ == "__main__":
     motor = RegistroBiometrico()
@@ -172,7 +263,7 @@ if __name__ == "__main__":
             if opcion == '1':
                 motor.enrolar_usuario(id_alumno, origen_video=0)
             else:
-                ruta = input("Ruta MP4: ").strip()
+                ruta = input("Ruta MP4 (Ej: data/video.mp4): ").strip()
                 if Path(ruta).exists():
                     motor.enrolar_usuario(id_alumno, origen_video=ruta)
                 else:

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Asistencia en Vivo | CV College{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Control de Asistencia <span class="text-red-500">En Vivo</span></h1>
+            <p class="text-slate-500 dark:text-zinc-400">Sesión: Inteligencia Artificial I • Salón 302</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span
+                class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-sm font-bold border border-emerald-100">
+                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                Sistema Activo
+            </span>
+            <button
+                class="px-4 py-2 bg-zinc-900 text-white rounded-full text-sm font-bold dark:bg-zinc-100 dark:text-zinc-900">
+                Finalizar Sesión
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Video Feed Area -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="glass-card overflow-hidden bg-black aspect-video relative group">
+                <!-- Video Placeholder/Canvas -->
+                <div id="video-container" class="w-full h-full flex items-center justify-center">
+                    <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=2000"
+                        class="w-full h-full object-cover opacity-60" alt="camera feed">
+
+                    <!-- Detected Face Overlays (Simulated) -->
+                    <div class="absolute top-1/4 left-1/3 w-32 h-32 border-2 border-brand-yellow rounded-2xl">
+                        <div
+                            class="absolute -top-8 left-0 bg-brand-yellow text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
+                            VALENTINA (ID: 4521) • 98%
+                        </div>
+                    </div>
+
+                    <div class="absolute top-1/2 left-1/2 w-24 h-24 border-2 border-emerald-400 rounded-2xl">
+                        <div
+                            class="absolute -top-8 left-0 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
+                            RODRIGO (ID: 3290) • 95%
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overlay Controls -->
+                <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+                    <div class="bg-black/50 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Ubicación</p>
+                        <p class="text-sm font-bold text-white">Cámara Principal - Pasillo 3</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button
+                            class="w-10 h-10 bg-white/10 backdrop-blur-md rounded-lg flex items-center justify-center text-white border border-white/20 hover:bg-white/20">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Logs Table -->
+            <div class="glass-card overflow-hidden">
+                <div class="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                    <h3 class="font-bold">Registros Recientes</h3>
+                    <button class="text-sm text-brand-blue font-bold">Exportar CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 dark:bg-zinc-800/50 text-slate-500 dark:text-zinc-400 font-medium">
+                            <tr>
+                                <th class="px-6 py-4">Estudiante</th>
+                                <th class="px-6 py-4">ID</th>
+                                <th class="px-6 py-4">Hora</th>
+                                <th class="px-6 py-4">Precisión</th>
+                                <th class="px-6 py-4 text-right">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-zinc-800">
+                            <tr>
+                                <td class="px-6 py-4 font-bold">Valentina Garcia</td>
+                                <td class="px-6 py-4 text-slate-500">#4521</td>
+                                <td class="px-6 py-4">14:22:05</td>
+                                <td class="px-6 py-4 text-emerald-500 font-medium">98.4%</td>
+                                <td class="px-6 py-4 text-right">
+                                    <span
+                                        class="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold">Presente</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 font-bold">Rodrigo Mendez</td>
+                                <td class="px-6 py-4 text-slate-500">#3290</td>
+                                <td class="px-6 py-4">14:25:32</td>
+                                <td class="px-6 py-4 text-emerald-500 font-medium">95.1%</td>
+                                <td class="px-6 py-4 text-right">
+                                    <span
+                                        class="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold">Presente</span>
+                                </td>
+                            </tr>
+                            <tr class="bg-red-50/30 dark:bg-red-900/10">
+                                <td class="px-6 py-4 font-bold">Desconocido</td>
+                                <td class="px-6 py-4 text-slate-500">---</td>
+                                <td class="px-6 py-4">14:30:11</td>
+                                <td class="px-6 py-4 text-red-500 font-medium">N/A</td>
+                                <td class="px-6 py-4 text-right">
+                                    <span
+                                        class="px-3 py-1 bg-red-100 text-red-600 rounded-full text-xs font-bold">Alerta</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Stats/Info -->
+        <div class="space-y-6">
+            <div class="glass-card p-6">
+                <h3 class="font-bold text-lg mb-6">Métricas de Sesión</h3>
+                <div class="space-y-6">
+                    <div>
+                        <div
+                            class="flex justify-between text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                            <span>Asistencia</span>
+                            <span class="text-brand-blue">24 / 30</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                            <div class="w-[80%] h-full bg-brand-blue rounded-full"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl text-center">
+                            <p class="text-2xl font-bold text-brand-blue">145</p>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase">Rostros Proc.</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl text-center">
+                            <p class="text-2xl font-bold text-emerald-500">0</p>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase">Fraudes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
