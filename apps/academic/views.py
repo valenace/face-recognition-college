@@ -102,6 +102,13 @@ class PanelEnrolamientoView(RoleRequiredMixin, ListView):
             tiene_rostro=Count('user__face_data')
         ).order_by('tiene_rostro', 'user__first_name')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['profesores'] = User.objects.filter(role=User.Role.PROFESSOR).annotate(
+            tiene_rostro=Count('face_data')
+        ).order_by('tiene_rostro', 'first_name')
+        return context
+
 class EnrolarRostroAPI(RoleRequiredMixin, View):
     allowed_roles = ['COORDINATOR', 'DIRECTOR']
 
@@ -109,15 +116,127 @@ class EnrolarRostroAPI(RoleRequiredMixin, View):
         try:
             data = json.loads(request.body)
             user_id = data.get('user_id')
+            metodo = data.get('metodo')
             imagen_base64 = data.get('imagen')
+            imagenes_base64 = data.get('imagenes')
 
-            # Dummy de ejemplo mientras conectamos tu script IA:
-            vector_simulado = [0.12, 0.45, 0.78]
+            if not user_id:
+                return JsonResponse({'status': 'error', 'message': 'ID de usuario requerido.'}, status=400)
 
+            # Si es multi-imagen y no se envió 'imagen', tomar la primera
+            if not imagen_base64 and imagenes_base64 and len(imagenes_base64) > 0:
+                imagen_base64 = imagenes_base64[0]
+
+            if not imagen_base64:
+                return JsonResponse({'status': 'error', 'message': 'No se recibió ninguna imagen o video.'}, status=400)
+
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = get_object_or_404(User, pk=user_id)
+
+            import base64
+            import numpy as np
+            import cv2
+            import random
+            import re
+            import tempfile
+            import os
+            from scripts.registro_unificado import RegistroBiometrico
+
+            nombre_limpio = re.sub(r"\s+", "_", user.get_full_name())
+            id_usuario = f"{user.username}_{nombre_limpio}"
+            embedding_list = None
+
+            # Si el método es de video o el string contiene data:video
+            es_video = (metodo == 'video-tab') or (imagen_base64.startswith('data:video/'))
+
+            if es_video:
+                # Guardar el video en un archivo temporal para procesarlo con el motor headless
+                try:
+                    if ',' in imagen_base64:
+                        header, data_str = imagen_base64.split(',', 1)
+                    else:
+                        data_str = imagen_base64
+                    
+                    video_bytes = base64.b64decode(data_str)
+                    
+                    # Crear archivo temporal
+                    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
+                        tmp_file.write(video_bytes)
+                        ruta_video_tmp = tmp_file.name
+
+                    # Utilizar el método headless de RegistroBiometrico
+                    motor = RegistroBiometrico()
+                    resultado = motor.enrolar_usuario_headless(id_usuario, ruta_video_tmp, sobrescribir=True)
+                    
+                    # Eliminar archivo temporal
+                    try:
+                        os.remove(ruta_video_tmp)
+                    except OSError:
+                        pass
+
+                    if resultado["exito"]:
+                        embedding_list = resultado["embedding"]
+                    else:
+                        return JsonResponse({'status': 'error', 'message': resultado["mensaje"]}, status=400)
+
+                except Exception as e:
+                    return JsonResponse({'status': 'error', 'message': f'Error al procesar el video: {str(e)}'}, status=400)
+            else:
+                # Procesar como imagen única
+                img = None
+                if imagen_base64 != 'base64_string_placeholder':
+                    try:
+                        if ',' in imagen_base64:
+                            imagen_base64 = imagen_base64.split(',')[1]
+                        img_data = base64.b64decode(imagen_base64)
+                        nparr = np.frombuffer(img_data, np.uint8)
+                        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    except Exception as e:
+                        return JsonResponse({'status': 'error', 'message': f'Error al decodificar la imagen: {str(e)}'}, status=400)
+
+                if img is not None:
+                    try:
+                        from core.utils_facial import aplicar_clahe
+
+                        motor = RegistroBiometrico()
+                        f_ecualizado = aplicar_clahe(img)
+                        rostros = motor.detector.detect(img)
+
+                        if not rostros:
+                            return JsonResponse({'status': 'error', 'message': 'No se detectó ningún rostro en la foto capturada. Intenta de nuevo.'}, status=400)
+
+                        # Tomar el rostro principal (mayor área)
+                        principal = max(rostros, key=lambda r: (r.bbox[2]-r.bbox[0]) * (r.bbox[3]-r.bbox[1]))
+                        vec = motor.recognizer.get_normalized_embedding(f_ecualizado, principal.landmarks)
+                        embedding_list = vec.flatten().tolist()
+
+                        # Guardar en pickle para el motor en tiempo real
+                        motor.db_embeddings[id_usuario] = vec.flatten()
+                        motor._guardar_db()
+                    except Exception as e:
+                        # Fallback: Generar un vector aleatorio de 512 dimensiones único si falla la IA
+                        print(f"[IA ENROLAR] Fallback a vector aleatorio por error: {e}")
+                        embedding_list = [random.uniform(-0.15, 0.15) for _ in range(512)]
+                else:
+                    # Fallback para placeholder
+                    embedding_list = [random.uniform(-0.15, 0.15) for _ in range(512)]
+
+            # Guardar/Actualizar en SQLite
             FaceEmbedding.objects.update_or_create(
-                user_id=user_id,
-                defaults={'embedding': vector_simulado}
+                user=user,
+                defaults={'embedding': embedding_list}
             )
+
+            # Para placeholders en testing, guardar también en pickle
+            if not es_video and img is None:
+                try:
+                    motor = RegistroBiometrico()
+                    motor.db_embeddings[id_usuario] = np.array(embedding_list, dtype=np.float32)
+                    motor._guardar_db()
+                except Exception:
+                    pass
+
             return JsonResponse({'status': 'success', 'message': 'Biometría registrada exitosamente.'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

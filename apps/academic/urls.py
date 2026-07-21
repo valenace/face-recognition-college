@@ -7,7 +7,8 @@ from .views import (
 )
 from apps.attendance.views import (
     ClaseEnVivoView, ResolverAlertaAPI,
-    ReportesAsistenciaView, AuditoriaSeguridadView
+    ReportesAsistenciaView, AuditoriaSeguridadView,
+    ProcesarDatasetView, LimpiarSesionView
 )
 
 app_name = "academic"
@@ -23,6 +24,8 @@ urlpatterns = [
     path("profesor/metricas-alumno/<int:student_id>/<int:class_id>/", MetricasAlumnoView.as_view(), name="metricas-alumno"),
     path("profesor/historial/", HistorialClasesView.as_view(), name="historial-clases"),
     path("profesor/api/resolver-alerta/", ResolverAlertaAPI.as_view(), name="api-resolver-alerta"),
+    path("profesor/api/procesar-dataset/<int:session_id>/", ProcesarDatasetView.as_view(), name="api-procesar-dataset"),
+    path("profesor/api/limpiar-sesion/<int:session_id>/", LimpiarSesionView.as_view(), name="api-limpiar-sesion"),
 
     # ── COORDINADOR ───────────────────────────────────────────
     path("coordinador/enrolamiento/", PanelEnrolamientoView.as_view(), name="panel-enrolamiento"),

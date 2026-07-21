@@ -115,7 +115,11 @@ class ClaseEnVivoView(RoleRequiredMixin, DetailView):
         context["estudiantes_ausentes"] = [
             insc.estudiante for insc in inscripciones if insc.estudiante_id not in asistencia_student_ids
         ]
+        
+        # Partition assistance records to separate registered students from unregistered/unknown faces
         context["registros_asistencia"] = asistencias
+        context["presentes_seccion"] = [ast for ast in asistencias if ast.estudiante is not None]
+        context["desconocidos_detectados"] = [ast for ast in asistencias if ast.estudiante is None]
         
         return context
 
@@ -173,3 +177,84 @@ class ResolverAlertaAPI(RoleRequiredMixin, View):
             return JsonResponse({"status": "error", "message": "Acción no válida."}, status=400)
 
         return JsonResponse({"status": "success"})
+
+
+import threading
+from core.procesador_batch import procesar_batch_imagenes
+
+class ProcesarDatasetView(RoleRequiredMixin, View):
+    allowed_roles = [User.Role.PROFESSOR, User.Role.COORDINATOR, User.Role.DIRECTOR]
+
+    def post(self, request, session_id, *args, **kwargs):
+        sesion = get_object_or_404(SesionClase, pk=session_id)
+        
+        # Check permissions: only the assigned professor, coordinators, or directors can run this
+        if not request.user.is_superuser and request.user.role not in ['COORDINATOR', 'DIRECTOR'] and sesion.asignacion_clase.profesor != request.user:
+            return JsonResponse({"status": "error", "message": "No tienes permiso para ejecutar el procesamiento en esta sesión de clase."}, status=403)
+
+        try:
+            data = json.loads(request.body) if request.body else {}
+        except json.JSONDecodeError:
+            data = {}
+
+        ruta_carpeta = data.get('ruta_carpeta', 'data/images/')
+
+        # Synchronously clear previous database records and notes for a clean 0-state
+        RegistroAsistencia.objects.filter(sesion=sesion).delete()
+        sesion.notas_profesor = ""
+        sesion.save()
+
+        # Synchronously delete the media/batch_processed/<session_id> folder
+        import os
+        import shutil
+        from django.conf import settings
+        status_dir = os.path.join(settings.MEDIA_ROOT, 'batch_processed', str(session_id))
+        if os.path.exists(status_dir):
+            try:
+                shutil.rmtree(status_dir)
+            except Exception:
+                pass
+
+        # Start the batch processing task in a background thread
+        thread = threading.Thread(
+            target=procesar_batch_imagenes,
+            args=(session_id, ruta_carpeta)
+        )
+        thread.start()
+
+        return JsonResponse({
+            "status": "success",
+            "message": "Procesamiento batch de imágenes iniciado en segundo plano."
+        })
+
+
+class LimpiarSesionView(RoleRequiredMixin, View):
+    allowed_roles = [User.Role.PROFESSOR, User.Role.COORDINATOR, User.Role.DIRECTOR]
+
+    def post(self, request, session_id, *args, **kwargs):
+        sesion = get_object_or_404(SesionClase, pk=session_id)
+        
+        # Check permissions
+        if not request.user.is_superuser and request.user.role not in ['COORDINATOR', 'DIRECTOR'] and sesion.asignacion_clase.profesor != request.user:
+            return JsonResponse({"status": "error", "message": "No tienes permiso para vaciar la asistencia en esta sesión de clase."}, status=403)
+
+        # Clear database records
+        RegistroAsistencia.objects.filter(sesion=sesion).delete()
+        sesion.notas_profesor = ""
+        sesion.save()
+
+        # Delete batch_processed status files on disk
+        import os
+        import shutil
+        from django.conf import settings
+        status_dir = os.path.join(settings.MEDIA_ROOT, 'batch_processed', str(session_id))
+        if os.path.exists(status_dir):
+            try:
+                shutil.rmtree(status_dir)
+            except Exception:
+                pass
+
+        return JsonResponse({
+            "status": "success",
+            "message": "Registros de asistencia y archivos de procesamiento limpiados exitosamente."
+        })

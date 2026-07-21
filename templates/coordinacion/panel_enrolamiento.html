@@ -4,11 +4,21 @@
 
 {% block content %}
 <div class="mb-8">
-    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Panel de Enrolamiento Biométrico</h2>
-    <p class="text-slate-500 dark:text-slate-400 mt-1">Gestión y registro de biometría facial para estudiantes.</p>
+    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Registrados</h2>
 </div>
 
-<div class="glass-card overflow-hidden border border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80 rounded-2xl">
+<!-- Tabs header for selection -->
+<div class="flex border-b border-slate-200 dark:border-slate-700/60 mb-6 gap-4">
+    <button onclick="switchMainTab('estudiantes-panel')" id="estudiantes-panel-btn" class="main-tab-btn pb-3 border-b-2 border-brand-blue text-brand-blue dark:text-brand-blue-accent font-semibold text-sm transition-all duration-150">
+        Estudiantes
+    </button>
+    <button onclick="switchMainTab('profesores-panel')" id="profesores-panel-btn" class="main-tab-btn pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-semibold text-sm transition-all duration-150">
+        Profesores
+    </button>
+</div>
+
+<!-- Estudiantes Panel -->
+<div id="estudiantes-panel" class="main-tab-container glass-card overflow-hidden border border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80 rounded-2xl">
     <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
         <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Estudiantes Registrados</h3>
         <span class="px-3 py-1 bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-brand-blue-accent rounded-lg text-xs font-semibold">
@@ -64,6 +74,71 @@
                 <tr>
                     <td colspan="4" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                         No hay estudiantes registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Profesores Panel -->
+<div id="profesores-panel" class="main-tab-container hidden glass-card overflow-hidden border border-slate-100 dark:border-slate-700 bg-white/50 dark:bg-slate-800/80 rounded-2xl animate-fade-in">
+    <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+        <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Profesores Registrados</h3>
+        <span class="px-3 py-1 bg-brand-blue/10 dark:bg-brand-blue/20 text-brand-blue dark:text-brand-blue-accent rounded-lg text-xs font-semibold">
+            Total: {{ profesores|length }}
+        </span>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-slate-100/50 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700/60">
+                    <th class="px-6 py-4">Profesor</th>
+                    <th class="px-6 py-4">Usuario</th>
+                    <th class="px-6 py-4">Estado Biométrico</th>
+                    <th class="px-6 py-4 text-right">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-700/40 text-slate-700 dark:text-slate-300">
+                {% for profesor in profesores %}
+                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-150">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-white font-bold shrink-0 border border-slate-300 dark:border-slate-600">
+                                {{ profesor.first_name|first|upper }}{{ profesor.last_name|first|upper }}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 dark:text-slate-100">{{ profesor.get_full_name }}</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ profesor.email }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-mono text-sm">{{ profesor.username }}</td>
+                    <td class="px-6 py-4">
+                        {% if profesor.tiene_rostro %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-full border border-emerald-200 dark:border-emerald-800/30">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Enrolado
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs font-semibold rounded-full border border-amber-200 dark:border-amber-800/30">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            Pendiente
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="openEnrollModal('{{ profesor.id }}', '{{ profesor.get_full_name }}')" class="px-4 py-2 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-150">
+                            {% if profesor.tiene_rostro %}Re-enrolar{% else %}Enrolar Rostro{% endif %}
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                        No hay profesores registrados.
                     </td>
                 </tr>
                 {% endfor %}
@@ -159,6 +234,23 @@
 </div>
 
 <script>
+    function switchMainTab(tabId) {
+        document.querySelectorAll('.main-tab-btn').forEach(btn => {
+            btn.classList.remove('border-brand-blue', 'text-brand-blue', 'dark:text-brand-blue-accent');
+            btn.classList.add('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+        });
+        
+        const activeBtn = document.getElementById(tabId + '-btn');
+        activeBtn.classList.remove('border-transparent', 'text-slate-500', 'dark:text-slate-400');
+        activeBtn.classList.add('border-brand-blue', 'text-brand-blue', 'dark:text-brand-blue-accent');
+        
+        document.querySelectorAll('.main-tab-container').forEach(container => {
+            container.classList.add('hidden');
+        });
+        
+        document.getElementById(tabId).classList.remove('hidden');
+    }
+
     let activeUserId = null;
     let localStream = null;
     let activeTab = 'webcam-tab';

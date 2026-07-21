@@ -228,3 +228,21 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         # Total class duration: 9:00 to 11:00 -> 120 minutes
         # (5 / 120) * 100 = 4.16% -> rounded to 4%
         self.assertEqual(registro.porcentaje_permanencia, 4)
+
+    from unittest.mock import patch
+
+    @patch('apps.attendance.views.threading.Thread')
+    def test_procesar_dataset_view_trigger(self, mock_thread):
+        self.client.login(username="professor_owner", password="password123")
+        url = reverse('academic:api-procesar-dataset', kwargs={'session_id': self.sesion.id})
+        response = self.client.post(
+            url,
+            data='{"ruta_carpeta": "data/images/"}',
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertIn("Procesamiento batch de imágenes", data['message'])
+        self.assertTrue(mock_thread.called)
+        self.assertTrue(mock_thread.return_value.start.called)

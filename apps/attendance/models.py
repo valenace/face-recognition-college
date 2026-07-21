@@ -122,6 +122,8 @@ class RegistroAsistencia(models.Model):
 
     @property
     def porcentaje_permanencia(self):
+        if self.notas_auditoria == "Detección por Imagen":
+            return 100
         horario_inicio = self.sesion.asignacion_clase.horario_inicio
         horario_fin = self.sesion.asignacion_clase.horario_fin
         

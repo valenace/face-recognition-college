@@ -62,6 +62,69 @@
       "password": "studentPassword123",
       "matricula": "MAT-2026-003",
       "activo": true
+    },
+    {
+      "username": "est_andres",
+      "first_name": "Andrés",
+      "last_name": "Mendoza",
+      "email": "andres.mendoza@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-004",
+      "activo": true
+    },
+    {
+      "username": "est_valeria",
+      "first_name": "Valeria",
+      "last_name": "Rojas",
+      "email": "valeria.rojas@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-005",
+      "activo": true
+    },
+    {
+      "username": "est_mateo",
+      "first_name": "Mateo",
+      "last_name": "Torres",
+      "email": "mateo.torres@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-006",
+      "activo": true
+    },
+    {
+      "username": "est_camila",
+      "first_name": "Camila",
+      "last_name": "Silva",
+      "email": "camila.silva@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-007",
+      "activo": true
+    },
+    {
+      "username": "est_diego",
+      "first_name": "Diego",
+      "last_name": "Flores",
+      "email": "diego.flores@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-008",
+      "activo": true
+    },
+    {
+      "username": "est_lucia",
+      "first_name": "Lucía",
+      "last_name": "Ortiz",
+      "email": "lucia.ortiz@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-009",
+      "activo": true
+    },
+    {
+      "username": "est_tomas",
+      "first_name": "Tomás",
+      "last_name": "Navarro",
+      "email": "tomas.navarro@student.edu",
+      "password": "studentPassword123",
+      "matricula": "MAT-2026-010",
+      "activo": true
     }
   ],
   "infraestructura": {
@@ -112,7 +175,7 @@
       "dia_semana": "LUNES",
       "horario_inicio": "08:00:00",
       "horario_fin": "10:00:00",
-      "inscritos": ["est_carlos", "est_laura", "est_sofia"]
+      "inscritos": ["est_carlos", "est_laura", "est_sofia", "est_andres", "est_valeria", "est_mateo", "est_camila"]
     },
     {
       "profesor_username": "prof_elena",
@@ -122,7 +185,7 @@
       "dia_semana": "MIERCOLES",
       "horario_inicio": "10:30:00",
       "horario_fin": "12:30:00",
-      "inscritos": ["est_carlos", "est_laura"]
+      "inscritos": ["est_carlos", "est_laura", "est_sofia", "est_andres", "est_diego", "est_lucia", "est_tomas"]
     }
   ],
   "historial_sesiones_pasadas": [
@@ -147,9 +210,37 @@
         },
         {
           "username": "est_sofia",
+          "hora_entrada": "08:12:00",
+          "hora_salida": "10:00:00",
+          "similitud_ia": 0.96,
+          "es_fraude": false
+        },
+        {
+          "username": "est_andres",
+          "hora_entrada": "08:01:00",
+          "hora_salida": "09:55:00",
+          "similitud_ia": 0.91,
+          "es_fraude": false
+        },
+        {
+          "username": "est_valeria",
           "hora_entrada": null,
           "hora_salida": null,
           "similitud_ia": null,
+          "es_fraude": false
+        },
+        {
+          "username": "est_mateo",
+          "hora_entrada": "08:05:00",
+          "hora_salida": "10:00:00",
+          "similitud_ia": 0.94,
+          "es_fraude": false
+        },
+        {
+          "username": "est_camila",
+          "hora_entrada": "08:10:00",
+          "hora_salida": "09:50:00",
+          "similitud_ia": 0.93,
           "es_fraude": false
         }
       ]
