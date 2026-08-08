@@ -208,5 +208,7 @@ __marimo__/
 
 # Own folders
 
-/data/dataset_pro
+/data/
 /experiments/dataset_pro_old
+/captures
+/media
