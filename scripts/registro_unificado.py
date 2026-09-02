@@ -22,7 +22,7 @@ class RegistroBiometrico:
         
         self.detector = create_detector('retinaface')
         self.recognizer = create_recognizer('arcface')
-        self.spoofer = create_spoofer()
+        self.spoofer = None # Carga perezosa (lazy load)
         
         self.db_embeddings = self._cargar_db()
 
@@ -43,7 +43,7 @@ class RegistroBiometrico:
             if ruta_temporal.exists(): 
                 ruta_temporal.unlink()
 
-    def _evaluar_calidad(self, frame, rostro):
+    def _evaluar_calidad(self, frame, rostro, check_liveness=False):
         x1, y1, x2, y2 = map(int, rostro.bbox)
         
         # Tamaño mínimo
@@ -68,16 +68,19 @@ class RegistroBiometrico:
             return False, "MUY OSCURO", (0, 0, 255)
 
         # Liveness Gatekeeper
-        try:
-            resultado_spoof = self.spoofer.predict(frame, rostro.bbox)
-            if not resultado_spoof.is_real or resultado_spoof.confidence < self.umbral_liveness:
-                return False, f"SPOOF ({resultado_spoof.confidence:.2f})", (0, 0, 255)
-        except Exception:
-            return False, "ERROR LIVENESS", (0, 0, 255)
+        if check_liveness:
+            try:
+                if self.spoofer is None:
+                    self.spoofer = create_spoofer()
+                resultado_spoof = self.spoofer.predict(frame, rostro.bbox)
+                if not resultado_spoof.is_real or resultado_spoof.confidence < self.umbral_liveness:
+                    return False, f"SPOOF ({resultado_spoof.confidence:.2f})", (0, 0, 255)
+            except Exception:
+                return False, "ERROR LIVENESS", (0, 0, 255)
 
         return True, "OK", (0, 255, 0), rostro_alineado
 
-    def enrolar_usuario(self, id_usuario, origen_video):
+    def enrolar_usuario(self, id_usuario, origen_video, check_liveness=False, step_value=None):
         if id_usuario in self.db_embeddings:
             resp = input(f"Usuario {id_usuario} ya existe. ¿Sobrescribir? (s/n): ").lower()
             if resp != 's': return
@@ -88,6 +91,19 @@ class RegistroBiometrico:
             return
 
         es_video_archivo = isinstance(origen_video, str)
+        
+        # Calcular paso dinámico si no se especifica
+        if step_value is None:
+            if es_video_archivo:
+                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                if total_frames > 0:
+                    step_value = max(1, min(8, total_frames // 100))
+                else:
+                    step_value = 5
+            else:
+                step_value = 1
+        print(f"Paso de muestreo ajustado a: {step_value} frames. Liveness: {check_liveness}")
+
         cv2.namedWindow(f"Enrolamiento: {id_usuario}", cv2.WINDOW_NORMAL)
         
         vectores_extraidos = []
@@ -101,7 +117,7 @@ class RegistroBiometrico:
                 frames_procesados += 1
                 
                 # Muestreo espaciado para videos pregrabados (salta frames idénticos)
-                if es_video_archivo and frames_procesados % 5 != 0:
+                if es_video_archivo and frames_procesados % step_value != 0:
                     continue
 
                 display = frame.copy()
@@ -117,21 +133,33 @@ class RegistroBiometrico:
                     rostro = rostros[0]
                     x1, y1, x2, y2 = map(int, rostro.bbox)
                     
-                    es_valido, msj_qa, color_qa, *data_extra = self._evaluar_calidad(frame, rostro)
+                    es_valido, msj_qa, color_qa, *data_extra = self._evaluar_calidad(frame, rostro, check_liveness)
                     mensaje_estado, color_mensaje = msj_qa, color_qa
 
                     if es_valido:
                         rostro_alineado = data_extra[0]
                         h_c, w_c = rostro_alineado.shape[:2]
-                        if 10+h_c < display.shape[0] and 10+w_c < display.shape[1]:
-                            display[10:10+h_c, 10:10+w_c] = rostro_alineado
-                            cv2.rectangle(display, (10, 10), (10+w_c, 10+h_c), color_mensaje, 2)
 
                         img_limpia = aplicar_clahe(rostro_alineado)
                         rostros_crop = self.detector.detect(img_limpia)
                         if rostros_crop:
                             vec = self.recognizer.get_normalized_embedding(img_limpia, rostros_crop[0].landmarks)
-                            vectores_extraidos.append(vec)
+                            
+                            # Filtro de Diversidad de Poses
+                            max_sim_pose = 0.0
+                            for v_prev in vectores_extraidos:
+                                sim = np.dot(vec.flatten(), v_prev.flatten())
+                                if sim > max_sim_pose:
+                                    max_sim_pose = sim
+                                    
+                            if max_sim_pose > 0.95:
+                                mensaje_estado = f"POSE REPETIDA ({max_sim_pose:.2f})"
+                                color_mensaje = (0, 0, 255)
+                            else:
+                                vectores_extraidos.append(vec)
+                                if 10+h_c < display.shape[0] and 10+w_c < display.shape[1]:
+                                    display[10:10+h_c, 10:10+w_c] = rostro_alineado
+                                    cv2.rectangle(display, (10, 10), (10+w_c, 10+h_c), color_mensaje, 2)
 
                     cv2.rectangle(display, (x1, y1), (x2, y2), color_mensaje, 2)
 
@@ -158,7 +186,7 @@ class RegistroBiometrico:
         else:
             print("\nFallo el registro. No se capturaron suficientes frames de calidad.")
 
-    def enrolar_usuario_headless(self, id_usuario, ruta_video, sobrescribir=False):
+    def enrolar_usuario_headless(self, id_usuario, ruta_video, sobrescribir=False, check_liveness=False, step_value=None):
         """
         Versión headless de enrolar_usuario para uso dentro de Django/web.
         NO abre ventanas GUI (cv2.imshow) ni pide input() interactivo.
@@ -167,6 +195,8 @@ class RegistroBiometrico:
             id_usuario: ID único para el estudiante (ej. "12345_Juan_Perez")
             ruta_video: Ruta absoluta al archivo de video (.mp4)
             sobrescribir: Si True, sobrescribe si el usuario ya existe
+            check_liveness: Si True, ejecuta control de anti-spoofing
+            step_value: Paso de muestreo de frames (si es None, se calcula dinámicamente)
 
         Returns:
             dict: {"exito": bool, "muestras": int, "mensaje": str, "embedding": list|None}
@@ -188,6 +218,14 @@ class RegistroBiometrico:
                 "embedding": None,
             }
 
+        # Calcular paso dinámico si no se especifica
+        if step_value is None:
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if total_frames > 0:
+                step_value = max(1, min(8, total_frames // 100))
+            else:
+                step_value = 5
+
         vectores_extraidos = []
         frames_procesados = 0
 
@@ -200,7 +238,7 @@ class RegistroBiometrico:
                 frames_procesados += 1
 
                 # Muestreo espaciado para videos pregrabados
-                if frames_procesados % 5 != 0:
+                if frames_procesados % step_value != 0:
                     continue
 
                 rostros = self.detector.detect(frame)
@@ -210,7 +248,7 @@ class RegistroBiometrico:
 
                 rostro = rostros[0]
                 es_valido, msj_qa, color_qa, *data_extra = self._evaluar_calidad(
-                    frame, rostro
+                    frame, rostro, check_liveness
                 )
 
                 if not es_valido:
@@ -224,7 +262,16 @@ class RegistroBiometrico:
                     vec = self.recognizer.get_normalized_embedding(
                         img_limpia, rostros_crop[0].landmarks
                     )
-                    vectores_extraidos.append(vec)
+                    
+                    # Filtro de Diversidad de Poses
+                    max_sim_pose = 0.0
+                    for v_prev in vectores_extraidos:
+                        sim = np.dot(vec.flatten(), v_prev.flatten())
+                        if sim > max_sim_pose:
+                            max_sim_pose = sim
+                            
+                    if max_sim_pose <= 0.95:
+                        vectores_extraidos.append(vec)
         finally:
             cap.release()
 

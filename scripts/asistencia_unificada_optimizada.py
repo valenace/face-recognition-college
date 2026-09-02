@@ -1,11 +1,13 @@
 """
-asistencia_unificada.py — Motor de Inferencia Biométrico en Tiempo Real
+asistencia_unificada_optimizada.py — Motor de Inferencia Biométrico en Tiempo Real Optimizado
 ================================================================================
 Arquitectura:
   - Tracking: ByteTrack para mantener IDs consistentes en multitudes.
-  - Liveness: Gatekeeper activo con factor de escala (anti-pantallas/papel).
+  - Liveness Condicional: Evaluado únicamente si el rostro es reconocido por ArcFace
+    y posee un tamaño mínimo de 80px (evita falsos positivos por distancia).
   - Reconocimiento: FAISS IndexFlatIP para búsquedas O(log N).
-  - Tolerancia a Fallos: Consenso temporal de 3 frames (evita parpadeos de identidad).
+  - Tolerancia a Fallos: Consenso temporal de 3 frames.
+  - Optimización CLAHE: Lazy evaluation (máximo 1 ecualización por frame).
 """
 
 import cv2
@@ -40,7 +42,7 @@ class MotorAsistencia:
         self.tamano_minimo_rostro = 40
         self.votos_requeridos = 3
 
-        print("\n[INFO] Inicializando Motor de Asistencia...")
+        print("\n[INFO] Inicializando Motor de Asistencia Optimizado...")
 
         # Carga de la Base de Datos
         if not self.db_path.exists():
@@ -162,7 +164,6 @@ class MotorAsistencia:
                         x1, y1, x2, y2 = map(int, t[0])
                         t_id = t[4]
 
-                       
                         h_frame, w_frame = frame.shape[:2]
                         margen = 15
                         
@@ -191,30 +192,7 @@ class MotorAsistencia:
                             nombre_mostrar = self.identidades_ancladas[t_id]
                             color = (0, 255, 0)  # Verde reconocido
                         else:
-                            # 1. Filtro Liveness (Gatekeeper)
-                            try:
-                                res_spoof = self.spoofer.predict(frame, r_asociado.bbox)
-                                if (
-                                    not res_spoof.is_real
-                                    or res_spoof.confidence < self.umbral_liveness
-                                ):
-                                    color = (0, 0, 255)
-                                    nombre_mostrar = "FRAUDE DETECTADO"
-                                    self._dibujar_ui(
-                                        frame,
-                                        x1,
-                                        y1,
-                                        x2,
-                                        y2,
-                                        nombre_mostrar,
-                                        color,
-                                        t_id,
-                                    )
-                                    continue  # Salta el reconocimiento
-                            except Exception:
-                                continue
-
-                            # 2. Reconocimiento ArcFace + FAISS
+                            # 1. Reconocimiento ArcFace + FAISS Primero
                             if f_ecualizado is None:
                                 f_ecualizado = aplicar_clahe(frame)
                             vec = self.recognizer.get_normalized_embedding(
@@ -228,6 +206,23 @@ class MotorAsistencia:
 
                             if max_sim > self.umbral_similitud:
                                 candidato = self.nombres_lista[idx[0][0]]
+
+                                # 2. Liveness Check (Solo para reconocidos con tamaño suficiente)
+                                ancho_rostro = x2 - x1
+                                if ancho_rostro < 80:
+                                    liveness_valido = True  # Omitido por distancia
+                                else:
+                                    try:
+                                        res_spoof = self.spoofer.predict(frame, r_asociado.bbox)
+                                        liveness_valido = res_spoof.is_real and res_spoof.confidence >= self.umbral_liveness
+                                    except Exception:
+                                        liveness_valido = False
+
+                                if not liveness_valido:
+                                    color = (0, 0, 255)
+                                    nombre_mostrar = "FRAUDE DETECTADO"
+                                    self._dibujar_ui(frame, x1, y1, x2, y2, nombre_mostrar, color, t_id)
+                                    continue  # Abortar registro de asistencia
 
                                 # Lógica de Votación Temporal
                                 if t_id not in self.votos_identidad:

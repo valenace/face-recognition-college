@@ -11,7 +11,7 @@ from scripts.asistencia_unificada import MotorAsistencia
 def main():
     db_file = Path("data/database_embeddings.pkl")
     # Videos disponibles: 20260806_105629.mp4, 20260806_105645.mp4, 20260806_105847.mp4, 20260806_105921.mp4
-    video_salon = Path("data/salon/20260806_105629.mp4")
+    video_salon = Path("data/salon/20260806_105645.mp4")
     
     if len(sys.argv) > 1:
         video_salon = Path(sys.argv[1])
