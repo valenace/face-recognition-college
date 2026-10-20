@@ -1,0 +1,19 @@
+archivo,categoria,personas_presentes,personas_deberia_reconocer,espera_fraude,duracion_seg,notas
+# REGISTRO BASICO
+{ID}_R-L1.mp4,registro,{ID},{ID},no,15,Luz natural buena frontal
+{ID}_R-A1.mp4,registro,{ID},{ID},no,10,Frontal directo
+{ID}_R-E1.mp4,registro,{ID},{ID},no,10,Expresion neutra
+# RECONOCIMIENTO INDIVIDUAL
+TEST_V-I1.mp4,reconocimiento,{ID},{ID},no,30,Entrada normal al salon
+TEST_V-I2.mp4,reconocimiento,{ID},{ID},no,30,Sentado de frente
+TEST_V-I4.mp4,reconocimiento,{ID},{ID},no,30,Escribiendo cabeza abajo
+# MULTIPLES PERSONAS
+TEST_V-M1.mp4,reconocimiento,"{ID1}\,{ID2}","{ID1}\,{ID2}",no,30,Dos personas juntas
+# FRAUDE
+TEST_F-P1.mp4,fraude,{ID}(foto en celular),ninguno,si,15,Foto en pantalla de celular
+TEST_F-I1.mp4,fraude,{ID}(foto impresa),ninguno,si,15,Foto impresa en papel
+# NO REGISTRADOS
+TEST_A-N1.mp4,anti-alucinacion,extraño,ninguno,no,30,Persona no registrada en DB
+# OBJETOS PAREIDOLIA
+TEST_A-P1.mp4,anti-alucinacion,poster en pared,ninguno,no,30,Poster con cara
+TEST_A-P3.mp4,anti-alucinacion,laptop con foto,ninguno,no,30,Foto en pantalla de laptop
