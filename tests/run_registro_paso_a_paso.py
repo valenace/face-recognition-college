@@ -96,6 +96,8 @@ def depurar_registro(nombre, ruta_video, db_file="data/database_embeddings.pkl",
             rostros = detector.detect(frame)
 
             rostro_listo = None
+            vec_temp = None
+            max_sim_pose = 0.0
             mensaje_estado = "Buscando rostro..."
             color_mensaje = (0, 165, 255) # Naranja
             detalles_consola = []
@@ -160,6 +162,31 @@ def depurar_registro(nombre, ruta_video, db_file="data/database_embeddings.pkl",
                                     color_mensaje = (0, 255, 0)
                                     rostro_listo = rostro_alineado
 
+                                # Filtro de Diversidad de Poses
+                                if rostro_listo is not None:
+                                    img_limpia = aplicar_clahe(rostro_listo)
+                                    rostros_crop = detector.detect(img_limpia)
+                                    if rostros_crop:
+                                        vec = recognizer.get_normalized_embedding(img_limpia, rostros_crop[0].landmarks)
+                                        
+                                        # Calcular similitud máxima con los ya guardados en esta sesión
+                                        for v_prev in vectores_extraidos:
+                                            sim = np.dot(vec.flatten(), v_prev.flatten())
+                                            if sim > max_sim_pose:
+                                                max_sim_pose = sim
+                                        
+                                        detalles_consola.append(f"SimPose: {max_sim_pose:.3f}")
+                                        if max_sim_pose > 0.95:
+                                            mensaje_estado = f"POSE REPETIDA ({max_sim_pose:.2f})"
+                                            color_mensaje = (0, 0, 255)
+                                            rostro_listo = None
+                                            vec_temp = None
+                                        else:
+                                            vec_temp = vec
+                                    else:
+                                        rostro_listo = None
+                                        vec_temp = None
+
                         # Render del rostro alineado en la esquina superior izquierda
                         h_crop, w_crop = rostro_alineado.shape[:2]
                         if 10 + h_crop < display.shape[0] and 10 + w_crop < display.shape[1]:
@@ -185,15 +212,9 @@ def depurar_registro(nombre, ruta_video, db_file="data/database_embeddings.pkl",
             if rostro_listo is not None and count < 50:
                 filename = path_estudiante / f"{nombre}_{count}.jpg"
                 cv2.imwrite(str(filename), rostro_listo)
-                
-                # Extraer embedding
-                img_limpia = aplicar_clahe(rostro_listo)
-                rostros_crop = detector.detect(img_limpia)
-                if rostros_crop:
-                    vec = recognizer.get_normalized_embedding(img_limpia, rostros_crop[0].landmarks)
-                    vectores_extraidos.append(vec)
-                    count += 1
-                    print(f"    💾 Guardada Foto #{count} -> {filename.name}")
+                vectores_extraidos.append(vec_temp)
+                count += 1
+                print(f"    💾 Guardada Foto #{count} -> {filename.name} (SimPose Max: {max_sim_pose:.3f})")
 
             if count >= 50:
                 print("🏁 Máximo de 50 fotos alcanzado.")

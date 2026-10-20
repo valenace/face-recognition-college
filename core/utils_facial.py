@@ -16,6 +16,12 @@ def aplicar_clahe(imagen):
         return imagen
 
 
+def embedding_facial(recognizer, imagen, landmarks):
+    """Embedding normalizado (512,) con el mismo preprocesado en registro e inferencia."""
+    img_limpia = aplicar_clahe(imagen)
+    return recognizer.get_normalized_embedding(img_limpia, landmarks).flatten()
+
+
 def es_imagen_borrosa(imagen, umbral=80):
     if imagen is None or imagen.size == 0:
         return True

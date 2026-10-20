@@ -10,37 +10,52 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from uniface import create_detector, create_recognizer
 from uniface.spoofing import create_spoofer
-from core.utils_facial import aplicar_clahe, es_imagen_borrosa, alinear_rostro
+from core.utils_facial import aplicar_clahe, es_imagen_borrosa, alinear_rostro, embedding_facial
 
-DATASET_PATH = Path("data/dataset_cv/frames")
-DB_FILE = Path("data/database_embeddings.pkl")
+RAIZ = Path(__file__).resolve().parents[1]
+DATASET_PATH = RAIZ / "data/dataset_cv/frames"
+DB_FILE = RAIZ / "data/database_embeddings.pkl"
 
 MAX_FOTOS = 50
-FRAMES_ENTRE_FOTOS = 8
+MIN_FOTOS = 15
+CANDIDATOS_OBJETIVO = 300
 UMBRAL_CALIDAD_BLUR = 60
 UMBRAL_BRILLO_MIN = 20
 UMBRAL_LIVENESS_MIN = 0.90
+UMBRAL_POSE_REPETIDA = 0.95
 
 
-def registrar_desde_video(nombre, ruta_video, db_file=DB_FILE, dataset_path=DATASET_PATH, check_liveness=False, step_value=None):
+def _mejor_rostro(rostros):
+    return max(rostros, key=lambda r: (r.bbox[2] - r.bbox[0]) * (r.bbox[3] - r.bbox[1]))
+
+
+def registrar_desde_video(
+    nombre,
+    ruta_video,
+    db_file=DB_FILE,
+    dataset_path=DATASET_PATH,
+    check_liveness=False,
+    mostrar=True,
+):
     """
-    Extrae hasta MAX_FOTOS frames alineados del video, los guarda como JPG,
-    genera el embedding centroide y lo guarda en la DB.
-
-    Args:
-        nombre: ID de la persona (ej: "jorge")
-        ruta_video: ruta al MP4
-        db_file: ruta al .pkl de embeddings (default: data/database_embeddings.pkl)
-        dataset_path: carpeta base donde guardar los JPGs (default: data/dataset_cv/frames)
-        check_liveness: Si True, realiza validaciones de anti-spoofing
-        step_value: paso de frames. Si es None, se calcula dinámicamente
+    Extrae hasta MAX_FOTOS frames alineados (una sola cara por frame, muestreo uniforme
+    en todo el video), genera el centroide normalizado y lo guarda en la DB.
 
     Returns:
-        dict: la DB de embeddings resultante (o None si falló)
+        dict: la DB de embeddings resultante, o None si falló o hay menos de MIN_FOTOS.
     """
-    if not Path(ruta_video).exists():
+    ruta_video = Path(ruta_video)
+    if not ruta_video.exists():
         print("Error: el archivo de video no existe.")
         return None
+
+    cap = cv2.VideoCapture(str(ruta_video))
+    if not cap.isOpened():
+        print("Error: no se pudo abrir el video.")
+        return None
+
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    step_value = max(1, total_frames // CANDIDATOS_OBJETIVO) if total_frames > 0 else 1
 
     print("Cargando modelos...")
     detector = create_detector("retinaface")
@@ -49,33 +64,21 @@ def registrar_desde_video(nombre, ruta_video, db_file=DB_FILE, dataset_path=DATA
 
     path_estudiante = Path(dataset_path) / nombre
     path_estudiante.mkdir(parents=True, exist_ok=True)
-    print(f"Directorio: {path_estudiante}")
+    for jpg_previo in path_estudiante.glob("*.jpg"):
+        jpg_previo.unlink()
+    print(f"Directorio: {path_estudiante} (limpiado)")
+    print(f"Paso de muestreo: {step_value} frames | Liveness: {check_liveness}")
 
     window_name = "Registro desde Video"
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-
-    cap = cv2.VideoCapture(ruta_video)
-    if not cap.isOpened():
-        print("Error: no se pudo abrir el video.")
-        return None
-
-    # Calcular paso dinámico
-    if step_value is None:
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        if total_frames > 0:
-            step_value = max(1, min(8, total_frames // 100))
-        else:
-            step_value = FRAMES_ENTRE_FOTOS
-    print(f"Paso de muestreo de frames ajustado a: {step_value}. Liveness: {check_liveness}")
+    if mostrar:
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
     count = 0
     frames_counter = 0
     vectores_cap = []
 
-    print("Extrayendo frames... 'q' para cancelar.\n")
-
     try:
-        while True:
+        while count < MAX_FOTOS:
             ret, frame = cap.read()
             if not ret:
                 print("Fin del video.")
@@ -85,207 +88,111 @@ def registrar_desde_video(nombre, ruta_video, db_file=DB_FILE, dataset_path=DATA
             if frames_counter % step_value != 0:
                 continue
 
-            display = frame.copy()
             rostros = detector.detect(frame)
+            if len(rostros) != 1:
+                continue
 
-            rostro_listo = None
-            vec_temp = None
-            max_sim_pose = 0.0
-            mensaje_estado = "Buscando rostro..."
-            color_mensaje = (0, 165, 255)
+            rostro = rostros[0]
+            landmarks = rostro.landmarks
+            if landmarks is None or len(landmarks) < 2:
+                continue
 
-            if rostros:
-                rostro = rostros[0]
-                landmarks = rostro.landmarks
+            rostro_alineado = alinear_rostro(frame, landmarks)
+            if rostro_alineado is None:
+                continue
+            if es_imagen_borrosa(rostro_alineado, umbral=UMBRAL_CALIDAD_BLUR):
+                continue
 
-                if landmarks is not None and len(landmarks) >= 2:
-                    rostro_alineado = alinear_rostro(frame, landmarks)
+            gray = cv2.cvtColor(rostro_alineado, cv2.COLOR_BGR2GRAY)
+            if np.mean(gray) < UMBRAL_BRILLO_MIN:
+                continue
 
-                    if rostro_alineado is not None:
-                        if es_imagen_borrosa(rostro_alineado, umbral=UMBRAL_CALIDAD_BLUR):
-                            mensaje_estado = "BORROSA - descartando"
-                            color_mensaje = (0, 0, 255)
-                        else:
-                            gray = cv2.cvtColor(rostro_alineado, cv2.COLOR_BGR2GRAY)
-                            brillo = np.mean(gray)
-                            if brillo < UMBRAL_BRILLO_MIN:
-                                mensaje_estado = "MUY OSCURO - descartando"
-                                color_mensaje = (0, 0, 255)
-                            else:
-                                if check_liveness:
-                                    # Anti-spoofing check
-                                    try:
-                                        resultado_spoof = spoofer.predict(frame, rostro.bbox)
-                                        if not resultado_spoof.is_real or resultado_spoof.confidence < UMBRAL_LIVENESS_MIN:
-                                            mensaje_estado = f"SPOOF ({resultado_spoof.confidence:.2f}) - descartando"
-                                            color_mensaje = (0, 0, 255)
-                                        else:
-                                            mensaje_estado = "OK - capturando"
-                                            color_mensaje = (0, 255, 0)
-                                            rostro_listo = rostro_alineado
-                                    except Exception:
-                                        mensaje_estado = "ERROR LIVENESS - descartando"
-                                        color_mensaje = (0, 0, 255)
-                                else:
-                                    mensaje_estado = "OK - capturando"
-                                    color_mensaje = (0, 255, 0)
-                                    rostro_listo = rostro_alineado
+            if check_liveness:
+                try:
+                    resultado_spoof = spoofer.predict(frame, rostro.bbox)
+                    if not resultado_spoof.is_real or resultado_spoof.confidence < UMBRAL_LIVENESS_MIN:
+                        continue
+                except Exception:
+                    continue
 
-                                # Filtro de Diversidad de Poses
-                                if rostro_listo is not None:
-                                    img_limpia = aplicar_clahe(rostro_listo)
-                                    rostros_crop = detector.detect(img_limpia)
-                                    if rostros_crop:
-                                        vec = recognizer.get_normalized_embedding(img_limpia, rostros_crop[0].landmarks)
-                                        
-                                        # Calcular similitud máxima con los ya guardados
-                                        for v_prev in vectores_cap:
-                                            sim = np.dot(vec.flatten(), v_prev.flatten())
-                                            if sim > max_sim_pose:
-                                                max_sim_pose = sim
-                                        
-                                        if max_sim_pose > 0.95:
-                                            mensaje_estado = f"POSE REPETIDA ({max_sim_pose:.2f}) - descartando"
-                                            color_mensaje = (0, 0, 255)
-                                            rostro_listo = None
-                                            vec_temp = None
-                                        else:
-                                            vec_temp = vec
-                                    else:
-                                        rostro_listo = None
-                                        vec_temp = None
+            rostros_crop = detector.detect(rostro_alineado)
+            if not rostros_crop:
+                continue
+            vec = embedding_facial(recognizer, rostro_alineado, _mejor_rostro(rostros_crop).landmarks)
 
-                        h_crop, w_crop = rostro_alineado.shape[:2]
-                        if (
-                            10 + h_crop < display.shape[0]
-                            and 10 + w_crop < display.shape[1]
-                        ):
-                            display[10 : 10 + h_crop, 10 : 10 + w_crop] = rostro_alineado
-                            cv2.rectangle(
-                                display,
-                                (10, 10),
-                                (10 + w_crop, 10 + h_crop),
-                                color_mensaje,
-                                2,
-                            )
+            max_sim_pose = max((float(np.dot(vec, v)) for v in vectores_cap), default=0.0)
+            if max_sim_pose > UMBRAL_POSE_REPETIDA:
+                continue
 
+            filename = path_estudiante / f"{nombre}_{count}.jpg"
+            cv2.imwrite(str(filename), rostro_alineado)
+            vectores_cap.append(vec)
+            count += 1
+            print(f"  Foto {count}/{MAX_FOTOS} (sim max con prev: {max_sim_pose:.3f})")
+
+            if mostrar:
+                display = frame.copy()
                 x1, y1, x2, y2 = map(int, rostro.bbox)
-                cv2.rectangle(display, (x1, y1), (x2, y2), color_mensaje, 2)
-
-            if count < MAX_FOTOS:
-                progreso = int((count / MAX_FOTOS) * 100)
-                instruccion = f"Extrayendo... ({progreso}%)"
-            else:
-                instruccion = "Extraccion completada"
-                color_mensaje = (0, 255, 255)
-
-            h_frame = display.shape[0]
-            ancho_barra = int((count / MAX_FOTOS) * display.shape[1])
-            cv2.rectangle(
-                display, (0, h_frame - 15), (ancho_barra, h_frame), (0, 255, 0), -1
-            )
-            cv2.putText(
-                display,
-                f"Fotos: {count}/{MAX_FOTOS}",
-                (20, h_frame - 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (255, 255, 255),
-                2,
-            )
-            cv2.putText(
-                display,
-                instruccion,
-                (20, h_frame - 80),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 255, 255),
-                2,
-            )
-            cv2.putText(
-                display,
-                mensaje_estado,
-                (150, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                color_mensaje,
-                2,
-            )
-
-            cv2.imshow(window_name, display)
-
-            if rostro_listo is not None and count < MAX_FOTOS:
-                filename = path_estudiante / f"{nombre}_{count}.jpg"
-                cv2.imwrite(str(filename), rostro_listo)
-                vectores_cap.append(vec_temp)
-                count += 1
-                print(f"  Foto {count}/{MAX_FOTOS} (sim max con prev: {max_sim_pose:.3f})")
-
-            if count >= MAX_FOTOS:
-                print("Maximo de fotos alcanzado.")
-                break
-
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
-                print("Cancelado por el usuario.")
-                break
-
+                cv2.rectangle(display, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(display, f"Fotos: {count}/{MAX_FOTOS}", (20, 40),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                cv2.imshow(window_name, display)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    print("Cancelado por el usuario.")
+                    break
     finally:
-        if cap is not None:
-            cap.release()
-        cv2.destroyAllWindows()
+        cap.release()
+        if mostrar:
+            cv2.destroyAllWindows()
         print(f"\nExtraccion finalizada: {count} fotos")
 
-    if count < 10:
-        print("Advertencia: pocas fotos. La calidad del reconocimiento puede ser baja.")
+    if count < MIN_FOTOS:
+        print(f"Error: solo {count} fotos válidas (mínimo {MIN_FOTOS}). No se guarda en la DB.")
+        return None
 
-    # --- Generacion de embeddings ---
     print("\nGenerando embeddings...")
-
     db_embeddings = {}
-    if Path(db_file).exists():
+    db_file = Path(db_file)
+    if db_file.exists():
         with open(db_file, "rb") as f:
             db_embeddings = pickle.load(f)
         print(f"Base de datos cargada: {len(db_embeddings)} personas")
 
-    vectores_estudiante = []
-    extensiones_validas = {".jpg", ".jpeg", ".png"}
-    archivos_validos = [
-        p for p in path_estudiante.iterdir() if p.suffix.lower() in extensiones_validas
-    ]
+    if nombre in db_embeddings:
+        print(f"Aviso: '{nombre}' ya existía en la DB y será reemplazado.")
 
-    for i, ruta_imagen in enumerate(sorted(archivos_validos)):
+    vectores_estudiante = []
+    for ruta_imagen in sorted(path_estudiante.glob("*.jpg")):
         img = cv2.imread(str(ruta_imagen))
         if img is None or img.size == 0:
             print(f"No se pudo leer: {ruta_imagen.name}")
             continue
+        rostros = detector.detect(img)
+        if not rostros:
+            continue
+        vectores_estudiante.append(
+            embedding_facial(recognizer, img, _mejor_rostro(rostros).landmarks)
+        )
 
-        img_limpia = aplicar_clahe(img)
-        rostros = detector.detect(img_limpia)
-        if rostros:
-            vector = recognizer.get_normalized_embedding(img_limpia, rostros[0].landmarks)
-            vectores_estudiante.append(vector)
+    if len(vectores_estudiante) < MIN_FOTOS:
+        print(f"Error: solo {len(vectores_estudiante)} embeddings válidos (mínimo {MIN_FOTOS}).")
+        return None
 
-        if (i + 1) % 10 == 0:
-            print(f"  {i + 1}/{len(archivos_validos)} fotos procesadas...")
+    centroide = np.mean(vectores_estudiante, axis=0)
+    db_embeddings[nombre] = centroide / np.linalg.norm(centroide)
 
-    if vectores_estudiante:
-        centroide = np.mean(vectores_estudiante, axis=0)
-        centroide_normalizado = centroide / np.linalg.norm(centroide)
-        db_embeddings[nombre] = centroide_normalizado
-
-        ruta_temporal = Path(db_file).with_suffix(".pkl.tmp")
-        try:
-            with open(ruta_temporal, "wb") as f:
-                pickle.dump(db_embeddings, f)
-            ruta_temporal.replace(db_file)
-            print("Base de datos actualizada.")
-        except Exception as e:
-            print(f"Error al guardar: {e}")
-            if ruta_temporal.exists():
-                ruta_temporal.unlink()
-    else:
-        print(f"No se pudieron extraer embeddings para {nombre}.")
+    ruta_temporal = db_file.with_suffix(".pkl.tmp")
+    try:
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(ruta_temporal, "wb") as f:
+            pickle.dump(db_embeddings, f)
+        ruta_temporal.replace(db_file)
+        print(f"Base de datos actualizada: {db_file}")
+    except Exception as e:
+        print(f"Error al guardar: {e}")
+        if ruta_temporal.exists():
+            ruta_temporal.unlink()
+        return None
 
     print(f"\nTotal registradas: {len(db_embeddings)}")
     for n in db_embeddings:
@@ -301,8 +208,4 @@ if __name__ == "__main__":
         exit()
 
     ruta_video = input("Ruta del archivo de video: ").strip()
-    
-    liveness_input = input("¿Activar validación de liveness (anti-spoofing)? (s/N): ").strip().lower()
-    check_liveness = liveness_input == 's'
-    
-    registrar_desde_video(nombre, ruta_video, check_liveness=check_liveness)
+    registrar_desde_video(nombre, ruta_video)
