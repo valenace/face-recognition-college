@@ -60,6 +60,7 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3.bak
 
 # Flask stuff:
 instance/
@@ -209,6 +210,6 @@ __marimo__/
 # Own folders
 
 /data/
-/experiments/dataset_pro_old
+/experiments/
 /captures
 /media
