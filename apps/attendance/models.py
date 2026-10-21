@@ -3,15 +3,52 @@ from django.conf import settings
 from apps.academic.models import AsignacionClase, Estudiante
 from datetime import datetime
 from django.utils import timezone
+from pgvector.django import HnswIndex, VectorField
+
 
 class FaceEmbedding(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="face_data")
-    embedding = models.JSONField()  # guardar lista de floats
+    """Vector facial (512 d) del usuario, con metadatos de origen.
+
+    Sustituye al archivo `data/database_embeddings.pkl`: la base vectorial es
+    PostgreSQL + pgvector, y el usuario aporta nombre, apellido y rol.
+    """
+
+    class Fuente(models.TextChoices):
+        VIDEO = "VIDEO", "Video de registro"
+        IMPORTADO = "IMPORTADO", "Importado del pickle"
+        WEB = "WEB", "Registro web (IA)"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="face_data",
+        verbose_name="usuario",
+    )
+    embedding = VectorField(dimensions=512, verbose_name="vector facial")
+    modelo = models.CharField(max_length=50, default="arcface", verbose_name="modelo")
+    n_muestras = models.PositiveIntegerField(default=0, verbose_name="n.º de muestras")
+    fuente = models.CharField(
+        max_length=20, choices=Fuente.choices, default=Fuente.WEB, verbose_name="fuente"
+    )
+    fecha = models.DateTimeField(default=timezone.now, verbose_name="fecha de registro")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = "embedding facial"
+        verbose_name_plural = "embeddings faciales"
+        indexes = [
+            HnswIndex(
+                name="faceembedding_hnsw",
+                fields=["embedding"],
+                m=16,
+                ef_construction=64,
+                opclasses=["vector_cosine_ops"],
+            ),
+        ]
+
     def __str__(self):
-        return f"Embedding for {self.user.username}"
+        return f"Embedding de {self.user.get_full_name() or self.user.username}"
 
 
 class SesionClase(models.Model):

@@ -5,6 +5,10 @@ django
 djangorestframework
 psycopg2-binary
 
+# --- Base de datos vectorial ---
+# pgvector: extensión de PostgreSQL + integración con Django (VectorField, índices HNSW)
+pgvector
+
 # --- Computación y Visión ---
 numpy
 opencv-python

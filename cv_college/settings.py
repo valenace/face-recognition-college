@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Postgres (índices vectoriales de pgvector)
+    "django.contrib.postgres",
     # Third-Party
     "rest_framework",
     # Local Apps
@@ -93,10 +95,18 @@ DATABASES = {
 
 import sys
 if 'test' in sys.argv:
+    # Las pruebas usan PostgreSQL (no SQLite) porque `FaceEmbedding.embedding` es
+    # un VectorField de pgvector y SQLite no tiene ese tipo.
+    # Requiere que el rol pueda crear bases de prueba:
+    #   sudo -u postgres psql -c "ALTER ROLE cv_college_user CREATEDB;"
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "test_db.sqlite3",
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "cv_college_test_db",
+            "USER": "cv_college_user",
+            "PASSWORD": "cv_college_2026",
+            "HOST": "localhost",
+            "PORT": "5432",
         }
     }
 

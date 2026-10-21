@@ -3,9 +3,11 @@ from .models import FaceEmbedding, SesionClase, RegistroAsistencia
 
 @admin.register(FaceEmbedding)
 class FaceEmbeddingAdmin(admin.ModelAdmin):
-    list_display = ("user", "created_at", "updated_at")
-    search_fields = ("user__username", "user__email")
-    ordering = ("-created_at",)
+    list_display = ("user", "modelo", "n_muestras", "fuente", "fecha", "updated_at")
+    list_filter = ("modelo", "fuente")
+    search_fields = ("user__username", "user__first_name", "user__last_name", "user__email")
+    ordering = ("-updated_at",)
+    readonly_fields = ("embedding", "created_at", "updated_at")
 
 
 @admin.register(SesionClase)

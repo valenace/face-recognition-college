@@ -121,7 +121,8 @@ A continuación se detalla el ecosistema de software organizado por su rol técn
 | **`Django`** (5.2) | Framework web principal. Gestiona la lógica de negocio, autenticación, control de acceso basado en roles (RBAC) y persistencia de asistencias y auditorías. |
 | **`djangorestframework`** (DRF) | Creación de endpoints RESTful para la API de enrolamiento y consulta de asistencia biométrica. |
 | **`psycopg2-binary`** | Conector oficial para la base de datos relacional **PostgreSQL** (`cv_college_db`). |
-| **`pickle`** (Estándar de Python) | Serialización y deserialización binaria de la base de datos de firmas biométricas (`database_embeddings.pkl`). |
+| **`pgvector`** | Extensión de PostgreSQL para búsqueda vectorial. El modelo `FaceEmbedding` guarda un vector de 512 d por usuario (`VectorField`) con índice HNSW y similitud coseno; es la fuente de verdad de los centroides. |
+| **`pickle`** (Estándar de Python) | Solo como respaldo histórico: `database_embeddings.pkl` se usa para importar los centroides iniciales (`manage.py importar_centroides`). |
 
 ### 5.4 Testing y Calidad de Código
 
