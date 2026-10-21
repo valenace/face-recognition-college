@@ -128,6 +128,9 @@ class RegistroBiometricoView(APIView):
             FaceEmbedding.objects.create(
                 user=usuario,
                 embedding=resultado["embedding"],
+                modelo="arcface",
+                n_muestras=resultado.get("muestras", 0),
+                fuente=FaceEmbedding.Fuente.WEB,
             )
 
             logger.info(f"Estudiante '{id_usuario}' registrado correctamente.")

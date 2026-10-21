@@ -137,7 +137,6 @@ class EnrolarRostroAPI(RoleRequiredMixin, View):
             import base64
             import numpy as np
             import cv2
-            import random
             import re
             import tempfile
             import os
@@ -146,6 +145,7 @@ class EnrolarRostroAPI(RoleRequiredMixin, View):
             nombre_limpio = re.sub(r"\s+", "_", user.get_full_name())
             id_usuario = f"{user.username}_{nombre_limpio}"
             embedding_list = None
+            muestras = 0
 
             # Si el método es de video o el string contiene data:video
             es_video = (metodo == 'video-tab') or (imagen_base64.startswith('data:video/'))
@@ -177,6 +177,7 @@ class EnrolarRostroAPI(RoleRequiredMixin, View):
 
                     if resultado["exito"]:
                         embedding_list = resultado["embedding"]
+                        muestras = resultado.get("muestras", 0)
                     else:
                         return JsonResponse({'status': 'error', 'message': resultado["mensaje"]}, status=400)
 
@@ -210,32 +211,36 @@ class EnrolarRostroAPI(RoleRequiredMixin, View):
                         principal = max(rostros, key=lambda r: (r.bbox[2]-r.bbox[0]) * (r.bbox[3]-r.bbox[1]))
                         vec = motor.recognizer.get_normalized_embedding(f_ecualizado, principal.landmarks)
                         embedding_list = vec.flatten().tolist()
-
-                        # Guardar en pickle para el motor en tiempo real
-                        motor.db_embeddings[id_usuario] = vec.flatten()
-                        motor._guardar_db()
+                        muestras = 1
                     except Exception as e:
-                        # Fallback: Generar un vector aleatorio de 512 dimensiones único si falla la IA
-                        print(f"[IA ENROLAR] Fallback a vector aleatorio por error: {e}")
-                        embedding_list = [random.uniform(-0.15, 0.15) for _ in range(512)]
+                        return JsonResponse(
+                            {'status': 'error',
+                             'message': f'No se pudo extraer el embedding del rostro: {e}'},
+                            status=400,
+                        )
                 else:
-                    # Fallback para placeholder
-                    embedding_list = [random.uniform(-0.15, 0.15) for _ in range(512)]
+                    return JsonResponse(
+                        {'status': 'error',
+                         'message': 'No se recibió una imagen válida para registrar.'},
+                        status=400,
+                    )
 
-            # Guardar/Actualizar en SQLite
+            if not embedding_list:
+                return JsonResponse(
+                    {'status': 'error',
+                     'message': 'No se generó ningún embedding: no se guardó nada.'},
+                    status=400,
+                )
+
             FaceEmbedding.objects.update_or_create(
                 user=user,
-                defaults={'embedding': embedding_list}
+                defaults={
+                    'embedding': embedding_list,
+                    'modelo': 'arcface',
+                    'n_muestras': muestras,
+                    'fuente': FaceEmbedding.Fuente.WEB,
+                },
             )
-
-            # Para placeholders en testing, guardar también en pickle
-            if not es_video and img is None:
-                try:
-                    motor = RegistroBiometrico()
-                    motor.db_embeddings[id_usuario] = np.array(embedding_list, dtype=np.float32)
-                    motor._guardar_db()
-                except Exception:
-                    pass
 
             return JsonResponse({'status': 'success', 'message': 'Biometría registrada exitosamente.'})
         except Exception as e:

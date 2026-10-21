@@ -118,17 +118,17 @@ class CoordinationViewsTestCase(TestCase):
         # El estudiante no tiene rostro enrolado
         self.assertEqual(estudiantes[0].tiene_rostro, 0)
         
-        # Crear face embedding
-        FaceEmbedding.objects.create(user=self.student_user, embedding=[0.1, 0.2, 0.3])
+        # Crear face embedding (512 dimensiones, como exige pgvector)
+        FaceEmbedding.objects.create(user=self.student_user, embedding=[0.0] * 511 + [1.0])
         
         response = self.client.get(url)
         estudiantes = response.context['estudiantes']
         self.assertEqual(estudiantes[0].tiene_rostro, 1)
 
-    def test_enrolar_rostro_api(self):
+    def test_enrolar_rostro_rechaza_placeholder(self):
+        """Un placeholder sin imagen real ya no genera un vector aleatorio: falla."""
         url = reverse('academic:api-enrolar-rostro')
-        
-        # Probar POST con coordinador
+
         self.client.login(username="coordinator", password="password123")
         data = {
             'user_id': self.student_user.id,
@@ -139,12 +139,8 @@ class CoordinationViewsTestCase(TestCase):
             data=json.dumps(data),
             content_type='application/json'
         )
-        self.assertEqual(response.status_code, 200)
-        resp_json = response.json()
-        self.assertEqual(resp_json['status'], 'success')
-        
-        # Verificar que se creó
-        self.assertTrue(FaceEmbedding.objects.filter(user=self.student_user).exists())
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(FaceEmbedding.objects.filter(user=self.student_user).exists())
 
     def test_visor_academico(self):
         url = reverse('academic:visor-academico')
