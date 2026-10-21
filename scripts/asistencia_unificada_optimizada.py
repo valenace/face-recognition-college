@@ -46,10 +46,14 @@ COLORES = {
 
 class MotorAsistencia:
     def __init__(
-        self, db_path="data/database_embeddings.pkl", csv_path="data/asistencia.csv"
+        self,
+        db_path="data/database_embeddings.pkl",
+        csv_path="data/asistencia.csv",
+        usar_bd=True,
     ):
         self.db_path = Path(db_path)
         self.csv_path = Path(csv_path)
+        self.usar_bd = usar_bd
 
         # Calibrado en Fase 4 con decisión de 3 frames: 0.30 da precisión 1.000
         # y 0 falsos positivos sobre la muestra etiquetada (docs/analisis/unc/04_resultados_curva_roc.md §7).
@@ -73,15 +77,28 @@ class MotorAsistencia:
 
         print("\n[INFO] Inicializando Motor de Asistencia Optimizado...")
 
-        if not self.db_path.exists():
-            raise FileNotFoundError(
-                f"No se encontró la base de datos en {self.db_path}"
-            )
+        if usar_bd:
+            # La base vectorial (PostgreSQL + pgvector) es la fuente de verdad.
+            from core.db_config import cargar_centroides
 
-        with open(self.db_path, "rb") as f:
-            self.db = pickle.load(f)
-        if not self.db:
-            raise ValueError(f"La base de datos {self.db_path} está vacía")
+            print("[INFO] Cargando centroides desde pgvector...")
+            self.db = cargar_centroides()
+            origen = "PostgreSQL/pgvector"
+            if not self.db:
+                raise ValueError(
+                    "La base vectorial está vacía: registra al menos un estudiante "
+                    "(python manage.py importar_centroides)."
+                )
+        else:
+            if not self.db_path.exists():
+                raise FileNotFoundError(
+                    f"No se encontró la base de datos en {self.db_path}"
+                )
+            with open(self.db_path, "rb") as f:
+                self.db = pickle.load(f)
+            origen = str(self.db_path)
+            if not self.db:
+                raise ValueError(f"La base de datos {self.db_path} está vacía")
 
         self.nombres_lista = list(self.db.keys())
         vectores = np.array([np.asarray(v).reshape(-1) for v in self.db.values()], dtype="float32")
@@ -93,7 +110,8 @@ class MotorAsistencia:
             vectores = vectores / normas
 
         print(
-            f"[INFO] Compilando Índice FAISS para {len(self.nombres_lista)} estudiantes..."
+            f"[INFO] Compilando Índice FAISS para {len(self.nombres_lista)} estudiantes "
+            f"desde {origen}..."
         )
         self.indice_faiss = faiss.IndexFlatIP(512)
         self.indice_faiss.add(vectores)

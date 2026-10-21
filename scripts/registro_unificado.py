@@ -27,21 +27,34 @@ class RegistroBiometrico:
         self.db_embeddings = self._cargar_db()
 
     def _cargar_db(self):
-        if self.db_path.exists():
-            with open(self.db_path, "rb") as f:
-                return pickle.load(f)
-        return {}
-
-    def _guardar_db(self):
-        ruta_temporal = self.db_path.with_suffix('.pkl.tmp')
+        """Carga los centroides desde la base vectorial (pgvector)."""
         try:
-            with open(ruta_temporal, "wb") as f:
-                pickle.dump(self.db_embeddings, f)
-            ruta_temporal.replace(self.db_path)
+            from core.db_config import cargar_centroides
+
+            return cargar_centroides()
         except Exception as e:
-            print(f"Error al guardar DB: {e}")
-            if ruta_temporal.exists(): 
-                ruta_temporal.unlink()
+            print(f"[AVISO] No se pudo leer la base vectorial: {e}")
+            return {}
+
+    def _guardar_db(self, clave=None):
+        """Persiste en pgvector el último embedding calculado.
+
+        Desde la web el Usuario lo crea la API después del cálculo, así que aquí
+        solo se actualiza si el usuario ya existe (`crear_usuario=False`).
+        """
+        if clave is None or clave not in self.db_embeddings:
+            return
+        try:
+            from core.db_config import guardar_centroide
+
+            if guardar_centroide(
+                clave, self.db_embeddings[clave], fuente="WEB", crear_usuario=False
+            ):
+                print(f"[BD] Embedding actualizado para {clave}")
+            else:
+                print(f"[BD] '{clave}' aún no existe como usuario; lo guarda la API.")
+        except Exception as e:
+            print(f"Error al guardar en la base vectorial: {e}")
 
     def _evaluar_calidad(self, frame, rostro, check_liveness=False):
         x1, y1, x2, y2 = map(int, rostro.bbox)
@@ -181,7 +194,7 @@ class RegistroBiometrico:
             centroide = np.mean(vectores_extraidos, axis=0)
             centroide_normalizado = centroide / np.linalg.norm(centroide)
             self.db_embeddings[id_usuario] = centroide_normalizado
-            self._guardar_db()
+            self._guardar_db(id_usuario)
             print("\nRegistro exitoso y guardado en la base de datos.")
         else:
             print("\nFallo el registro. No se capturaron suficientes frames de calidad.")
@@ -280,7 +293,7 @@ class RegistroBiometrico:
             centroide = np.mean(vectores_extraidos, axis=0)
             centroide_normalizado = centroide / np.linalg.norm(centroide)
             self.db_embeddings[id_usuario] = centroide_normalizado
-            self._guardar_db()
+            self._guardar_db(id_usuario)
 
             return {
                 "exito": True,

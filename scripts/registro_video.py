@@ -1,5 +1,4 @@
 import cv2
-import pickle
 import numpy as np
 from pathlib import Path
 import sys
@@ -151,15 +150,13 @@ def registrar_desde_video(
         return None
 
     print("\nGenerando embeddings...")
-    db_embeddings = {}
-    db_file = Path(db_file)
-    if db_file.exists():
-        with open(db_file, "rb") as f:
-            db_embeddings = pickle.load(f)
-        print(f"Base de datos cargada: {len(db_embeddings)} personas")
+    from core.db_config import cargar_centroides, guardar_centroide
 
-    if nombre in db_embeddings:
-        print(f"Aviso: '{nombre}' ya existía en la DB y será reemplazado.")
+    existentes = cargar_centroides()
+    print(f"Base vectorial cargada: {len(existentes)} personas")
+
+    if nombre in existentes:
+        print(f"Aviso: '{nombre}' ya existía en la base y será reemplazado.")
 
     vectores_estudiante = []
     for ruta_imagen in sorted(path_estudiante.glob("*.jpg")):
@@ -179,26 +176,27 @@ def registrar_desde_video(
         return None
 
     centroide = np.mean(vectores_estudiante, axis=0)
-    db_embeddings[nombre] = centroide / np.linalg.norm(centroide)
+    centroide = centroide / np.linalg.norm(centroide)
 
-    ruta_temporal = db_file.with_suffix(".pkl.tmp")
-    try:
-        db_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(ruta_temporal, "wb") as f:
-            pickle.dump(db_embeddings, f)
-        ruta_temporal.replace(db_file)
-        print(f"Base de datos actualizada: {db_file}")
-    except Exception as e:
-        print(f"Error al guardar: {e}")
-        if ruta_temporal.exists():
-            ruta_temporal.unlink()
+    print("\nGuardando en la base vectorial (pgvector)...")
+    guardado = guardar_centroide(
+        nombre,
+        centroide,
+        modelo="arcface",
+        n_muestras=len(vectores_estudiante),
+        fuente="VIDEO",
+        crear_usuario=True,
+    )
+    if not guardado:
+        print("Error: no se pudo guardar el embedding en la base.")
         return None
 
-    print(f"\nTotal registradas: {len(db_embeddings)}")
-    for n in db_embeddings:
+    total = cargar_centroides()
+    print(f"\nTotal registradas: {len(total)}")
+    for n in total:
         print(f"  {n}")
 
-    return db_embeddings
+    return total
 
 
 if __name__ == "__main__":

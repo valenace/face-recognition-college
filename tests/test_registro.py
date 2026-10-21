@@ -40,51 +40,54 @@ class TestCalcularIoU:
 
 @pytest.mark.unit
 class TestBaseDatos:
-    def test_cargar_db_vacio(self, tmp_db_path):
-        from scripts.registro_unificado import RegistroBiometrico
-        reg = RegistroBiometrico.__new__(RegistroBiometrico)
-        reg.db_path = tmp_db_path
-        resultado = reg._cargar_db()
-        assert resultado == {}
+    """El almacenamiento pasó de pickle a PostgreSQL + pgvector (core.db_config)."""
 
-    def test_guardar_y_cargar_roundtrip(self, tmp_db_path, sample_db):
+    def _registro(self):
         from scripts.registro_unificado import RegistroBiometrico
-        reg = RegistroBiometrico.__new__(RegistroBiometrico)
-        reg.db_path = tmp_db_path
-        reg.db_embeddings = sample_db
-        reg._guardar_db()
+        return RegistroBiometrico.__new__(RegistroBiometrico)
 
-        cargado = reg._cargar_db()
-        assert set(cargado.keys()) == set(sample_db.keys())
-        for k in sample_db:
-            np.testing.assert_array_almost_equal(cargado[k], sample_db[k])
+    def test_cargar_db_delega_en_pgvector(self, monkeypatch):
+        import core.db_config
+        esperado = {"alexa": np.ones(512, dtype="float32")}
+        monkeypatch.setattr(core.db_config, "cargar_centroides", lambda: esperado)
+        assert self._registro()._cargar_db() == esperado
 
-    def test_guardar_atomico_crea_archivo(self, tmp_db_path):
-        from scripts.registro_unificado import RegistroBiometrico
-        reg = RegistroBiometrico.__new__(RegistroBiometrico)
-        reg.db_path = tmp_db_path
+    def test_cargar_db_si_la_bd_falla_devuelve_vacio(self, monkeypatch):
+        import core.db_config
+
+        def boom():
+            raise RuntimeError("sin conexión")
+
+        monkeypatch.setattr(core.db_config, "cargar_centroides", boom)
+        assert self._registro()._cargar_db() == {}
+
+    def test_guardar_sin_clave_no_hace_nada(self, monkeypatch):
+        import core.db_config
+        llamadas = []
+        monkeypatch.setattr(
+            core.db_config, "guardar_centroide",
+            lambda *a, **k: llamadas.append(a) or True,
+        )
+        reg = self._registro()
         reg.db_embeddings = {"u1": np.zeros(512, dtype="float32")}
         reg._guardar_db()
-        assert tmp_db_path.exists()
-        assert not tmp_db_path.with_suffix('.pkl.tmp').exists()
+        assert llamadas == []
 
-    def test_pickle_corrupto(self, tmp_db_path):
-        tmp_db_path.write_bytes(b"esto no es pickle valido")
-        from scripts.registro_unificado import RegistroBiometrico
-        reg = RegistroBiometrico.__new__(RegistroBiometrico)
-        reg.db_path = tmp_db_path
-        with pytest.raises(Exception):
-            reg._cargar_db()
+    def test_guardar_persiste_solo_la_clave(self, monkeypatch):
+        import core.db_config
+        llamadas = []
 
-    def test_db_con_embedding_nan(self, tmp_db_path):
-        from scripts.registro_unificado import RegistroBiometrico
-        reg = RegistroBiometrico.__new__(RegistroBiometrico)
-        reg.db_path = tmp_db_path
-        reg.db_embeddings = {"bad_user": np.array([np.nan] * 512, dtype="float32")}
-        reg._guardar_db()
-        cargado = reg._cargar_db()
-        assert "bad_user" in cargado
-        assert np.isnan(cargado["bad_user"]).all()
+        def falso(clave, vector, **kwargs):
+            llamadas.append((clave, kwargs))
+            return True
+
+        monkeypatch.setattr(core.db_config, "guardar_centroide", falso)
+        reg = self._registro()
+        reg.db_embeddings = {"u1": np.ones(512, dtype="float32")}
+        reg._guardar_db("u1")
+        assert len(llamadas) == 1
+        assert llamadas[0][0] == "u1"
+        assert llamadas[0][1]["crear_usuario"] is False
 
 
 @pytest.mark.unit
