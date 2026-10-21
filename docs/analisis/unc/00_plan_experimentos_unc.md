@@ -124,7 +124,8 @@ graph TD
     F4["FASE 4 ✅\nCurva ROC\nUmbral Óptimo"] --> F5
     F5["FASE 5 ✅\nMejoras al Motor\nde Inferencia"] --> F6
     F6["FASE 6 ✅\nEvaluación Final\nen Videos del Salón"] --> F7
-    F7["FASE 7 ✅\nDocumentación\nReporte Final"]
+    F7["FASE 7 ✅\nDocumentación\nReporte Final"] --> F8
+    F8["FASE 8 ✅\nRevalidación\nVideo 3 (11 partes)"]
 ```
 
 ---
@@ -679,6 +680,62 @@ docs/analisis/unc/06_resultados_evaluacion_salon.md
 9. Resultados Fase 6: Evaluación en Salón
 10. Análisis de Errores (TP/FP/FN con ejemplos visuales)
 11. Conclusiones y Trabajo Futuro
+```
+
+---
+
+## FASE 8 — Revalidación en el Video 3 (aula distinta)
+
+### Estado: ✅ Completada (2026-10-20). Ver `08_resultados_video3.md`.
+
+### Objetivo
+
+Repetir la evaluación del motor definitivo en una **segunda aula**, con otro video y
+otra sesión, para comprobar si la cobertura y el umbral 0.30 se sostienen. Además, medir
+el costo de procesar el video **partido en 11 archivos** (escenario real de carga).
+
+### Protocolo
+
+1. Verificar que las 11 partes (`lv_0_2026*.mp4`) son un corte continuo del video 3.
+2. Correr el motor definitivo sobre cada parte, reiniciando el estado en cada archivo.
+3. Verificar identidad visualmente, una captura por pista.
+4. Separar pistas de registrados y de no registrados, y recalcular el umbral a nivel de
+   pista (1 voto) frente a la regla de 3 votos.
+
+### Resultados
+
+| Métrica | Valor |
+|---|---|
+| Frames reales procesados | 3 808 (60 negros omitidos) |
+| Decisiones de rostro | 38 756 |
+| Cobertura de registrados presentes | **8/8** |
+| Confirmaciones del ausente (`jose`) | **0** |
+| Pistas confirmadas | 78 |
+| Errores de identidad | **1** (persona no registrada confirmada como `dani`, 30 frames) |
+| Precisión a nivel de pista | 0.987 |
+| Estudiantes no registrados en el aula | **21** (8 registrados presentes, 1 ausente) |
+| Pistas no registradas (ancho ≥ 40 px) | 74 |
+| FP con 1 voto a 0.30 / con 3 votos | 4/74 / **1/74** |
+| FP por persona no registrada | **1/21 (4.8 %)** |
+| Re-confirmación tras cada corte | mediana 1.31 s, máx 13.2 s |
+| Tasa de reconocimiento por frame | 19.8 % (39 % de caras < 30 px) |
+
+**Conclusión:** el umbral 0.30 se mantiene; la precisión la aporta la regla de 3 votos.
+Aparece el primer falso positivo de identidad del proyecto (1.3 % de las pistas), sin
+efecto sobre la asistencia.
+
+### Artefactos
+
+```
+experiments/unc/fase7_video3_partes.py
+experiments/unc/fase7_revision.py
+experiments/unc/fase7_desconocidos.py
+experiments/unc/fase7_pistas.py
+experiments/unc/fase7_pistas_sin_confirmar.py
+experiments/unc/fase7_agrupar_desconocidos.py
+experiments/unc/fase7_clusters.py
+experiments/unc/demo/prueba_2010_1600_video3/  (resultados, fuera de git)
+docs/analisis/unc/08_resultados_video3.md
 ```
 
 ---

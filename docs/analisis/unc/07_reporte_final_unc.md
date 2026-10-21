@@ -3,7 +3,7 @@
 **Proyecto:** CV College — reconocimiento facial para asistencia
 **Dataset:** `data/unc/` (primera data real de la universidad)
 **Fecha del reporte:** 2026-10-20
-**Estado:** Fases 0 a 7 completadas.
+**Estado:** Fases 0 a 8 completadas.
 
 ---
 
@@ -51,6 +51,7 @@ Un video por estudiante, vertical, 1080×1920, entre 100 y 229 frames.
 |---|---|---|
 | `VID_20260907_102851.mp4` | 106.8 s (3 203 frames) | **Principal y etiquetado.** Estudiantes sentados, salen, regresan y miran a cámara |
 | `VID_20260907_105622.mp4` | 50.6 s (1 519 frames) | Generalización, sin etiquetas. Estudiantes interactuando |
+| `video5096333890499381162.mp4` (11 partes `lv_0_2026*.mp4`) | 124.0 s (3 710 frames), 128.9 s en las partes | **Revalidación (Fase 8).** Aula distinta, 8 registrados presentes y estudiantes no registrados |
 
 ### 2.3 Muestra etiquetada del salón
 
@@ -143,6 +144,26 @@ Video 2 (sin etiquetas): 6 estudiantes confirmados; `dani` y `carlos` revisados 
 
 ### Fase 7 — Este reporte
 
+### Fase 8 — Revalidación en el video 3 (aula distinta)
+Ver `08_resultados_video3.md`.
+
+| Medida | Resultado |
+|---|---|
+| Frames reales (11 partes) | 3 808 |
+| Cobertura de registrados presentes | **8 de 8** |
+| Confirmaciones del ausente (`jose`) | 0 |
+| Errores de identidad | **1** de 78 pistas (1.3 %) |
+| Pistas no registradas (ancho ≥ 40 px) | 74 |
+| Estudiantes no registrados en el aula | 21 (más 8 registrados presentes y 1 ausente) |
+| FP con 1 voto / con 3 votos a 0.30 | 4 de 74 / **1 de 74** |
+| FP por persona no registrada | **1 de 21 (4.8 %)** |
+| Re-confirmación tras cada corte | mediana 1.31 s, máx 13.2 s |
+
+El falso positivo fue una estudiante no registrada confirmada como `dani` durante 30
+frames (sim 0.336); no alteró la asistencia porque `dani` estaba confirmada en las 11
+partes por otras pistas. El umbral 0.30 no se movió: subirlo a 0.34 costaría 4 pistas
+correctas de `fran`, `jesus` y `kate`.
+
 ---
 
 ## 5. Análisis de errores
@@ -200,6 +221,7 @@ Para una misma cara, la confianza del modelo cambió de 0.805 a 0.970 solo por r
 - `03_resultados_robustez_accesorios.md`
 - `04_resultados_curva_roc.md`
 - `06_resultados_evaluacion_salon.md`
+- `08_resultados_video3.md`: revalidación en el video 3 (11 partes)
 - `03_bitacora_calculos.md`: cada cálculo con fórmula, librería y ejemplo.
 - `07_reporte_final_unc.md`: este documento.
 
@@ -223,10 +245,15 @@ Para una misma cara, la confianza del modelo cambió de 0.805 a 0.970 solo por r
 | `experiments/unc/fase4_multiframe.py` | 1 frame vs 3 frames |
 | `experiments/unc/fase6_evaluacion_salon.py` | Evaluación final del sistema |
 | `experiments/unc/demo_video_salon.py` | Corridas con video anotado y capturas |
+| `experiments/unc/fase7_video3_partes.py` | Corrida sobre las 11 partes del video 3 |
+| `experiments/unc/fase7_revision.py` | Hojas de revisión de identidad por pista |
+| `experiments/unc/fase7_pistas.py` | Confirmaciones débiles y pistas no registradas |
+| `experiments/unc/fase7_clusters.py` | Conteo de personas distintas entre las no registradas |
 
 ### Corridas principales
 - `experiments/unc/demo/prueba_2010_0935_final/`: evaluación final (video 1).
 - `experiments/unc/demo/prueba_1910_1602_video2/`: generalización (video 2).
+- `experiments/unc/demo/prueba_2010_1600_video3/`: revalidación (video 3, 11 partes).
 
 ### Motor
 - `scripts/asistencia_unificada_optimizada.py` (configuración final).

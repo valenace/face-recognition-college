@@ -266,3 +266,15 @@
 | 2026-10-20 | Fase 6: evaluación del motor final (umbral 0.30, conf 0.75, ancla 30, 3 votos) sobre el video 1 | 86 recortes con nombre, 157 desconocidos | cobertura 9/9; tiempo de confirmación 0.06–0.26 s; recorte inmediato 63/86 (73.3 %); ventana ±15 frames 76/80 (95 %); 0 errores de identidad; 1 falso positivo de 157 | `06_resultados_evaluacion_salon.md` |
 
 | 2026-10-20 | Fase 7: reporte final con consolidación de resultados y configuración definitiva | fases 0–6 | 9/9 cobertura; 95 % en ventana; 0 errores de identidad; 0.6 % FPR; umbral 0.30 | `docs/analisis/unc/07_reporte_final_unc.md` |
+
+| 2026-10-20 | Fase 8: verificación de continuidad del video 3 partido en 11 archivos (miniaturas 32×18, MAE contra el original) | 11 partes, 3 868 frames vs 3 710 del original | cadena continua del frame 0 al 3 709; MAE 0.06–0.23; 60 frames negros en la parte 1; +98 frames duplicados por re-exportar a 30.00 fps | `08_resultados_video3.md` §2 |
+
+| 2026-10-20 | Fase 8: corrida del motor final sobre las 11 partes, motor reiniciado por parte | 3 808 frames reales, 38 756 decisiones | 8/8 registrados presentes confirmados; `jose` (ausente) 0 confirmaciones; 7 403 confirmaciones; similitud media 0.328–0.497 | `08_resultados_video3.md` §3 |
+
+| 2026-10-20 | Fase 8: verificación de identidad por pista (78 confirmaciones revisadas) | 78 pistas, 1 recorte por pista | 77 correctas, **1 falsa identidad** (`dani`, parte 7 pista 3, sim 0.336, 30 frames) → precisión 0.987 | `08_resultados_video3.md` §4 |
+
+| 2026-10-20 | Fase 8: separación a nivel de pista entre registrados y no registrados | 78 pistas confirmadas vs 74 no confirmadas de ancho ≥ 40 px; 21 estudiantes no registrados | sim_max de las no registradas: p50 0.226, p95 0.306, máx 0.344; con 1 voto a 0.30 pasan 4/74, con 3 votos 1/74; **FP 1/21 personas (4.8 %) y 1/74 pistas (1.4 %)** | `08_resultados_video3.md` §5 |
+
+| 2026-10-20 | Fase 8: costo de re-confirmar tras cada corte (reinicio de estado) | 62 re-confirmaciones en 10 empalmes | mediana 1.31 s, media 2.57 s, máximo 13.2 s | `08_resultados_video3.md` §6 |
+
+| 2026-10-20 | Fase 8: tasa de reconocimiento por tamaño de cara | 37 334 decisiones (sin `CENTRATE`) | 20–30 px: 9.6 %; 30–40 px: 20.0 %; 40–60 px: 31.0 %; total 19.8 % | `08_resultados_video3.md` §7 |
