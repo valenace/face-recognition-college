@@ -74,6 +74,19 @@ class MotorAsistencia:
         # cómputo y muestra "Verificando" durante 2–3 frames; no hay interfaz en el
         # producto final. Ver docs/analisis/unc/02_resultados_registro.md §27.
         self.revalidar_cada = 30
+        # Dos pistas activas en el mismo frame no pueden ser la misma persona.
+        # Si dos reclaman la misma identidad y la diferencia de similitud supera este
+        # margen, la peor se degrada a Desconocido (ver
+        # docs/analisis/unc/09_incidente_identidad_dani.md).
+        self.margen_conflicto = 0.05
+        # Frames que se mantiene vetada una identidad para una pista que perdió el
+        # conflicto, mientras la pista ganadora siga anclada.
+        self.frames_veto = 90
+        self.vetos_identidad = {}
+        # Por debajo de esta similitud (y por encima del umbral) la identidad se
+        # muestra como "posible": el sistema no puede afirmarla con seguridad.
+        # No cambia la decisión ni la asistencia, solo la presentación.
+        self.umbral_revision = 0.40
 
         print("\n[INFO] Inicializando Motor de Asistencia Optimizado...")
 
@@ -210,7 +223,7 @@ class MotorAsistencia:
         ancla = self.identidades_ancladas.get(t_id)
         if ancla is not None:
             if self.frame_idx - ancla["frame"] < self.revalidar_cada:
-                return ancla["nombre"], ancla["similitud"], "ANCLADO", None, None
+                return ancla["nombre"], ancla["similitud"], "ANCLADO", None, None, ancla["nombre"]
             del self.identidades_ancladas[t_id]
 
         vec = embedding_facial(self.recognizer, frame, rostro.landmarks)
@@ -221,15 +234,28 @@ class MotorAsistencia:
 
         if sim <= self.umbral_similitud:
             self.votos_identidad.pop(t_id, None)
-            return "Desconocido", sim, "DESCONOCIDO", sim2, nombre2
+            return "Desconocido", sim, "DESCONOCIDO", sim2, nombre2, self.nombres_lista[idx[0][0]]
 
         candidato = self.nombres_lista[idx[0][0]]
+
+        # Si esta pista perdió un conflicto de identidad, se mantiene como
+        # Desconocido mientras la pista ganadora siga anclada.
+        veto = self.vetos_identidad.get(t_id)
+        if (
+            veto
+            and veto["nombre"] == candidato
+            and self.frame_idx <= veto["hasta"]
+            and veto["contra"] in self.identidades_ancladas
+        ):
+            self.votos_identidad.pop(t_id, None)
+            return "Desconocido", sim, "DESCONOCIDO", sim2, nombre2, candidato
+
         liveness = self._evaluar_liveness(frame, rostro.bbox)
         if liveness == "fraude":  # "omitido" (cara pequeña) continúa como válido
             self.votos_identidad.pop(t_id, None)
-            return "FRAUDE DETECTADO", sim, "FRAUDE", sim2, nombre2
+            return "FRAUDE DETECTADO", sim, "FRAUDE", sim2, nombre2, candidato
         if liveness == "error":
-            return "Error liveness", sim, "ERROR", sim2, nombre2
+            return "Error liveness", sim, "ERROR", sim2, nombre2, candidato
 
         conteo = self._contar_voto(t_id, candidato)
         if conteo >= self.votos_requeridos:
@@ -240,9 +266,65 @@ class MotorAsistencia:
             }
             self.votos_identidad.pop(t_id, None)
             self._registrar_asistencia(candidato, sim)
-            return candidato, sim, "CONFIRMADO", sim2, nombre2
+            return candidato, sim, "CONFIRMADO", sim2, nombre2, candidato
 
-        return f"Verificando {conteo}/{self.votos_requeridos}", sim, "VERIFICANDO", sim2, nombre2
+        return f"Verificando {conteo}/{self.votos_requeridos}", sim, "VERIFICANDO", sim2, nombre2, candidato
+
+    def _marcar_revision(self, decisiones):
+        """Marca las identidades de baja confianza para revisión visual.
+
+        No cambia la decisión ni la asistencia: solo indica que la similitud está
+        entre el umbral y `umbral_revision`, donde el sistema no puede afirmar la
+        identidad con seguridad (banda 0.30–0.40).
+        """
+        for decision in decisiones:
+            confirmada = decision["estado"] in ("CONFIRMADO", "ANCLADO")
+            sim = decision.get("similitud")
+            decision["revision"] = bool(
+                confirmada and sim is not None and sim < self.umbral_revision
+            )
+        return decisiones
+
+    def _resolver_conflictos(self, decisiones):
+        """Impide que dos pistas simultáneas compartan la misma identidad.
+
+        Dos caras no pueden ser la misma persona en el mismo frame. Si dos pistas
+        confirman el mismo nombre, se conserva la de mayor similitud y la otra vuelve
+        a Desconocido. Si la diferencia es menor que `margen_conflicto`, se dejan ambas
+        y se marca el motivo como ambiguo (puede ser un fragmento del tracker).
+        """
+        por_nombre = {}
+        for decision in decisiones:
+            if decision["estado"] in ("CONFIRMADO", "ANCLADO") and decision.get("similitud") is not None:
+                por_nombre.setdefault(decision["nombre"], []).append(decision)
+
+        for nombre, grupo in por_nombre.items():
+            if len(grupo) < 2:
+                continue
+            grupo.sort(key=lambda d: d["similitud"], reverse=True)
+            ganadora = grupo[0]
+            for otra in grupo[1:]:
+                diferencia = ganadora["similitud"] - otra["similitud"]
+                if diferencia >= self.margen_conflicto:
+                    self.identidades_ancladas.pop(otra["track_id"], None)
+                    self.votos_identidad.pop(otra["track_id"], None)
+                    self.vetos_identidad[otra["track_id"]] = {
+                        "nombre": nombre,
+                        "contra": ganadora["track_id"],
+                        "hasta": self.frame_idx + self.frames_veto,
+                    }
+                    otra["estado"] = "DESCONOCIDO"
+                    otra["nombre"] = "Desconocido"
+                    otra["motivo"] = f"conflicto_con_pista_{ganadora['track_id']}"
+                else:
+                    otra["motivo"] = f"identidad_ambigua_con_pista_{ganadora['track_id']}"
+
+        if self.frame_idx % 120 == 0:
+            self.vetos_identidad = {
+                track: veto for track, veto in self.vetos_identidad.items()
+                if veto["hasta"] > self.frame_idx
+            }
+        return decisiones
 
     def procesar_frame(self, frame):
         """Procesa un frame y devuelve decisiones estructuradas (sin dibujar ni mostrar)."""
@@ -284,17 +366,19 @@ class MotorAsistencia:
             if mejor_iou < 0.5 or r_asociado is None:
                 continue
 
-            nombre, sim, estado, sim2, nombre2 = self._decidir_identidad(frame, t_id, r_asociado)
+            nombre, sim, estado, sim2, nombre2, candidato = self._decidir_identidad(frame, t_id, r_asociado)
             decisiones.append({
                 "track_id": t_id, "bbox": (x1, y1, x2, y2),
                 "nombre": nombre, "similitud": sim, "estado": estado,
                 "confianza_det": round(float(r_asociado.confidence), 4),
                 "sim_top2": None if sim2 is None else round(sim2, 4),
                 "nombre2": nombre2,
+                "candidato": candidato,
                 "margen": None if sim2 is None else round(sim - sim2, 4),
             })
 
-        return decisiones
+        self._marcar_revision(decisiones)
+        return self._resolver_conflictos(decisiones)
 
     def iniciar_vigilancia(self, origen_video=0):
         cap = cv2.VideoCapture(origen_video)

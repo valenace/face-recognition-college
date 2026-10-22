@@ -53,6 +53,7 @@ def reiniciar_pistas(motor):
     motor.frame_idx = 0
     motor.identidades_ancladas = {}
     motor.votos_identidad = {}
+    motor.vetos_identidad = {}
     motor.tracker = sv.ByteTrack()
 
 
@@ -130,7 +131,7 @@ def main():
 
     columnas = ["parte", "frame_parte", "frame_global", "segundo_parte", "track_id",
                 "nombre", "estado", "similitud", "sim_top2", "nombre2", "margen",
-                "conf_det", "x1", "y1", "x2", "y2"]
+                "motivo", "revision", "conf_det", "x1", "y1", "x2", "y2"]
     archivo = open(corrida / "decisiones_video3.csv", "w", newline="", encoding="utf-8")
     writer = csv.writer(archivo)
     writer.writerow(columnas)
@@ -187,6 +188,7 @@ def main():
                         d.get("sim_top2") if d.get("sim_top2") is not None else "",
                         d.get("nombre2") or "",
                         margen if margen is not None else "",
+                        d.get("motivo", ""), d.get("revision", False),
                         d.get("confianza_det", ""), x1, y1, x2, y2,
                     ])
 

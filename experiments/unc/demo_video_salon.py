@@ -214,7 +214,8 @@ def main():
     if archivo_decisiones:
         writer = csv.writer(archivo_decisiones)
         writer.writerow(["frame_video", "segundo", "track_id", "nombre", "similitud", "estado",
-                         "conf_det", "sim_top2", "nombre2", "margen", "x1", "y1", "x2", "y2"])
+                         "conf_det", "sim_top2", "nombre2", "margen", "motivo", "revision",
+                         "x1", "y1", "x2", "y2"])
 
     try:
         for k in range(total):
@@ -240,8 +241,11 @@ def main():
                         cv2.putText(frame, texto_conf, (x1 + 2, max(12, y1 - 5)),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
                 else:
+                    if d.get("revision"):
+                        color = (0, 215, 255)  # amarillo: identidad posible, revisar
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                    texto = f"{d['nombre']} {d['similitud']:.2f} #{d['track_id']}" if d["similitud"] is not None else d["nombre"]
+                    nombre = f"posible {d['nombre']}" if d.get("revision") else d["nombre"]
+                    texto = f"{nombre} {d['similitud']:.2f} #{d['track_id']}" if d["similitud"] is not None else nombre
                     (tw, th), _ = cv2.getTextSize(texto, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
                     cv2.rectangle(frame, (x1, max(0, y1 - th - 8)), (x1 + tw + 4, y1), color, -1)
                     cv2.putText(frame, texto, (x1 + 2, max(th, y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
@@ -251,6 +255,7 @@ def main():
                                      "" if d["similitud"] is None else round(d["similitud"], 4),
                                      d["estado"], d.get("confianza_det", ""),
                                      d.get("sim_top2", ""), d.get("nombre2", ""), d.get("margen", ""),
+                                     d.get("motivo", ""), d.get("revision", False),
                                      x1, y1, x2, y2])
 
                 if carpeta_estudiantes and d["nombre"] in PERSONAS and d["estado"] in ("CONFIRMADO", "ANCLADO"):

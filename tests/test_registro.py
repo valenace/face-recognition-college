@@ -199,3 +199,87 @@ class TestVotacionTemporal:
             votos[c] = votos.get(c, 0) + 1
         assert votos["user1"] >= votos_requeridos
         assert votos["user2"] < votos_requeridos
+
+
+@pytest.mark.unit
+class TestConflictosIdentidad:
+    """Dos pistas simultáneas no pueden compartir la misma identidad."""
+
+    def _motor(self):
+        from scripts.asistencia_unificada_optimizada import MotorAsistencia
+
+        motor = MotorAsistencia.__new__(MotorAsistencia)
+        motor.margen_conflicto = 0.05
+        motor.frames_veto = 90
+        motor.frame_idx = 100
+        motor.identidades_ancladas = {
+            70: {"nombre": "dani", "similitud": 0.62, "frame": 0},
+            117: {"nombre": "dani", "similitud": 0.32, "frame": 0},
+        }
+        motor.votos_identidad = {}
+        motor.vetos_identidad = {}
+        return motor
+
+    def test_degrada_la_pista_con_menor_similitud(self):
+        motor = self._motor()
+        decisiones = [
+            {"track_id": 70, "nombre": "dani", "estado": "ANCLADO", "similitud": 0.62},
+            {"track_id": 117, "nombre": "dani", "estado": "ANCLADO", "similitud": 0.32},
+        ]
+        motor._resolver_conflictos(decisiones)
+        assert decisiones[0]["nombre"] == "dani"
+        assert decisiones[1]["nombre"] == "Desconocido"
+        assert decisiones[1]["estado"] == "DESCONOCIDO"
+        assert decisiones[1]["motivo"].startswith("conflicto_con_pista_70")
+        assert 117 not in motor.identidades_ancladas
+        assert 117 in motor.vetos_identidad
+
+    def test_no_degrada_si_la_diferencia_es_pequena(self):
+        motor = self._motor()
+        decisiones = [
+            {"track_id": 70, "nombre": "dani", "estado": "ANCLADO", "similitud": 0.40},
+            {"track_id": 117, "nombre": "dani", "estado": "ANCLADO", "similitud": 0.38},
+        ]
+        motor._resolver_conflictos(decisiones)
+        assert decisiones[0]["nombre"] == "dani"
+        assert decisiones[1]["nombre"] == "dani"
+        assert decisiones[1]["motivo"].startswith("identidad_ambigua")
+
+    def test_no_toca_pistas_con_nombres_distintos(self):
+        motor = self._motor()
+        decisiones = [
+            {"track_id": 70, "nombre": "dani", "estado": "ANCLADO", "similitud": 0.60},
+            {"track_id": 90, "nombre": "alexa", "estado": "ANCLADO", "similitud": 0.35},
+        ]
+        motor._resolver_conflictos(decisiones)
+        assert [d["nombre"] for d in decisiones] == ["dani", "alexa"]
+
+
+@pytest.mark.unit
+class TestBandaRevision:
+    """Las identidades con similitud 0.30-0.40 se marcan para revisión."""
+
+    def _motor(self):
+        from scripts.asistencia_unificada_optimizada import MotorAsistencia
+
+        motor = MotorAsistencia.__new__(MotorAsistencia)
+        motor.umbral_revision = 0.40
+        return motor
+
+    def test_marca_solo_las_confirmaciones_de_baja_confianza(self):
+        decisiones = [
+            {"estado": "CONFIRMADO", "similitud": 0.35},
+            {"estado": "ANCLADO", "similitud": 0.55},
+            {"estado": "DESCONOCIDO", "similitud": 0.20},
+            {"estado": "CENTRATE", "similitud": None},
+        ]
+        self._motor()._marcar_revision(decisiones)
+        assert [d["revision"] for d in decisiones] == [True, False, False, False]
+
+    def test_limite_exacto(self):
+        decisiones = [
+            {"estado": "CONFIRMADO", "similitud": 0.40},
+            {"estado": "CONFIRMADO", "similitud": 0.399},
+        ]
+        self._motor()._marcar_revision(decisiones)
+        assert [d["revision"] for d in decisiones] == [False, True]
