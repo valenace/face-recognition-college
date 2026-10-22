@@ -278,3 +278,11 @@
 | 2026-10-20 | Fase 8: costo de re-confirmar tras cada corte (reinicio de estado) | 62 re-confirmaciones en 10 empalmes | mediana 1.31 s, media 2.57 s, máximo 13.2 s | `08_resultados_video3.md` §6 |
 
 | 2026-10-20 | Fase 8: tasa de reconocimiento por tamaño de cara | 37 334 decisiones (sin `CENTRATE`) | 20–30 px: 9.6 %; 30–40 px: 20.0 %; 40–60 px: 31.0 %; total 19.8 % | `08_resultados_video3.md` §7 |
+
+| 2026-10-21 | Incidente de identidad: una estudiante no registrada confirmada como `dani` (video 1, 36–107 s) | 2 129 frames, 39 pistas con nombre | 2 pistas falsas (117 y 167) con sim 0.325 y 0.301, frente a dani real en 0.628 y 0.649; precisión por pista 37/39 (94.9 %) | `09_incidente_identidad_dani.md` |
+
+| 2026-10-21 | Resolución de conflictos entre pistas simultáneas (una cara no puede tener dos identidades) | mismo tramo, 179 pistas | 4 pistas degradadas (2 de la desconocida, 2 duplicados de jesus/jose); 0 falsos positivos; los 9 registrados conservan sus similitudes | `09_incidente_identidad_dani.md` §9 |
+
+| 2026-10-21 | Banda de revisión: marcar como `posible` las identidades con similitud 0.30–0.40 | 12 pistas del fixture de regresión | el falso positivo del video 3 (0.333) queda marcado `posible`; no cambia decisión ni asistencia | `09_incidente_identidad_dani.md` §10 |
+
+| 2026-10-21 | Regresión de identidad sobre 12 pistas etiquetadas (video 1 36–107 s y video 3 parte 7) | 11 aciertos, 1 límite conocido | Fase 1 corrigió las 2 pistas falsas del video 1; queda 1 falso positivo del video 3 como baseline | `experiments/unc/regresion_identidad.py` |
