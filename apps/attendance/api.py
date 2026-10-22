@@ -166,3 +166,73 @@ class RegistroBiometricoView(APIView):
                     logger.info(f"Video temporal eliminado: {ruta_video_tmp}")
                 except OSError as e:
                     logger.warning(f"No se pudo eliminar video temporal: {e}")
+
+
+# ──────────────────────────────────────────────────────────────
+# Asistencia en vivo (cámara o archivo de video)
+# ──────────────────────────────────────────────────────────────
+ROLES_EN_VIVO = {"PROFESSOR", "COORDINATOR", "DIRECTOR", "DEVELOPER"}
+
+
+def _autorizado_en_vivo(user):
+    return user.is_authenticated and (
+        user.is_superuser or user.role in ROLES_EN_VIVO
+    )
+
+
+class EnVivoIniciarView(APIView):
+    def post(self, request):
+        if not _autorizado_en_vivo(request.user):
+            return Response({"exito": False, "mensaje": "Sin permiso."}, status=403)
+
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        fuente = request.data.get("fuente") or "0"
+        sesion_id = request.data.get("sesion_id") or None
+        exito, mensaje = servicio_en_vivo.iniciar(fuente, sesion_id)
+        return Response({"exito": exito, "mensaje": mensaje},
+                        status=200 if exito else 400)
+
+
+class EnVivoDetenerView(APIView):
+    def post(self, request):
+        if not _autorizado_en_vivo(request.user):
+            return Response({"exito": False, "mensaje": "Sin permiso."}, status=403)
+
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        exito, mensaje = servicio_en_vivo.detener()
+        return Response({"exito": exito, "mensaje": mensaje})
+
+
+class EnVivoEstadoView(APIView):
+    def get(self, request):
+        if not _autorizado_en_vivo(request.user):
+            return Response({"exito": False, "mensaje": "Sin permiso."}, status=403)
+
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        return Response({"exito": True, "estado": servicio_en_vivo.estado()})
+
+
+class EnVivoFrameView(APIView):
+    def get(self, request):
+        if not _autorizado_en_vivo(request.user):
+            return Response({"exito": False, "mensaje": "Sin permiso."}, status=403)
+
+        import cv2
+        import numpy as np
+        from django.http import HttpResponse
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        jpeg = servicio_en_vivo.frame_jpeg()
+        if jpeg is None:
+            lienzo = np.zeros((360, 640, 3), dtype=np.uint8)
+            cv2.putText(lienzo, "Sin senal", (230, 190),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (200, 200, 200), 2)
+            ok, buffer = cv2.imencode(".jpg", lienzo)
+            jpeg = buffer.tobytes() if ok else b""
+
+        respuesta = HttpResponse(jpeg, content_type="image/jpeg")
+        respuesta["Cache-Control"] = "no-store"
+        return respuesta

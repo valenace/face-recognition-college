@@ -1,9 +1,18 @@
-from django.test import TestCase
+import tempfile
+
+import numpy as np
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from apps.academic.models import Estudiante, AsignacionClase, Asignatura, Salon, Seccion
 from apps.attendance.models import SesionClase, RegistroAsistencia
+from core.registro_asistencia import (
+    acumular_decisiones,
+    aplicar_decisiones,
+    nuevo_acumulado,
+    registrar_lote,
+)
 
 User = get_user_model()
 
@@ -246,3 +255,127 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         self.assertIn("Procesamiento batch de imágenes", data['message'])
         self.assertTrue(mock_thread.called)
         self.assertTrue(mock_thread.return_value.start.called)
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class FlujoAsistenciaTests(TestCase):
+    """El batch y el en vivo deben escribir la asistencia con las mismas reglas."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.profesor = User.objects.create_user(
+            username="prof_test", password="x", role=User.Role.PROFESSOR
+        )
+        cls.usuario_alumno = User.objects.create_user(
+            username="unc_alumno", password="x", role=User.Role.STUDENT
+        )
+        cls.estudiante = Estudiante.objects.create(
+            user=cls.usuario_alumno, matricula="T-001"
+        )
+        asignatura = Asignatura.objects.create(nombre="Prueba", codigo="T-A")
+        salon = Salon.objects.create(nombre="Salón", capacidad=10)
+        seccion = Seccion.objects.create(codigo="T-S")
+        cls.asignacion = AsignacionClase.objects.create(
+            profesor=cls.profesor,
+            asignatura=asignatura,
+            seccion=seccion,
+            salon=salon,
+            dia_semana=AsignacionClase.DiaSemana.LUNES,
+            horario_inicio="08:00",
+            horario_fin="10:00",
+        )
+        cls.sesion = SesionClase.objects.create(asignacion_clase=cls.asignacion)
+
+    def _frame(self):
+        return np.zeros((240, 240, 3), dtype=np.uint8)
+
+    def _decision(self, estado, nombre, sim=0.40, track=1, bbox=(20, 20, 120, 120)):
+        return {
+            "estado": estado,
+            "nombre": nombre,
+            "similitud": sim,
+            "track_id": track,
+            "bbox": bbox,
+        }
+
+    def test_estudiante_confirmado_registra_asistencia(self):
+        resumen = aplicar_decisiones(
+            [self._decision("CONFIRMADO", "alumno")],
+            self._frame(), self.sesion, {"alumno": self.estudiante},
+        )
+        self.assertEqual(resumen["confirmados"], ["alumno"])
+
+        registro = RegistroAsistencia.objects.get(
+            sesion=self.sesion, estudiante=self.estudiante
+        )
+        self.assertEqual(
+            registro.tipo_evento, RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL
+        )
+        self.assertFalse(registro.es_fraude)
+        self.assertIsNotNone(registro.hora_entrada)
+        self.assertIsNotNone(registro.ultima_vez_visto)
+
+    def test_desconocido_es_intruso_no_fraude(self):
+        aplicar_decisiones(
+            [self._decision("DESCONOCIDO", "Desconocido", sim=0.10, track=7)],
+            self._frame(), self.sesion, {},
+        )
+        registro = RegistroAsistencia.objects.get(
+            sesion=self.sesion, tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO
+        )
+        self.assertIsNone(registro.estudiante)
+        self.assertFalse(registro.es_fraude)
+        self.assertIn("Pista 7", registro.notas_auditoria)
+
+    def test_fraude_marca_es_fraude(self):
+        aplicar_decisiones(
+            [self._decision("FRAUDE", "alumno", sim=0.5, track=3)],
+            self._frame(), self.sesion, {"alumno": self.estudiante},
+        )
+        registro = RegistroAsistencia.objects.get(
+            sesion=self.sesion, tipo_evento=RegistroAsistencia.TipoEvento.SPOOFING
+        )
+        self.assertTrue(registro.es_fraude)
+        self.assertIsNone(registro.estudiante)
+
+    def test_lote_exige_evidencia_en_tres_imagenes(self):
+        acumulado = nuevo_acumulado()
+        for indice in range(2):
+            acumular_decisiones(
+                acumulado, [self._decision("CONFIRMADO", "alumno")],
+                self._frame(), indice,
+            )
+        registrar_lote(
+            acumulado, self.sesion, {"alumno": self.estudiante}, minimo_imagenes=3
+        )
+        self.assertFalse(
+            RegistroAsistencia.objects.filter(sesion=self.sesion).exists()
+        )
+
+        acumular_decisiones(
+            acumulado, [self._decision("CONFIRMADO", "alumno")], self._frame(), 2
+        )
+        registrar_lote(
+            acumulado, self.sesion, {"alumno": self.estudiante}, minimo_imagenes=3
+        )
+        self.assertTrue(
+            RegistroAsistencia.objects.filter(
+                sesion=self.sesion, estudiante=self.estudiante
+            ).exists()
+        )
+
+    def test_lote_agrupa_intrusos_en_una_fila(self):
+        acumulado = nuevo_acumulado()
+        for indice in range(5):
+            acumular_decisiones(
+                acumulado,
+                [self._decision("DESCONOCIDO", "Desconocido", sim=0.1, track=indice)],
+                self._frame(), indice,
+            )
+        registrar_lote(acumulado, self.sesion, {}, minimo_imagenes=3)
+        self.assertEqual(
+            RegistroAsistencia.objects.filter(
+                sesion=self.sesion, tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO
+            ).count(),
+            1,
+        )

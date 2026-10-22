@@ -561,6 +561,13 @@
                         feedImg.src = `/media/batch_processed/{{ sesion.id }}/latest.jpg?t=${t}`;
                         feedImg.classList.remove('hidden');
                         
+                        if (statusData.state === 'error') {
+                            clearInterval(intervalId);
+                            alert("Error en el procesamiento: " + (statusData.mensaje || "desconocido"));
+                            location.reload();
+                            return;
+                        }
+
                         if (statusData.state === 'completed' || percent >= 100) {
                             clearInterval(intervalId);
                             setTimeout(() => {

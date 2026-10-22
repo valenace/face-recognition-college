@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 import json
-from apps.users.permissions import RoleRequiredMixin
+from apps.users.permissions import RoleRequiredMixin, role_required
 from apps.attendance.models import RegistroAsistencia, SesionClase
 from apps.academic.models import Inscripcion
 
@@ -17,8 +17,18 @@ User = get_user_model()
 
 
 
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
 def live_attendance(request):
-    return render(request, "attendance/live.html")
+    sesiones = (
+        SesionClase.objects.filter(estado=SesionClase.Estado.EN_CURSO)
+        .select_related(
+            "asignacion_clase__asignatura",
+            "asignacion_clase__seccion",
+            "asignacion_clase__profesor",
+        )
+        .order_by("-fecha")
+    )
+    return render(request, "attendance/live.html", {"sesiones": sesiones})
 
 
 def directorio(request):
