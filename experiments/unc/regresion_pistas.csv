@@ -1,0 +1,13 @@
+archivo,desde,hasta,pista,identidad,baseline,nota
+data/unc/salon/VID_20260907_102851.mp4,36,107,35,carlos,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,44,alexa,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,81,jesus,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,89,jose,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,162,bob,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,70,dani,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,164,kate,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,199,kevin,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,109,fran,0,pista larga correcta
+data/unc/salon/VID_20260907_102851.mp4,36,107,117,DESCONOCIDO,0,desconocida (corregida por la Fase 1)
+data/unc/salon/VID_20260907_102851.mp4,36,107,167,DESCONOCIDO,0,desconocida (corregida por la Fase 1)
+data/unc/salon/lv_0_20261020111839.mp4,0,12,3,DESCONOCIDO,1,limite conocido: requiere multi-prototipo (Fase 4)
