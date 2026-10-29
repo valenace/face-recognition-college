@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 from django.views import View
 from django.views.generic import ListView, DetailView
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 import json
@@ -26,21 +27,116 @@ def live_attendance(request):
             "asignacion_clase__seccion",
             "asignacion_clase__profesor",
         )
-        .order_by("-fecha")
+        .order_by("-fecha", "-id")
     )
     return render(request, "attendance/live.html", {"sesiones": sesiones})
 
 
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def crear_sesion_demo_view(request):
+    """Crea la sesión de demo desde el control en vivo (sin panel de profesor)."""
+    if request.method != "POST":
+        return redirect("live_attendance")
+
+    from core.sesion_demo import crear_sesion_demo
+
+    crear_sesion_demo()
+    return redirect("live_attendance")
+
+
+@login_required
 def directorio(request):
     """Vista del directorio de estudiantes con enrolamiento biométrico."""
-    estudiantes = (
+    estudiantes = list(
         User.objects.filter(role=User.Role.STUDENT)
         .select_related("face_data")
         .order_by("-date_joined")
     )
+    con_biometria = sum(1 for estudiante in estudiantes if hasattr(estudiante, "face_data"))
     return render(request, "attendance/directorio.html", {
         "estudiantes": estudiantes,
+        "con_biometria": con_biometria,
+        "sin_biometria": len(estudiantes) - con_biometria,
     })
+
+
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def sesiones(request):
+    """Listado de sesiones con el resumen de su asistencia."""
+    sesiones_qs = (
+        SesionClase.objects.select_related(
+            "asignacion_clase__asignatura",
+            "asignacion_clase__seccion",
+            "asignacion_clase__profesor",
+        )
+        .annotate(
+            confirmados=Count(
+                "asistencias",
+                filter=Q(
+                    asistencias__tipo_evento=RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL
+                ),
+                distinct=True,
+            ),
+            intrusos=Count(
+                "asistencias",
+                filter=Q(asistencias__tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO),
+                distinct=True,
+            ),
+            spoofing=Count(
+                "asistencias",
+                filter=Q(asistencias__tipo_evento=RegistroAsistencia.TipoEvento.SPOOFING),
+                distinct=True,
+            ),
+        )
+        .order_by("-fecha", "-id")
+    )
+    return render(request, "attendance/sesiones.html", {"sesiones": sesiones_qs})
+
+
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def sesion_detalle(request, sesion_id):
+    """Detalle de una sesión: resumen y filas de asistencia."""
+    sesion = get_object_or_404(
+        SesionClase.objects.select_related(
+            "asignacion_clase__asignatura",
+            "asignacion_clase__seccion",
+            "asignacion_clase__profesor",
+        ),
+        pk=sesion_id,
+    )
+    registros = sesion.asistencias.select_related("estudiante__user").order_by(
+        "tipo_evento", "hora_entrada", "id"
+    )
+
+    resumen = {"confirmados": 0, "intrusos": 0, "spoofing": 0, "otra_seccion": 0}
+    for registro in registros:
+        if registro.tipo_evento == RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL:
+            resumen["confirmados"] += 1
+        elif registro.tipo_evento == RegistroAsistencia.TipoEvento.INTRUSO:
+            resumen["intrusos"] += 1
+        elif registro.tipo_evento == RegistroAsistencia.TipoEvento.SPOOFING:
+            resumen["spoofing"] += 1
+        else:
+            resumen["otra_seccion"] += 1
+
+    return render(
+        request,
+        "attendance/sesion_detalle.html",
+        {"sesion": sesion, "registros": registros, "resumen": resumen},
+    )
+
+
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def descartar_registro(request, sesion_id, registro_id):
+    """Marca una alerta como revisada (el profesor ya identificó a la persona)."""
+    if request.method != "POST":
+        return redirect("sesion_detalle", sesion_id=sesion_id)
+
+    RegistroAsistencia.objects.filter(
+        pk=registro_id, sesion_id=sesion_id
+    ).update(alerta_revisada=True)
+    return redirect("sesion_detalle", sesion_id=sesion_id)
+
 
 class AuditoriaSeguridadView(RoleRequiredMixin, ListView):
     allowed_roles = ['COORDINATOR', 'DIRECTOR'] 

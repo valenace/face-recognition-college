@@ -2,7 +2,6 @@
 {% load static %}  {% block title %}Directorio de Estudiantes | CV College{% endblock %}
 
 {% block content %}
-...
 <div class="max-w-6xl mx-auto">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
@@ -24,11 +23,11 @@
         </div>
         <div class="glass-card p-5 border-l-4 border-emerald-400">
             <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Con Biometría</p>
-            <h3 class="text-2xl font-bold mt-1 text-emerald-500">-</h3>
+            <h3 class="text-2xl font-bold mt-1 text-emerald-500" id="stat-con">{{ con_biometria }}</h3>
         </div>
         <div class="glass-card p-5 border-l-4 border-amber-400">
             <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Sin Biometría</p>
-            <h3 class="text-2xl font-bold mt-1 text-amber-500">-</h3>
+            <h3 class="text-2xl font-bold mt-1 text-amber-500" id="stat-sin">{{ sin_biometria }}</h3>
         </div>
     </div>
 
@@ -123,10 +122,10 @@
             <label class="block text-sm font-semibold mb-2">Fuente de Video <span class="text-red-500">*</span></label>
             <div class="flex rounded-xl bg-slate-100 dark:bg-zinc-800 p-1 mb-4">
                 <button type="button" id="tab-archivo" class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all bg-white dark:bg-zinc-700 shadow-sm text-brand-blue dark:text-brand-yellow">
-                    📁 Subir Archivo
+                    Subir archivo
                 </button>
                 <button type="button" id="tab-camara" class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all text-slate-500 dark:text-zinc-400 hover:text-slate-700">
-                    📷 Cámara en Vivo
+                    Cámara en vivo
                 </button>
             </div>
 
@@ -168,7 +167,7 @@
                         <span id="btn-rec-text">Iniciar Grabación</span>
                     </button>
                     <button type="button" id="btn-stop-rec" disabled class="flex-1 py-2.5 bg-slate-300 dark:bg-zinc-700 text-slate-500 font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        ⏹ Detener
+                        Detener
                     </button>
                 </div>
                 <p id="cam-status" class="text-xs text-center text-slate-400"></p>

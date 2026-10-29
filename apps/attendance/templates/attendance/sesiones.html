@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Sesiones | CV College{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold">Sesiones</h1>
+        <p class="text-slate-500 dark:text-zinc-400 mt-1">
+            Historial de capturas y asistencia registrada en la base.
+        </p>
+    </div>
+
+    {% if sesiones %}
+    <div class="glass-card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs uppercase tracking-wider text-slate-500 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-900/50">
+                    <tr>
+                        <th class="px-6 py-4">Sesión</th>
+                        <th class="px-6 py-4">Fecha</th>
+                        <th class="px-6 py-4">Profesor</th>
+                        <th class="px-6 py-4">Estado</th>
+                        <th class="px-6 py-4 text-center">Confirmados</th>
+                        <th class="px-6 py-4 text-center">Intrusos</th>
+                        <th class="px-6 py-4 text-center">Spoofing</th>
+                        <th class="px-6 py-4"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-zinc-800">
+                    {% for s in sesiones %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
+                        <td class="px-6 py-4">
+                            <p class="font-semibold">{{ s.asignacion_clase.asignatura.nombre }}</p>
+                            <p class="text-xs text-slate-500">
+                                Sección {{ s.asignacion_clase.seccion.codigo }} · sesión #{{ s.id }}
+                            </p>
+                        </td>
+                        <td class="px-6 py-4 text-slate-600 dark:text-zinc-300">{{ s.fecha }}</td>
+                        <td class="px-6 py-4 text-slate-600 dark:text-zinc-300">
+                            {{ s.asignacion_clase.profesor.get_full_name|default:s.asignacion_clase.profesor.username }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if s.estado == "EN_CURSO" %}
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                                En curso
+                            </span>
+                            {% else %}
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                Finalizada
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center font-semibold text-emerald-600 dark:text-emerald-400">{{ s.confirmados }}</td>
+                        <td class="px-6 py-4 text-center font-semibold text-red-500">{{ s.intrusos }}</td>
+                        <td class="px-6 py-4 text-center font-semibold text-amber-500">{{ s.spoofing }}</td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{% url 'sesion_detalle' s.id %}"
+                               class="text-sm font-semibold text-brand-blue dark:text-brand-yellow hover:underline">
+                                Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="glass-card p-10 text-center">
+        <p class="font-semibold">Todavía no hay sesiones registradas.</p>
+        <p class="text-sm text-slate-500 mt-1">
+            Crea una desde el
+            <a href="{% url 'live_attendance' %}" class="text-brand-blue dark:text-brand-yellow hover:underline">Control de Asistencia</a>.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

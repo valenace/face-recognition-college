@@ -36,7 +36,7 @@ def alias_de(username, first_name=""):
     """
     if username and username.startswith(PREFIJO_ALIAS):
         return username[len(PREFIJO_ALIAS):]
-    return (first_name or username or "").lower()
+    return (username or first_name or "").lower()
 
 
 def _parse_vector(texto):

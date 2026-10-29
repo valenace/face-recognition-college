@@ -1,10 +1,12 @@
 import tempfile
+from unittest.mock import patch
 
 import numpy as np
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
+from django.core.files.uploadedfile import SimpleUploadedFile
 from apps.academic.models import Estudiante, AsignacionClase, Asignatura, Salon, Seccion
 from apps.attendance.models import SesionClase, RegistroAsistencia
 from core.registro_asistencia import (
@@ -82,6 +84,93 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         url = reverse('academic:monitor-clase', kwargs={'session_id': self.sesion.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+    def test_sesiones_list_renders(self):
+        self.client.login(username="professor_owner", password="password123")
+        response = self.client.get(reverse("sesiones"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fisica")
+
+    def test_sesion_detalle_renders(self):
+        self.client.login(username="professor_owner", password="password123")
+        url = reverse("sesion_detalle", kwargs={"sesion_id": self.sesion.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fisica")
+
+    def test_descartar_registro_marca_revisada(self):
+        registro = RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=None,
+            tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO,
+            es_fraude=False,
+        )
+        self.client.login(username="professor_owner", password="password123")
+        url = reverse(
+            "descartar_registro",
+            kwargs={"sesion_id": self.sesion.id, "registro_id": registro.id},
+        )
+        response = self.client.post(url)
+        self.assertRedirects(
+            response,
+            reverse("sesion_detalle", kwargs={"sesion_id": self.sesion.id}),
+        )
+        registro.refresh_from_db()
+        self.assertTrue(registro.alerta_revisada)
+
+    def test_directorio_muestra_contadores(self):
+        self.client.login(username="professor_owner", password="password123")
+        response = self.client.get(reverse("directorio"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["con_biometria"], 0)
+        self.assertEqual(response.context["sin_biometria"], 1)
+
+    def test_api_enrolar_requiere_autenticacion(self):
+        response = self.client.post("/api/enrolar/", {})
+        self.assertEqual(response.status_code, 403)
+
+    def test_api_enrolar_rechaza_profesor(self):
+        self.client.login(username="professor_owner", password="password123")
+        response = self.client.post("/api/enrolar/", {})
+        self.assertEqual(response.status_code, 403)
+
+    @patch("apps.attendance.api._get_motor")
+    def test_api_enrolar_crea_estudiante_y_embedding(self, mock_get_motor):
+        from apps.attendance.models import FaceEmbedding
+
+        UserModel = get_user_model()
+        UserModel.objects.create_user(
+            username="developer_test",
+            password="password123",
+            role=UserModel.Role.DEVELOPER,
+        )
+        self.client.login(username="developer_test", password="password123")
+
+        mock_get_motor.return_value.enrolar_usuario_headless.return_value = {
+            "exito": True,
+            "muestras": 15,
+            "mensaje": "Registro exitoso",
+            "embedding": [0.0] * 512,
+        }
+
+        video = SimpleUploadedFile("test.mp4", b"fake-video", content_type="video/mp4")
+        response = self.client.post(
+            "/api/enrolar/",
+            {
+                "carnet": "20230001",
+                "nombre_completo": "Juan Pérez",
+                "video": video,
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+
+        usuario = UserModel.objects.get(username="20230001")
+        self.assertEqual(usuario.first_name, "Juan")
+        self.assertEqual(usuario.last_name, "Pérez")
+        self.assertTrue(
+            Estudiante.objects.filter(user=usuario, matricula="20230001").exists()
+        )
+        self.assertTrue(FaceEmbedding.objects.filter(user=usuario).exists())
 
     def test_clase_en_vivo_view_post_finalizes_session(self):
         from datetime import time

@@ -1,5 +1,12 @@
 from django.urls import path
-from apps.attendance.views import live_attendance, directorio
+from apps.attendance.views import (
+    live_attendance,
+    directorio,
+    crear_sesion_demo_view,
+    sesiones,
+    sesion_detalle,
+    descartar_registro,
+)
 from apps.attendance.api import (
     RegistroBiometricoView,
     EnVivoIniciarView,
@@ -11,7 +18,15 @@ from apps.attendance.api import (
 urlpatterns = [
     # ── Páginas HTML ───────────────────────────────────────────
     path("en-vivo/", live_attendance, name="live_attendance"),
+    path("en-vivo/sesion-demo/", crear_sesion_demo_view, name="crear_sesion_demo"),
     path("directorio/", directorio, name="directorio"),
+    path("sesiones/", sesiones, name="sesiones"),
+    path("sesiones/<int:sesion_id>/", sesion_detalle, name="sesion_detalle"),
+    path(
+        "sesiones/<int:sesion_id>/registros/<int:registro_id>/descartar/",
+        descartar_registro,
+        name="descartar_registro",
+    ),
 
     # ── API Endpoints ──────────────────────────────────────────
     path("api/enrolar/", RegistroBiometricoView.as_view(), name="api_enrolar"),

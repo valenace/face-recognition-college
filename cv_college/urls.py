@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from apps.users.views import dashboard
+from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
@@ -9,12 +9,13 @@ from apps.users import views as user_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", dashboard, name="dashboard"),
+    # La web reducida entra por el directorio (registro y listado de rostros).
+    path("", RedirectView.as_view(pattern_name="directorio"), name="dashboard"),
 
     # ── Attendance & Biometrics ────────────────────────────────
     path("", include("apps.attendance.urls")),
 
-    # urls academicas
+    # Secciones fuera del menú: siguen disponibles por URL para reactivarlas luego.
     path("academic/", include("apps.academic.urls")),
     # urls de autenticación
     path(

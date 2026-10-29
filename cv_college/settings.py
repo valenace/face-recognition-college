@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-0+39dyy*1ge=%=n2v23w^(s^3uf9=5tq_7q2))a#hd#zak^=@1"
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-0+39dyy*1ge=%=n2v23w^(s^3uf9=5tq_7q2))a#hd#zak^=@1",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -85,11 +93,11 @@ WSGI_APPLICATION = "cv_college.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "cv_college_db",
-        "USER": "cv_college_user",
-        "PASSWORD": "cv_college_2026",
-        "HOST": "localhost",
-        "PORT": "5432",
+        "NAME": os.environ.get("CV_DB_NAME", "cv_college_db"),
+        "USER": os.environ.get("CV_DB_USER", "cv_college_user"),
+        "PASSWORD": os.environ.get("CV_DB_PASSWORD", "cv_college_2026"),
+        "HOST": os.environ.get("CV_DB_HOST", "localhost"),
+        "PORT": os.environ.get("CV_DB_PORT", "5432"),
     }
 }
 
@@ -102,11 +110,11 @@ if 'test' in sys.argv:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": "cv_college_test_db",
-            "USER": "cv_college_user",
-            "PASSWORD": "cv_college_2026",
-            "HOST": "localhost",
-            "PORT": "5432",
+            "NAME": os.environ.get("CV_DB_TEST_NAME", "cv_college_test_db"),
+            "USER": os.environ.get("CV_DB_USER", "cv_college_user"),
+            "PASSWORD": os.environ.get("CV_DB_PASSWORD", "cv_college_2026"),
+            "HOST": os.environ.get("CV_DB_HOST", "localhost"),
+            "PORT": os.environ.get("CV_DB_PORT", "5432"),
         }
     }
 

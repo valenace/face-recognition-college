@@ -80,7 +80,7 @@
             camPreview.srcObject = mediaStream;
             camStatus.textContent = 'Cámara lista. Graba al menos 5 segundos mostrando tu rostro.';
         } catch (err) {
-            camStatus.textContent = '❌ No se pudo acceder a la cámara: ' + err.message;
+            camStatus.textContent = 'No se pudo acceder a la cámara: ' + err.message;
             camStatus.classList.add('text-red-500');
         }
     }
@@ -114,7 +114,7 @@
 
         mediaRecorder.onstop = () => {
             recordedBlob = new Blob(recordedChunks, { type: mimeType });
-            camStatus.textContent = `✅ Grabación lista: ${(recordedBlob.size / (1024*1024)).toFixed(2)} MB — ${recSeconds}s`;
+            camStatus.textContent = `Grabación lista: ${(recordedBlob.size / (1024*1024)).toFixed(2)} MB — ${recSeconds}s`;
             camStatus.classList.remove('text-red-500');
             camStatus.classList.add('text-emerald-500');
         };
@@ -201,11 +201,11 @@
 
         // Validate video source
         if (modoActivo === 'archivo' && (!inputVideo.files || inputVideo.files.length === 0)) {
-            mostrarFeedback('error', '❌ Selecciona un archivo de video.');
+            mostrarFeedback('error', 'Selecciona un archivo de video.');
             return;
         }
         if (modoActivo === 'camara' && !recordedBlob) {
-            mostrarFeedback('error', '❌ Graba un video desde la cámara primero.');
+            mostrarFeedback('error', 'Graba un video desde la cámara primero.');
             return;
         }
 
@@ -236,15 +236,15 @@
             const data = await response.json();
 
             if (data.exito) {
-                mostrarFeedback('success', `✅ ${data.mensaje}`);
+                mostrarFeedback('success', data.mensaje);
                 agregarFilaTabla(data.estudiante);
                 setTimeout(cerrarModal, 2000);
             } else {
                 const msg = data.mensaje || Object.values(data.errores || {}).join(' · ');
-                mostrarFeedback('error', `❌ ${msg}`);
+                mostrarFeedback('error', msg);
             }
         } catch (err) {
-            mostrarFeedback('error', `❌ Error de conexión: ${err.message}`);
+            mostrarFeedback('error', `Error de conexión: ${err.message}`);
         } finally {
             btnSubmit.disabled = false;
             submitIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';

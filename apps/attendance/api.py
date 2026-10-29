@@ -5,11 +5,14 @@ import tempfile
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
+from apps.academic.models import Estudiante
 from apps.attendance.models import FaceEmbedding
 
 logger = logging.getLogger(__name__)
@@ -40,10 +43,21 @@ class RegistroBiometricoView(APIView):
     """
     POST /api/enrolar/
     Recibe: carnet, nombre_completo, video (.mp4)
-    Flujo: Validar → Guardar temp → IA → Crear User + Embedding → Limpiar
+    Flujo: Validar → Guardar temp → IA → Crear User + Estudiante + Embedding → Limpiar
     """
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
+        if not (
+            request.user.is_superuser
+            or request.user.role in {"DEVELOPER", "COORDINATOR", "DIRECTOR"}
+        ):
+            return Response(
+                {"exito": False, "mensaje": "Sin permiso para registrar estudiantes."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         # ── 1. Extraer y validar campos ────────────────────────────
         carnet = request.data.get("carnet", "").strip()
         nombre = request.data.get("nombre_completo", "").strip()
@@ -96,12 +110,10 @@ class RegistroBiometricoView(APIView):
             logger.info(f"Video temporal guardado: {ruta_video_tmp}")
 
             # ── 4. Procesar con el motor de IA ─────────────────────
-            nombre_limpio = re.sub(r"\s+", "_", nombre)
-            id_usuario = f"{carnet}_{nombre_limpio}"
-
+            # El alias del motor es el carnet (username), único por estudiante.
             motor = _get_motor()
             resultado = motor.enrolar_usuario_headless(
-                id_usuario=id_usuario,
+                id_usuario=carnet,
                 ruta_video=ruta_video_tmp,
                 sobrescribir=False,
             )
@@ -117,23 +129,25 @@ class RegistroBiometricoView(APIView):
             first_name = partes_nombre[0]
             last_name = partes_nombre[1] if len(partes_nombre) > 1 else ""
 
-            usuario = User.objects.create_user(
-                username=carnet,
-                first_name=first_name,
-                last_name=last_name,
-                role=User.Role.STUDENT,
-                password=None,  # Sin login web, solo biometría
-            )
+            with transaction.atomic():
+                usuario = User.objects.create_user(                    username=carnet,
+                    first_name=first_name,
+                    last_name=last_name,
+                    role=User.Role.STUDENT,
+                    password=None,  # Sin login web, solo biometría
+                )
 
-            FaceEmbedding.objects.create(
-                user=usuario,
-                embedding=resultado["embedding"],
-                modelo="arcface",
-                n_muestras=resultado.get("muestras", 0),
-                fuente=FaceEmbedding.Fuente.WEB,
-            )
+                Estudiante.objects.create(user=usuario, matricula=carnet)
 
-            logger.info(f"Estudiante '{id_usuario}' registrado correctamente.")
+                FaceEmbedding.objects.create(
+                    user=usuario,
+                    embedding=resultado["embedding"],
+                    modelo="arcface",
+                    n_muestras=resultado.get("muestras", 0),
+                    fuente=FaceEmbedding.Fuente.WEB,
+                )
+
+            logger.info(f"Estudiante '{carnet}' registrado correctamente.")
 
             return Response(
                 {
