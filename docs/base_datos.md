@@ -112,9 +112,15 @@ Une profesor, asignatura, sección, salón y horario. Es la base para programar 
 >   en al menos 3 imágenes (o en todas, si el lote tiene menos de 3).
 > - **Desconocido** → `INTRUSO` con `es_fraude=False` (no es fraude, es alguien no
 >   registrado). **Anti-spoofing positivo** → `SPOOFING` con `es_fraude=True`.
+> - **Intrusos:** no todo `DESCONOCIDO` es intruso. `core/intrusos.py` exige que el
+>   mejor score de la pista sea < 0.18, 15 frames consecutivos y que no sea un
+>   conflicto de identidad; si la pista mejora, la fila se borra. La nota guarda la
+>   mejor coincidencia. En `/sesiones/<id>/` se puede marcar como revisada.
 >
-> El motor de consola (`experiments/`) sigue escribiendo `data/asistencia.csv` para
-> los experimentos; no toca la base.
+> El motor de consola escribe en `RegistroAsistencia` cuando recibe `--sesion ID`
+> (`python scripts/asistencia_unificada_optimizada.py --sesion ID --fuente <video|0>`),
+> con estas mismas reglas. Sin `--sesion` escribe `data/asistencia.csv` para los
+> experimentos y no toca la base.
 
 ---
 
@@ -310,8 +316,11 @@ las decisiones por cara (top-1, top-2, margen, votos) y las filas escritas en
 
 ## 8. Riesgos y pendientes
 
-1. **Credenciales en el código**: `cv_college/settings.py` y `core/db_config.py`
-   tienen la contraseña escrita. Conviene moverlas a variables de entorno.
+1. **Credenciales por variables de entorno**: `cv_college/settings.py` y
+   `core/db_config.py` leen `CV_DB_NAME`, `CV_DB_USER`, `CV_DB_PASSWORD`,
+   `CV_DB_HOST` y `CV_DB_PORT` (con valores por defecto de desarrollo). En
+   producción hay que definirlas; `DJANGO_SECRET_KEY`, `DJANGO_DEBUG` y
+   `DJANGO_ALLOWED_HOSTS` también son configurables.
 2. **Rendimiento en vivo:** en CPU el motor procesa ~6 fps a 720p. Alcanza para
    marcar asistencia, pero no para un video fluido; para eso haría falta GPU o
    bajar la resolución/frecuencia de análisis.

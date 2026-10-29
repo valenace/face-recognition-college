@@ -1,117 +1,241 @@
-# Resumen General del Proyecto: Sistema de Asistencia por Reconocimiento Facial (CV College v2)
+# Resumen general del proyecto
 
-Este proyecto es un sistema avanzado de **control de asistencia universitaria basado en reconocimiento facial**. Su objetivo es automatizar la toma de asistencia en salones de clase y detectar intentos de fraude (suplantación) o intrusos mediante técnicas modernas de visión por computadora (Computer Vision) integradas en una aplicación web en tiempo real.
-
-El sistema se compone de dos partes principales:
-1. **Aplicación Web (Django 5.2 + DRF)**: Gestiona el catálogo académico (profesores, estudiantes, materias, salones y horarios), las sesiones de clase, y los reportes/métricas de asistencia.
-2. **Pipeline de Inteligencia Artificial (RetinaFace + ArcFace + Anti-Spoofing)**: Procesa videos de enrolamiento en la web, flujos de cámaras en tiempo real en los salones y procesamiento por lotes (batch) de fotos grupales del salón de clase.
+**Sistema de asistencia universitaria por reconocimiento facial (CV College)**
+**Actualizado:** 2026-10-26
 
 ---
 
-## 1. Flujo de Inteligencia Artificial & Computer Vision
+## 1. Qué es
 
-El pipeline de visión artificial está encapsulado en la librería vendoreada `uniface` e integrado en los scripts principales del proyecto, donde destacan los scripts estables de producción: **[`asistencia_unificada_optimizada.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/scripts/asistencia_unificada_optimizada.py)** para el reconocimiento en vivo, y **[`registro_video.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/scripts/registro_video.py)** para el enrolamiento offline.
+Una aplicación web en **Django 6.1** con un **motor de visión por computadora**
+propio que automatiza la asistencia en un salón de clase:
 
-El flujo consta de 5 fases críticas con importantes optimizaciones de rendimiento:
+- Reconoce a los estudiantes registrados a partir de video o cámara.
+- Distingue entre estudiante, desconocido (intruso) e intento de suplantación
+  (spoofing).
+- Guarda la asistencia en **PostgreSQL + pgvector**.
+- Permite registrar rostros con un video y consultar el historial de cada sesión.
 
-```mermaid
-graph TD
-    A["Entrada de Video / Fotos"] --> B["Detección de Rostro (RetinaFace)"]
-    B --> C{"Evaluación de Calidad & Liveness"}
-    
-    C -- "Fallo (Blur/Oscuro/Lejos)" --> D["Ignorar Frame / Mostrar Mensaje QA"]
-    C -- "Spoofing (Pantalla/Papel)" --> E["Generar Alerta de Fraude / Captura"]
-    C -- "Pasa QA & Liveness" --> F["Alineación y Mejora (CLAHE)"]
-    
-    F --> G["Extracción de Vector (ArcFace)"]
-    G --> H["Búsqueda Vectorial (FAISS)"]
-    
-    H --> I{"¿Similitud > 0.35?"}
-    I -- "No" --> J["Marcar como 'Desconocido'"]
-    I -- "Sí" --> K["Filtro de Consenso Temporal (ByteTrack)"]
-    
-    K --> L["Confirmación de Identidad"]
-    L --> M["Registro de Asistencia (DB Django)"]
+El foco del proyecto es el **motor**; la web es una interfaz mínima para
+registrarlo, verlo funcionar y revisar lo que quedó guardado.
+
+---
+
+## 2. Estado actual (2026-10-26)
+
+| Aspecto | Estado |
+|---|---|
+| Motor | Estable, con reglas de identidad, conflicto e intrusos |
+| Base de datos | PostgreSQL 16 + pgvector 0.6 (9 centroides de 512 d) |
+| Estudiantes registrados | 9 (`unc_alexa`, `unc_bob`, …, `unc_kevin`) |
+| Web visible | Directorio, Sesiones y Control de Asistencia |
+| Tests | 74 unitarios + 32 de Django, en verde |
+| Cómputo | CPU (i9-14900KF), ~7 fps en 1080p; la RTX 4090 no se usa |
+| Limitación principal | 1 falso positivo de identidad residual en el video 3 |
+
+---
+
+## 3. Cómo funciona el reconocimiento
+
+El pipeline está en `scripts/asistencia_unificada_optimizada.py` y usa la
+librería vendoreada `uniface`.
+
+```
+video / cámara
+   │
+   ├─ RetinaFace ──────────► cajas + 5 landmarks
+   │    filtros: ancho > 40 px (20 en la web), confianza ≥ 0.75
+   │
+   ├─ ByteTrack ───────────► track_id por persona
+   │
+   ├─ alineación + CLAHE ──► cara normalizada
+   │
+   ├─ ArcFace ─────────────► vector de 512 dimensiones (norma 1)
+   │
+   ├─ FAISS IndexFlatIP ───► similitud coseno contra los 9 centroides
+   │    umbral: 0.30
+   │
+   ├─ anti-spoofing ───────► real / fraude (se omite si la cara < 60 px)
+   │
+   └─ 3 votos consecutivos ► identidad confirmada
 ```
 
-### Detalle de las Etapas:
+### Reglas de decisión
 
-1. **Detección de Rostros**: Se utiliza **RetinaFace** (o la variante ligera **SCRFD** en el script de comparación [`probar_scrfd.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/probar_scrfd.py)) para localizar las caras en la imagen y extraer sus 5 puntos clave (landmarks) faciales (ojos, nariz y esquinas de la boca).
-2. **Control de Calidad (QA) & Liveness**:
-   - **Tamaño Mínimo**: El rostro debe ser de al menos $60 \times 60$ píxeles para garantizar que no sea basura de fondo.
-   - **Borrosidad**: Se calcula la varianza del Laplaciano sobre el rostro alineado (debe superar un umbral de 60 para evitar imágenes movidas).
-   - **Brillo**: Se evalúa la media de grises del rostro (debe ser mayor a 20 para evitar salones demasiado oscuros).
-   - **Anti-Spoofing (Liveness)**: Un modelo de clasificación binaria analiza si el rostro es real o si proviene de un ataque de presentación (foto impresa, video en tablet/celular). Si la confianza de que es real es menor al 90% (`0.90`), se descarta y se reporta un intento de **Spoofing**.
-3. **Alineación y Normalización**: A partir de los landmarks faciales, se rota y escala el rostro ([`alinear_rostro`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/core/utils_facial.py)) para alinear los ojos horizontalmente. Posteriormente, se aplica **CLAHE** (Ecualización de Histograma Adaptativa Limitada por Contraste) para normalizar las condiciones de iluminación del aula.
-4. **Reconocimiento Facial (ArcFace + FAISS)**:
-   - Se alimenta la imagen limpia al extractor **ArcFace**, obteniendo un vector de características (embedding) de **512 dimensiones** normalizado.
-   - Para la búsqueda ultrarrápida ($O(\log N)$), se compila un índice de búsqueda **FAISS IndexFlatIP** (Inner Product / Similitud de Coseno) con los vectores de los estudiantes inscritos. Si la similitud con el mejor candidato supera el umbral establecido (`0.35`), se asocia la identidad del estudiante.
-5. **Seguimiento Temporal y Consenso (ByteTrack + Votación)**:
-   - En flujos de video en vivo (cámaras de salón), se utiliza **ByteTrack** para asignar y mantener un ID numérico persistente a cada persona detectada, incluso bajo oclusiones o multitudes.
-   - Para evitar fluctuaciones de identidad por malas posturas o parpadeos de detección, se aplica una **Votación Temporal**. Se requiere que un ID de tracking reciba la misma predicción de identidad al menos **3 veces** consecutivas antes de fijar su nombre y registrar la asistencia en la base de datos.
+| Regla | Valor | Qué hace |
+|---|---|---|
+| Umbral de identidad | **0.30** | Por debajo, la cara es desconocida |
+| Votos | **3 consecutivos** | Evita confirmar por un frame aislado |
+| Ancla | **30 frames** (~1 s) | Reutiliza la identidad sin recalcular |
+| Conflicto | margen **0.05** | Dos pistas no pueden ser la misma persona |
+| Veto | **90 frames** | La pista que pierde no reclama esa identidad |
+| Banda de revisión | **0.30–0.40** | Se muestra como `posible <nombre>` (no cambia la decisión) |
+| Intruso | mejor score **< 0.18**, **15 frames** | Evita marcar como intruso a un registrado en un frame malo |
 
----
-
-## 2. Arquitectura de Base de Datos y Modelos
-
-El sistema almacena el estado académico e historial biométrico mediante los siguientes modelos clave de Django localizados en:
-
-* **[`apps/users/models.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/apps/users/models.py)**:
-  - `User`: Modelo de usuario personalizado que extiende `AbstractUser`. Define roles específicos: `DEVELOPER` (Administrador/Superuser), `DIRECTOR`, `COORDINATOR`, `PROFESSOR` y `STUDENT`.
-* **[`apps/academic/models.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/apps/academic/models.py)**:
-  - `Asignatura`: Código y nombre de la materia.
-  - `Salon`: Nombre, ubicación y capacidad física.
-  - `Seccion`: Grupo académico (ej. "Sección A").
-  - `Estudiante`: Perfil vinculado a `User` que contiene su matrícula/carnet escolar y estado de actividad.
-  - `AsignacionClase`: Asocia un Profesor, Asignatura, Sección, Salón, un día de la semana y un bloque de horas (inicio/fin). Incluye validaciones robustas para evitar que el mismo profesor o sección se traslapen en horarios paralelos.
-  - `Inscripcion`: Relación de estudiantes matriculados en una clase determinada.
-* **[`apps/attendance/models.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/apps/attendance/models.py)**:
-  - `FaceEmbedding`: Vincula al usuario con su embedding facial promedio (lista de 512 números flotantes serializados en JSON).
-  - `SesionClase`: Representa la clase dictada en una fecha específica, su estado (`EN_CURSO` o `FINALIZADA`), y las notas académicas ingresadas por el docente.
-  - `RegistroAsistencia`: Registro individualizado de asistencia de un estudiante o un evento de seguridad. Contiene:
-    - `hora_entrada`, `hora_salida` y `ultima_vez_visto`.
-    - `similitud_ia`: El porcentaje de coincidencia reportado por la red neuronal.
-    - `es_fraude` y `captura_fraude`: Bandera de alerta y foto guardada del rostro que cometió spoofing o intrusión.
-    - `tipo_evento`: Clasifica el registro en `ASISTENCIA_NORMAL`, `INTRUSO` (desconocido en el salón), `OTRA_SECCION` (estudiante registrado pero que no pertenece a esa clase) o `SPOOFING` (intento de suplantación física detectado).
-    - `historial_intervalos`: Un JSON que registra marcas de tiempo consecutivas del alumno en el aula. Si el alumno desaparece de la cámara y vuelve, se crean bloques de intervalo. Esto permite calcular el `porcentaje_permanencia` real en la clase (minutos detectado / minutos de duración de clase).
+El umbral 0.30 se eligió con la curva ROC (300 recortes etiquetados): precisión
+0.987, recall 0.872, F1 0.926. En asistencia, un falso positivo pesa más que un
+falso negativo.
 
 ---
 
-## 3. ¿Cómo se plasma la información en el Aplicativo Web?
+## 4. Base de datos
 
-La interfaz de usuario está diseñada con **Tailwind CSS** y se distribuye según los roles de acceso:
+PostgreSQL 16 con la extensión **pgvector 0.6**. La tabla vectorial es
+`attendance_faceembedding`:
 
-### A. Interfaz del Profesor (Panel de Control de Aula)
-* **Mi Horario y Materias**: Permite al docente ver las clases asignadas en el día actual y acceder a sus paneles.
-* **Monitor de Clase en Vivo (Monitor de Aula)**:
-  - Muestra un grid visual con todos los alumnos inscritos en la materia.
-  - **Presentes**: Tienen una tarjeta en color verde indicando su hora de entrada, su última vez visto y su porcentaje de permanencia real (calculado mediante los pings de detección).
-  - **Ausentes**: Aparecen atenuados o con tarjetas en gris.
-  - **Alertas de Seguridad**: Si la cámara detecta a alguien no inscrito (Intruso) o un intento de spoofing (Fraude), se genera inmediatamente una tarjeta roja de alerta con un recorte facial de la persona en cuestión.
-  - **Resolución de Alertas**: El profesor cuenta con botones interactivos para auditar estas alertas en tiempo real, marcándolas como "Confirmar Fraude" o "Falsa Alarma" (lo que reclasifica el evento y limpia la alerta).
-  - **Procesamiento Batch**: Cuenta con un botón para procesar una secuencia de imágenes del salón tomadas de manera externa (útil si no hay transmisión de video directa). Muestra una barra de carga dinámica leyendo de [`status.json`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/core/procesador_batch.py#L54) y renderizando el canvas actualizado con recuadros sobre el aula [`latest.jpg`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/core/procesador_batch.py#L323).
-  - **Cierre de Clase**: El profesor finaliza la sesión, lo que automáticamente guarda las horas de salida de todos los estudiantes presentes.
-* **Historial & Métricas**: Muestra estadísticas globales del alumno (número de faltas acumuladas, salidas tempranas, e historial de fraudes) para auditoría académica rápida.
+- `embedding`: `VectorField(512)`, norma 1.
+- Índice **HNSW** con `vector_cosine_ops`.
+- Metadatos: `modelo`, `n_muestras`, `fuente` (`VIDEO` / `IMPORTADO` / `WEB`),
+  `fecha`, `created_at`, `updated_at`.
+- Un vector por usuario (restricción única en `user_id`).
 
-### B. Interfaz de Coordinadores y Directivos (Administración)
-* **Panel de Enrolamiento**:
-  - Permite matricular nuevos rostros. Se puede hacer cargando un video pregrabado (`.mp4`) o tomando fotos con la cámara en vivo.
-  - El backend de enrolamiento (`RegistroBiometricoView`) procesa el video en segundo plano mediante `enrolar_usuario_headless`, valida que cumpla con los estándares de liveness y calidad, y genera el embedding final vinculándolo al usuario en la base de datos de Django sin requerir scripts manuales en la terminal.
-* **Auditoría de Seguridad**:
-  - Consola centralizada donde se listan todas las alertas de fraude confirmadas e intrusiones registradas en la universidad.
-  - Permite ver la foto de la persona capturada por la IA, la materia, la fecha y hora del incidente, y notas de auditoría.
-* **Reportes de Asistencia**:
-  - Filtros interactivos por nombre de estudiante, matrícula, materia y fecha específica para exportar o revisar la asistencia global a nivel institucional.
+Tablas principales:
+
+| Tabla | Qué guarda |
+|---|---|
+| `attendance_faceembedding` | Centroide de 512 d por usuario |
+| `attendance_sesionclase` | Una captura concreta (fecha, estado, notas) |
+| `attendance_registroasistencia` | Una fila por estudiante y sesión, o por evento de seguridad |
+| `academic_*` | Asignatura, salón, sección, estudiante, asignación, inscripción |
+
+`RegistroAsistencia` distingue cuatro tipos de evento:
+
+- `ASISTENCIA_NORMAL`: estudiante inscrito y confirmado.
+- `OTRA_SECCION`: registrado, pero no pertenece a esa clase.
+- `INTRUSO`: persona no registrada (`es_fraude=False`).
+- `SPOOFING`: intento de suplantación (`es_fraude=True`, con captura).
+
+El detalle completo está en `docs/base_datos.md`.
 
 ---
 
-## 4. Archivos Clave del Código Fuente
+## 5. La web
 
-* **[`scripts/registro_video.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/scripts/registro_video.py)**: Script estable de producción para el enrolamiento offline. Extrae frames de calidad y liveness válidos de un archivo de video y computa el centroide del embedding.
-* **[`scripts/asistencia_unificada_optimizada.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/scripts/asistencia_unificada_optimizada.py)**: Motor de inferencia estable y optimizado en tiempo real. Implementa filtros inteligentes para ahorrar CPU (liveness condicional por tamaño de rostro, cooldown para rostros desconocidos, y lazy evaluation de CLAHE).
-* **[`scripts/registro_unificado.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/scripts/registro_unificado.py)**: Lógica base de enrolamiento, utilizada por los endpoints headless de Django.
-* **[`scripts/asistencia_unificada.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/scripts/asistencia_unificada.py)**: Motor base de inferencia en tiempo real.
-* **[`core/procesador_batch.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/core/procesador_batch.py)**: Script encargado del procesamiento por lotes en segundo plano de fotos del salón de clases.
-* **[`apps/attendance/api.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/apps/attendance/api.py)**: Endpoints REST para el enrolamiento headless desde la interfaz web.
-* **[`apps/attendance/views.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/apps/attendance/views.py)**: Vistas del monitor en vivo, auditorías de seguridad, y gestión de estados de las sesiones.
-* **[`apps/attendance/models.py`](file:///home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college/apps/attendance/models.py)**: Estructura de persistencia para embeddings faciales y registros detallados de intervalos de asistencia.
+La web quedó reducida a tres secciones visibles:
+
+| Ruta | Qué hace |
+|---|---|
+| `/directorio/` | Registra rostros con un video y lista a los registrados |
+| `/sesiones/` | Historial de capturas con sus contadores |
+| `/sesiones/<id>/` | Detalle: confirmados, intrusos, spoofing, similitudes y capturas |
+| `/en-vivo/` | Control de asistencia con cámara o video, frame anotado |
+
+- La raíz `/` redirige al directorio.
+- El login usa `admin` / `admin123` (cambiar la contraseña).
+- El resto de páginas académicas (panel del profesor, reportes, auditoría, mapa de
+  salones) **siguen existiendo por URL**, pero están fuera del menú hasta que se
+  rehabiliten.
+- Si no hay sesiones, `/en-vivo/` ofrece un botón para crear una de demo.
+
+---
+
+## 6. Flujos de asistencia
+
+| Flujo | Entrada | Escritura |
+|---|---|---|
+| Consola | Cámara o video | `RegistroAsistencia` con `--sesion`; CSV sin él |
+| Batch | Carpeta de imágenes | Una fila consolidada por sesión |
+| En vivo | Cámara o video | `RegistroAsistencia` en tiempo real |
+| Diagnóstico | Video | `ver_flujo` muestra el paso a paso (opcionalmente escribe) |
+
+La consola escribe en la misma base y con las mismas reglas que la web; el CSV
+(`data/asistencia.csv`) queda solo para experimentos.
+
+---
+
+## 7. Resultados de la evaluación
+
+| Medición | Resultado |
+|---|---|
+| Video 1: cobertura | 9/9 estudiantes |
+| Video 1: confirmación en ventana ±0.5 s | 76/80 (95 %) |
+| Video 3: cobertura | 8/8 presentes (`jose` ausente, 0 confirmaciones) |
+| Video 3: identidad | 1 falso positivo residual (~1 s, sin impacto en asistencia) |
+| ROC | AUC 0.744; umbral 0.30 |
+| Accesorios | Lentes sin efecto; gorra+lentes mediana 0.315 (el caso más frágil es `jesus`) |
+| Intrusos (video 1, 44 s) | 130 pistas desconocidas → 6 filas |
+| Intrusos (video 3) | 18 de 21 desconocidos detectados |
+
+Los informes completos están en `docs/analisis/unc/`.
+
+---
+
+## 8. Limitaciones conocidas
+
+- **Un falso positivo de identidad** en el video 3: una estudiante no registrada
+  se confirma como `dani` durante ~1 s. La única vía medida para corregirlo es
+  multi-prototipo (top-3 sobre las 50 fotos), fuera del alcance acordado.
+- **Intrusos:** el clasificador reduce los falsos, pero no los elimina. Quedan
+  caras pequeñas que no se acercan a 0.18; el profesor puede descartarlas desde
+  `/sesiones/<id>/`.
+- **Tiempo real:** a ~7 fps en CPU, el flujo en vivo va más lento que una cámara
+  de 30 fps.
+- **Credenciales** de PostgreSQL por variables de entorno (`CV_DB_*`); los valores
+  por defecto son los de desarrollo.
+- **Apellidos y matrículas** de los 9 estudiantes son provisionales.
+
+---
+
+## 9. Estructura del repositorio
+
+```
+scripts/
+  asistencia_unificada_optimizada.py   motor (decisión, conflicto, intrusos)
+  registro_video.py                    registro por video (CLI)
+  registro_unificado.py                registro (web)
+core/
+  utils_facial.py                      alineación, CLAHE, embedding
+  intrusos.py                          clasificador de intrusos
+  registro_asistencia.py               decisiones → RegistroAsistencia
+  db_config.py                         lectura/escritura en pgvector
+  procesador_batch.py                  flujo por lotes
+  servicio_en_vivo.py                  flujo en vivo
+  sesion_demo.py                       sesión de demostración
+apps/
+  users/                               usuario, roles, permisos
+  academic/                            asignaturas, salones, estudiantes
+  attendance/                          modelos, vistas, API, sesiones
+experiments/unc/                       fases, regresión y demos
+docs/                                  documentación
+```
+
+---
+
+## 10. Documentación
+
+| Documento | Contenido |
+|---|---|
+| `docs/motor.md` | Motor explicado archivo por archivo y línea por línea |
+| `docs/computo.md` | Hardware, versiones, rendimiento y migración a GPU |
+| `docs/base_datos.md` | Esquema, pgvector, consultas y operación |
+| `docs/comandos.md` | Comandos listos para ejecutar |
+| `docs/contexto_nuevo_chat.md` | Traspaso completo para retomar el proyecto |
+| `docs/analisis/unc/` | Experimentos, resultados y decisiones con datos |
+
+---
+
+## 11. Cómo empezar
+
+```bash
+cd /home/valentina2/Desktop/Folds/VisionProjects/face-recognition-college
+venv/bin/python manage.py runserver
+```
+
+Abrir `http://localhost:8000/login` con `admin` / `admin123`.
+
+Para probar el motor sin la web:
+
+```bash
+venv/bin/python scripts/asistencia_unificada_optimizada.py \
+  --fuente data/unc/salon/VID_20260907_102851.mp4
+```
+
+Todos los comandos están en `docs/comandos.md`.
+
+---
+
+## 12. En una frase
+
+Un motor de reconocimiento facial (RetinaFace + ArcFace + anti-spoofing) que
+decide identidad con umbral 0.30 y consenso temporal, guarda la asistencia en
+PostgreSQL + pgvector y se controla desde una web mínima de tres pantallas.

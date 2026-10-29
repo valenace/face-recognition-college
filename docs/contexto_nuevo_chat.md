@@ -21,9 +21,9 @@ de visión offline (**RetinaFace + ArcFace** vía `uniface`, anti-spoofing inclu
 
 | Aspecto | Estado |
 |---|---|
-| Tests | **64 pytest** (`pytest -m unit`) y **25 Django** (`manage.py test`), todos en verde |
+| Tests | **74 pytest** (`pytest -m unit`) y **32 Django** (`manage.py test`), todos en verde |
 | `manage.py check` | limpio |
-| Base de datos | 10 usuarios (9 estudiantes + admin), 9 embeddings, 0 sesiones, 0 registros |
+| Base de datos | 10 usuarios (9 estudiantes + admin), 9 embeddings; la sesión de demo 94 añade `prof_flujo` y la asignación `DEMO-FLUJO` |
 | Cambios sin commitear | Flujos de asistencia, vista en vivo, banda de revisión, demos y docs 09/10 |
 | Commits | Ninguno hecho por el asistente: **solo se commitea si el usuario lo pide** |
 
@@ -32,7 +32,8 @@ de visión offline (**RetinaFace + ArcFace** vía `uniface`, anti-spoofing inclu
 ## 3. Base de datos
 
 - **PostgreSQL 16.15**, base `cv_college_db`, usuario `cv_college_user`, contraseña
-  `cv_college_2026`, `localhost:5432` (hardcodeado en `cv_college/settings.py`).
+  `cv_college_2026`, `localhost:5432`. Configurable con `CV_DB_*`; los valores por
+  defecto son los de desarrollo.
 - **pgvector 0.6.0** activo. Tabla clave: `attendance_faceembedding`.
   - `embedding`: `VectorField(512)`, norma 1, índice **HNSW** con `vector_cosine_ops`.
   - Metadatos: `modelo`, `n_muestras`, `fuente` (`VIDEO`/`IMPORTADO`/`WEB`), `fecha`,
@@ -94,7 +95,7 @@ Reglas añadidas:
 |---|---|---|
 | Registro CLI | Video → 50 fotos alineadas → centroide → pgvector | `scripts/registro_video.py` |
 | Registro web | Igual, desde `/directorio/` | `apps/academic/views.py`, `apps/attendance/api.py` |
-| Inferencia consola | Video → decisiones → CSV | `scripts/asistencia_unificada_optimizada.py` |
+| Inferencia consola | Video/cámara → motor → `RegistroAsistencia` (con `--sesion`) o CSV (experimentos) | `scripts/asistencia_unificada_optimizada.py` |
 | Batch de imágenes | Carpeta → motor calibrado → `RegistroAsistencia` | `core/procesador_batch.py` (`ProcesarDatasetView`) |
 | En vivo | Cámara o video → motor → `RegistroAsistencia` + frame anotado | `core/servicio_en_vivo.py`, `/en-vivo/`, `/api/en-vivo/*` |
 
@@ -104,10 +105,21 @@ Reglas añadidas:
   video, para poder probarlo sin cámara.
 - Reglas de escritura: desconocido → `INTRUSO` con `es_fraude=False`; anti-spoofing →
   `SPOOFING` con `es_fraude=True`; horas reales (`hora_entrada`, `ultima_vez_visto`).
+- **Intrusos (2026-10-23):** `core/intrusos.py::SeguimientoIntrusos` decide cuándo un
+  `DESCONOCIDO` es intruso real: mejor score de la pista < 0.18, 15 frames consecutivos
+  y sin conflicto de identidad. Si la pista luego mejora, la fila se borra. La nota
+  guarda la mejor coincidencia (`dani 0.14`). Ver `docs/analisis/unc/11_intrusos.md`.
 - La vista en vivo está restringida a `PROFESSOR`, `COORDINATOR`, `DIRECTOR` y
   `DEVELOPER`.
 - Se eliminó el fallback que guardaba un **vector aleatorio** cuando fallaba la IA: ahora
   el registro devuelve 400 y no escribe nada.
+
+**Web reducida (2026-10-22):** el menú muestra solo **Directorio** (`/directorio/`,
+registro con video y listado), **Sesiones** (`/sesiones/`, historial y detalle de la
+asistencia guardada) y **Control de Asistencia** (`/en-vivo/`). La raíz `/`
+redirige al directorio. Las demás páginas académicas siguen accesibles por URL, pero
+no aparecen en el menú hasta que se rehabiliten. Si no hay sesiones abiertas,
+`/en-vivo/` ofrece el botón **Crear sesión de demo** (usa `core/sesion_demo.py`).
 
 ---
 
@@ -137,6 +149,8 @@ Reglas añadidas:
 | Video 3: re-confirmación tras cada corte | mediana 1.31 s, máx 13.2 s |
 | ROC | AUC 0.744; umbral 0.30 |
 | Accesorios | lentes sin efecto (p=0.512); gorra sola sin efecto; **gorra+lentes** mediana 0.315 (2/4 pasan) |
+| Intrusos (video 1, 44 s) | 130 pistas desconocidas → **6 filas** finales; 8 confirmados intactos |
+| Intrusos (video 3) | 18 de 21 desconocidos detectados con el corte 0.18 |
 
 **Cómo se logra reconocer con accesorios** (jesús, registrado sin ellos): centroide
 promediado de 50 frames con diversidad de pose + umbral 0.30 (con 0.35 pasaba 1 de 4) +
@@ -179,6 +193,15 @@ python manage.py ver_flujo --desde 36 --hasta 107 --detalle
 # Con escritura de demo y SQL visible
 python manage.py ver_flujo --crear-sesion --sql --limpiar
 
+# Asistencia desde consola, escribiendo en la base (cámara 0 o un video)
+# El ID sale de una sesión abierta en /academic/ (panel del profesor) o en /admin/
+python scripts/asistencia_unificada_optimizada.py --sesion <ID> --fuente 0
+python scripts/asistencia_unificada_optimizada.py --sesion <ID> --fuente data/unc/salon/VID_20260907_102851.mp4
+# Si no hay sesión abierta: crea una de demo (y --limpiar la borra al terminar)
+python scripts/asistencia_unificada_optimizada.py --crear-sesion --fuente <video|0>
+python scripts/asistencia_unificada_optimizada.py --crear-sesion --limpiar --fuente <video>
+# Sin --sesion: solo dibuja y escribe data/asistencia.csv (experimentos)
+
 # Regresión de identidad (sale con 1 si hay fallos nuevos)
 venv/bin/python experiments/unc/regresion_identidad.py
 
@@ -202,6 +225,8 @@ venv/bin/python manage.py test
 | `scripts/registro_unificado.py` | Registro (web) |
 | `core/db_config.py` | Lectura/escritura de centroides en pgvector |
 | `core/registro_asistencia.py` | Decisiones → `RegistroAsistencia` |
+| `core/intrusos.py` | Clasificador de intrusos (sin Django) |
+| `core/sesion_demo.py` | Sesión de demo (profesor/asignación/inscripciones) |
 | `core/procesador_batch.py` | Batch de imágenes |
 | `core/servicio_en_vivo.py` | Servicio de cámara/video en vivo |
 | `apps/attendance/models.py` | `FaceEmbedding` (vector), sesiones y asistencia |
@@ -210,6 +235,10 @@ venv/bin/python manage.py test
 | `experiments/unc/regresion_identidad.py` | Regresión con fixture |
 | `experiments/unc/grabar_demo_*.py` | Generadores de video |
 | `docs/base_datos.md` | Esquema y operación de la BD |
+| `docs/motor.md` | Documentación del motor, línea por línea (en progreso) |
+| `docs/motor_2.md` | Capítulo 2: preprocesado, intrusos, pgvector y escritura |
+| `docs/motor_3.md` | Capítulo 3: batch, en vivo, sesión demo y registro |
+| `docs/web.md` | Web completa: rutas, settings, modelos, vistas, API y plantillas |
 
 ---
 
@@ -231,12 +260,16 @@ Usar los `_web` para enviar; los normales son el máster.
 1. **Validar en vivo con cámara real** en la UNC (hoy probado con archivo de video).
 2. **Multi-prototipo (Fase 4)** si se relaja la restricción de no tocar la comparación
    del motor.
-3. **Unificar la asistencia**: el motor de consola escribe CSV y la web escribe
-   `RegistroAsistencia`.
-4. **Mover credenciales a variables de entorno** (hoy hardcodeadas en `settings.py` y
-   `core/db_config.py`).
+3. ~~**Unificar la asistencia**~~ (hecho): la consola escribe en `RegistroAsistencia`
+   con `--sesion ID` y las reglas de la web; el CSV queda para los experimentos.
+4. ~~**Mover credenciales a variables de entorno**~~ (hecho): `settings.py` y
+   `core/db_config.py` leen `CV_DB_*` y `DJANGO_*`; los valores por defecto son los
+   de desarrollo.
 5. Cambiar la contraseña del admin y completar apellidos/matrículas reales.
 6. Revalidar el umbral con más aulas y sesiones.
+7. **Bajar los intrusos falsos restantes**: los que no se acercan a 0.18 (9 en 44 s del
+   video 1) requieren re-identificación; mientras tanto, se descartan desde
+   `/sesiones/<id>/`.
 
 ---
 
@@ -256,6 +289,11 @@ Usar los `_web` para enviar; los normales son el máster.
 
 - `venv/` con el pipeline CV; `requirements.txt` incluye `pgvector` pero **omite
   `pytest` y `faiss-cpu`** (instalarlos aparte).
+- **Cómputo de todas las pruebas:** Intel **i9-14900KF** (24 núcleos), 62 GB de RAM,
+  **CPU únicamente**. La máquina tiene una **RTX 4090**, pero el venv instala
+  `onnxruntime` (build de CPU), así que `uniface` no usa CUDA. Rendimiento medido:
+  **~7 fps** en 1080p (detección 47 ms/frame, embedding 24 ms/cara, FAISS 0.02 ms/cara).
+  Detalle completo en `docs/computo.md`.
 - Para tests de Django: `ALTER ROLE cv_college_user CREATEDB;` y `CREATE EXTENSION vector`
   en `template1`.
 - `ffmpeg` disponible (se usa para las versiones web de los videos).
