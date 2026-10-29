@@ -12,7 +12,6 @@ datos**: si no hay imágenes reales, deja el estado en `error` y termina.
 Genera en `MEDIA_ROOT/batch_processed/<sesion_id>/`:
   status.json   progreso que consume el panel del profesor
   latest.jpg    último frame procesado y anotado
-  asistencia.csv  salida cruda del motor, solo para depuración
 """
 
 import json
@@ -34,7 +33,7 @@ from core.registro_asistencia import (
     reiniciar_pistas,
 )
 
-MAX_IMAGENES = 60  # muestreo uniforme; el motor tarda ~30 ms por imagen
+MAX_IMAGENES = 60  # muestreo uniforme; el motor tarda ~130 ms por imagen
 
 
 def _listar_imagenes(ruta_carpeta):
@@ -113,7 +112,7 @@ def procesar_batch_imagenes(sesion_id, ruta_carpeta=None):
     try:
         from scripts.asistencia_unificada_optimizada import MotorAsistencia
 
-        motor = MotorAsistencia(csv_path=os.path.join(status_dir, "asistencia.csv"))
+        motor = MotorAsistencia(registrar_csv=False)
         motor.tamano_minimo_rostro = 20
         # Cada imagen es una observación independiente: se confirma con el umbral
         # calibrado y luego se exige evidencia repetida en varias imágenes.

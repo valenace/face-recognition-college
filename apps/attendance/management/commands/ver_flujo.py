@@ -14,21 +14,16 @@ import time
 
 import cv2
 import numpy as np
-from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import connection
 
-from apps.academic.models import (
-    AsignacionClase,
-    Asignatura,
-    Estudiante,
-    Inscripcion,
-    Salon,
-    Seccion,
-)
 from apps.attendance.models import RegistroAsistencia, SesionClase
 from core.db_config import alias_de
-from core.registro_asistencia import aplicar_decisiones, mapa_estudiantes
+from core.intrusos import SeguimientoIntrusos
+from core.registro_asistencia import (
+    aplicar_decisiones,
+    mapa_estudiantes,
+)
 
 VIDEO_POR_DEFECTO = "data/unc/salon/video5096333890499381162.mp4"
 COLORES = {
@@ -66,44 +61,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING(f"=== {titulo} ==="))
 
     def _crear_demo(self):
-        from django.contrib.auth import get_user_model
+        from core.sesion_demo import crear_sesion_demo
 
-        User = get_user_model()
-        profesor, _ = User.objects.get_or_create(
-            username="prof_flujo",
-            defaults={"first_name": "Profesor", "last_name": "Flujo",
-                      "role": User.Role.PROFESSOR},
-        )
-        asignatura, _ = Asignatura.objects.get_or_create(
-            codigo="DEMO-FLUJO", defaults={"nombre": "Demo de flujo"}
-        )
-        salon, _ = Salon.objects.get_or_create(
-            nombre="Salón Demo", defaults={"capacidad": 30}
-        )
-        seccion, _ = Seccion.objects.get_or_create(codigo="DEMO-S")
-        asignacion, _ = AsignacionClase.objects.get_or_create(
-            profesor=profesor, asignatura=asignatura, seccion=seccion, salon=salon,
-            defaults={"dia_semana": AsignacionClase.DiaSemana.LUNES,
-                      "horario_inicio": "08:00", "horario_fin": "10:00"},
-        )
-        for estudiante in Estudiante.objects.all():
-            Inscripcion.objects.get_or_create(
-                estudiante=estudiante, asignacion_clase=asignacion
-            )
-        sesion, _ = SesionClase.objects.get_or_create(asignacion_clase=asignacion)
-        RegistroAsistencia.objects.filter(sesion=sesion).delete()
-        return sesion
+        return crear_sesion_demo()
 
     def _limpiar_demo(self, sesion):
-        asignacion = sesion.asignacion_clase
-        sesion.delete()
-        Inscripcion.objects.filter(asignacion_clase=asignacion).delete()
-        asignacion.delete()
-        Asignatura.objects.filter(codigo="DEMO-FLUJO").delete()
-        Salon.objects.filter(nombre="Salón Demo").delete()
-        Seccion.objects.filter(codigo="DEMO-S").delete()
-        from django.contrib.auth import get_user_model
-        get_user_model().objects.filter(username="prof_flujo").delete()
+        from core.sesion_demo import limpiar_sesion_demo
+
+        limpiar_sesion_demo(sesion)
 
     def _dibujar(self, frame, decisiones):
         for d in decisiones:
@@ -162,7 +127,7 @@ class Command(BaseCommand):
 
         # 2. Índice FAISS
         self._seccion("2. ÍNDICE EN MEMORIA")
-        motor = MotorAsistencia(csv_path=os.path.join(settings.MEDIA_ROOT, "ver_flujo.csv"))
+        motor = MotorAsistencia(registrar_csv=False)
         motor.tamano_minimo_rostro = 20
         self._linea(f"faiss.IndexFlatIP(512) con {motor.indice_faiss.ntotal} vectores")
         self._linea("producto interno de vectores normalizados = similitud coseno")
@@ -223,6 +188,7 @@ class Command(BaseCommand):
         estudiantes = mapa_estudiantes(sesion.asignacion_clase) if sesion else {}
         profesor = sesion.asignacion_clase.profesor if sesion else None
         alias_profesor = alias_de(profesor.username, profesor.first_name) if profesor else None
+        seguimiento = SeguimientoIntrusos()
 
         # 5. Procesamiento
         self._seccion("4. PROCESAMIENTO FRAME A FRAME")
@@ -281,6 +247,7 @@ class Command(BaseCommand):
                     resumen = aplicar_decisiones(
                         decisiones, frame, sesion, estudiantes,
                         alias_profesor=alias_profesor, profesor=profesor,
+                        seguimiento=seguimiento,
                     )
                     conteo["confirmados"].update(resumen["confirmados"])
                     conteo["intrusos"] += resumen["intrusos"]

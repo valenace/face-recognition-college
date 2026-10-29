@@ -12,6 +12,8 @@ Arquitectura:
   - Margen top-2: se registra la segunda mejor coincidencia para análisis; la decisión
     todavía NO depende del margen.
   - Preprocesado compartido con el registro (core.utils_facial.embedding_facial).
+  - Escritura: CSV opcional para experimentos, o base de datos (RegistroAsistencia)
+    con las mismas reglas que la web cuando se indica una sesión (`--sesion`).
 """
 
 import cv2
@@ -44,16 +46,71 @@ COLORES = {
 }
 
 
+def _contexto_sesion(sesion_id):
+    """Carga la sesión y sus inscritos para escribir en la base.
+
+    Se importa Django aquí y no al inicio del módulo: el motor también se usa
+    desde la terminal sin Django (inferencia pura y experimentos).
+    """
+    from core.sesion_demo import configurar_django
+
+    configurar_django()
+
+    from django.core.exceptions import ObjectDoesNotExist
+
+    from apps.attendance.models import SesionClase
+    from core.db_config import alias_de
+    from core.registro_asistencia import mapa_estudiantes
+
+    try:
+        sesion = SesionClase.objects.select_related("asignacion_clase__profesor").get(
+            id=sesion_id
+        )
+    except ObjectDoesNotExist:
+        abiertas = (
+            SesionClase.objects.filter(estado=SesionClase.Estado.EN_CURSO)
+            .select_related("asignacion_clase__asignatura")
+            .order_by("id")
+        )
+        if abiertas:
+            detalle = "; ".join(
+                f"{s.id} = {s.asignacion_clase.asignatura.nombre} ({s.fecha})"
+                for s in abiertas
+            )
+            raise ValueError(
+                f"No existe una sesión con id={sesion_id}. "
+                f"Sesiones en curso: {detalle}."
+            ) from None
+        raise ValueError(
+            f"No existe una sesión con id={sesion_id} y no hay sesiones en curso. "
+            "Abre una desde el panel del profesor o créala en /admin/."
+        ) from None
+
+    asignacion = sesion.asignacion_clase
+    profesor = asignacion.profesor
+    return (
+        sesion,
+        mapa_estudiantes(asignacion),
+        profesor,
+        alias_de(profesor.username, profesor.first_name),
+    )
+
+
 class MotorAsistencia:
     def __init__(
         self,
         db_path="data/database_embeddings.pkl",
         csv_path="data/asistencia.csv",
         usar_bd=True,
+        registrar_csv=True,
     ):
         self.db_path = Path(db_path)
         self.csv_path = Path(csv_path)
         self.usar_bd = usar_bd
+        # La base de datos es la fuente de verdad. El CSV se conserva para los
+        # experimentos y scripts que lo piden explícitamente; los flujos web y el
+        # modo --sesion lo desactivan (ver core/registro_asistencia.py).
+        self.registrar_csv = registrar_csv
 
         # Calibrado en Fase 4 con decisión de 3 frames: 0.30 da precisión 1.000
         # y 0 falsos positivos sobre la muestra etiquetada (docs/analisis/unc/04_resultados_curva_roc.md §7).
@@ -140,7 +197,8 @@ class MotorAsistencia:
         self.asistencia_hoy = set()
         self.fecha_actual = datetime.now().strftime("%Y-%m-%d")
 
-        self._preparar_archivo_csv()
+        if self.registrar_csv:
+            self._preparar_archivo_csv()
         print("[OK] Sistema de Inferencia Listo.\n")
 
     def _preparar_archivo_csv(self):
@@ -163,7 +221,14 @@ class MotorAsistencia:
                 print(f"Advertencia al leer CSV: {e}")
 
     def _registrar_asistencia(self, nombre, similitud):
-        """Escribe en el CSV. Reinicia el conjunto diario si cambió el día."""
+        """Escribe en el CSV. Reinicia el conjunto diario si cambió el día.
+
+        En modo base de datos (`registrar_csv=False`) no hace nada: la escritura
+        la resuelve `core.registro_asistencia.aplicar_decisiones`.
+        """
+        if not self.registrar_csv:
+            return
+
         ahora = datetime.now()
         fecha = ahora.strftime("%Y-%m-%d")
         if fecha != self.fecha_actual:
@@ -180,7 +245,7 @@ class MotorAsistencia:
 
         self.asistencia_hoy.add(nombre)
         print(
-            f"  ✅ ASISTENCIA CONFIRMADA: {nombre} | Similitud: {similitud:.2f} | Hora: {hora}"
+            f"  ASISTENCIA CONFIRMADA: {nombre} | Similitud: {similitud:.2f} | Hora: {hora}"
         )
 
     @staticmethod
@@ -380,10 +445,29 @@ class MotorAsistencia:
         self._marcar_revision(decisiones)
         return self._resolver_conflictos(decisiones)
 
-    def iniciar_vigilancia(self, origen_video=0):
+    def iniciar_vigilancia(self, origen_video=0, sesion_id=None, limpiar=False):
+        """Procesa una cámara o un video.
+
+        Con `sesion_id` escribe la asistencia en la base (RegistroAsistencia) con
+        las mismas reglas que la web y deja el CSV desactivado. Sin él se comporta
+        como siempre: dibuja en pantalla y, si `registrar_csv` está activo,
+        escribe el CSV de los experimentos. Con `limpiar` borra la sesión de demo
+        al terminar (solo tiene sentido con `--crear-sesion`).
+        """
+        sesion = estudiantes = profesor = alias_profesor = seguimiento = None
+        if sesion_id is not None:
+            self.registrar_csv = False
+            # Mismo filtro de tamaño que los flujos web (batch y en vivo).
+            self.tamano_minimo_rostro = 20
+            sesion, estudiantes, profesor, alias_profesor = _contexto_sesion(sesion_id)
+            from core.intrusos import SeguimientoIntrusos
+            from core.registro_asistencia import aplicar_decisiones
+
+            seguimiento = SeguimientoIntrusos()
+
         cap = cv2.VideoCapture(origen_video)
         if not cap.isOpened():
-            print("❌ Error: No se pudo acceder a la cámara o flujo de video.")
+            print("Error: No se pudo acceder a la cámara o flujo de video.")
             return
 
         cv2.namedWindow("Control de Asistencia", cv2.WINDOW_NORMAL)
@@ -395,7 +479,17 @@ class MotorAsistencia:
                 if not ret:
                     break
 
-                for d in self.procesar_frame(frame):
+                decisiones = self.procesar_frame(frame)
+
+                if sesion is not None:
+                    resumen = aplicar_decisiones(
+                        decisiones, frame, sesion, estudiantes,
+                        alias_profesor=alias_profesor, profesor=profesor,
+                        seguimiento=seguimiento,
+                    )
+                    self.asistencia_hoy.update(resumen["confirmados"])
+
+                for d in decisiones:
                     x1, y1, x2, y2 = d["bbox"]
                     self._dibujar_ui(frame, x1, y1, x2, y2, d["nombre"],
                                      COLORES.get(d["estado"], (0, 0, 255)), d["track_id"])
@@ -416,6 +510,11 @@ class MotorAsistencia:
         finally:
             cap.release()
             cv2.destroyAllWindows()
+            if limpiar and sesion is not None:
+                from core.sesion_demo import limpiar_sesion_demo
+
+                limpiar_sesion_demo(sesion)
+                print("\nSesión de demo eliminada.")
             print(f"\n{'=' * 50}")
             print(" SESIÓN DE ASISTENCIA CERRADA")
             print(f" Estudiantes procesados hoy: {len(self.asistencia_hoy)}")
@@ -441,11 +540,56 @@ class MotorAsistencia:
 # EJECUCIÓN
 # ============================================================
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Motor de asistencia sobre cámara o archivo de video."
+    )
+    parser.add_argument(
+        "--fuente", default="0",
+        help="Cámara (0, 1, ...) o ruta de un archivo de video.",
+    )
+    grupo = parser.add_mutually_exclusive_group()
+    grupo.add_argument(
+        "--sesion", type=int,
+        help="ID de la SesionClase donde escribir la asistencia (base de datos). "
+             "Sin esta opción solo se dibuja y se escribe el CSV.",
+    )
+    grupo.add_argument(
+        "--crear-sesion", action="store_true",
+        help="Crea (o reutiliza) una sesión de demo con los estudiantes "
+             "y escribe la asistencia ahí.",
+    )
+    parser.add_argument(
+        "--limpiar", action="store_true",
+        help="Borra la sesión de demo al terminar (requiere --crear-sesion).",
+    )
+    args = parser.parse_args()
+
+    if args.limpiar and not args.crear_sesion:
+        parser.error("--limpiar requiere --crear-sesion")
+
+    origen = int(args.fuente) if args.fuente.isdigit() else args.fuente
+
     try:
-        sistema = MotorAsistencia()
-        sistema.iniciar_vigilancia(origen_video=0)
-    except FileNotFoundError as e:
-        print(f"\n❌ ERROR: {e}")
-        print(
-            "Asegúrate de ejecutar el módulo de Registro y crear la base de datos primero."
+        sesion_id = args.sesion
+        if args.crear_sesion:
+            from core.sesion_demo import crear_sesion_demo
+
+            sesion = crear_sesion_demo()
+            sesion_id = sesion.id
+            print(
+                f"[INFO] Sesión de demo: id={sesion_id} "
+                f"({sesion.asignacion_clase.asignatura.nombre})"
+            )
+
+        sistema = MotorAsistencia(registrar_csv=sesion_id is None)
+        sistema.iniciar_vigilancia(
+            origen_video=origen, sesion_id=sesion_id, limpiar=args.limpiar
         )
+    except (FileNotFoundError, ValueError) as e:
+        print(f"\nERROR: {e}")
+        if sesion_id is None:
+            print(
+                "Asegúrate de ejecutar el módulo de Registro y crear la base de datos primero."
+            )

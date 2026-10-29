@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from apps.academic.models import Estudiante
 from apps.attendance.models import RegistroAsistencia
+from core.intrusos import UMBRAL_INTRUSO
 
 TAMANO_MINIMO_INTRUSO = 40  # px de ancho para guardar una captura de intruso
 
@@ -52,36 +53,71 @@ def _guardar_captura(registro, frame, bbox):
     )
 
 
-def _registrar_desconocido(sesion, frame, bbox, es_fraude, tipo_evento, track_id, nota):
-    """Una fila por pista desconocida (no una por frame)."""
+def _registrar_desconocido(sesion, frame, bbox, es_fraude, tipo_evento, track_id, nota,
+                           candidato=None, similitud=None):
+    """Una fila por pista desconocida (no una por frame).
+
+    La nota de la fila incluye la mejor coincidencia para que el profesor pueda
+    juzgar si el 'intruso' es en realidad un estudiante registrado. El filtro para
+    decidir si la pista califica vive en `SeguimientoIntrusos`.
+    """
     etiqueta = f"{nota} Pista {track_id}."
     ahora = timezone.localtime().time()
-    registro, creado = RegistroAsistencia.objects.get_or_create(
+    registro = RegistroAsistencia.objects.filter(
         sesion=sesion,
         estudiante=None,
         tipo_evento=tipo_evento,
-        notas_auditoria=etiqueta,
-        defaults={
-            "hora_entrada": ahora,
-            "ultima_vez_visto": ahora,
-            "es_fraude": es_fraude,
-        },
-    )
-    if creado:
+        notas_auditoria__startswith=etiqueta,
+    ).first()
+
+    if registro is None:
+        detalle = etiqueta
+        if candidato:
+            detalle += f" Mejor coincidencia: {candidato}"
+            if similitud is not None:
+                detalle += f" ({similitud:.2f})"
+            detalle += "."
+        registro = RegistroAsistencia.objects.create(
+            sesion=sesion,
+            estudiante=None,
+            tipo_evento=tipo_evento,
+            notas_auditoria=detalle,
+            hora_entrada=ahora,
+            ultima_vez_visto=ahora,
+            es_fraude=es_fraude,
+            similitud_ia=similitud,
+        )
         _guardar_captura(registro, frame, bbox)
     else:
         registro.ultima_vez_visto = ahora
-        registro.save(update_fields=["ultima_vez_visto"])
+        if similitud is not None:
+            registro.similitud_ia = similitud
+        registro.save(update_fields=["ultima_vez_visto", "similitud_ia"])
+    return registro
 
 
 def aplicar_decisiones(decisiones, frame, sesion, estudiantes_por_alias,
-                       alias_profesor=None, profesor=None):
+                       alias_profesor=None, profesor=None, seguimiento=None):
     """Escribe en la base las decisiones de un frame/imagen.
+
+    Con `seguimiento` (SeguimientoIntrusos) solo escribe los desconocidos que
+    califican como intrusos y borra las filas de pistas que luego mejoraron.
+    Sin él mantiene el comportamiento anterior (una fila por pista).
 
     Devuelve un resumen {confirmados, intrusos, fraudes} para mostrar en pantalla.
     """
     ahora = timezone.localtime().time()
     resumen = {"confirmados": [], "intrusos": 0, "fraudes": 0}
+
+    intrusos_permitidos = None
+    if seguimiento is not None:
+        permitidos, descartar = seguimiento.evaluar(decisiones)
+        intrusos_permitidos = {d["track_id"] for d in permitidos}
+        if descartar:
+            for registro in RegistroAsistencia.objects.filter(id__in=descartar):
+                if registro.captura_fraude:
+                    registro.captura_fraude.delete(save=False)
+                registro.delete()
 
     for decision in decisiones:
         estado = decision["estado"]
@@ -141,18 +177,24 @@ def aplicar_decisiones(decisiones, frame, sesion, estudiantes_por_alias,
                 sesion, frame, bbox, es_fraude=True,
                 tipo_evento=RegistroAsistencia.TipoEvento.SPOOFING,
                 track_id=track_id, nota="Posible fraude (anti-spoofing).",
+                candidato=decision.get("candidato"), similitud=similitud,
             )
             resumen["fraudes"] += 1
             continue
 
         if estado == "DESCONOCIDO":
+            if intrusos_permitidos is not None and track_id not in intrusos_permitidos:
+                continue
             ancho = int(bbox[2]) - int(bbox[0])
             if ancho >= TAMANO_MINIMO_INTRUSO:
-                _registrar_desconocido(
+                registro = _registrar_desconocido(
                     sesion, frame, bbox, es_fraude=False,
                     tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO,
                     track_id=track_id, nota="Persona no registrada.",
+                    candidato=decision.get("candidato"), similitud=similitud,
                 )
+                if seguimiento is not None and registro is not None:
+                    seguimiento.marcar_registrado(track_id, registro.id)
                 resumen["intrusos"] += 1
 
     return resumen
@@ -206,6 +248,13 @@ def acumular_decisiones(acumulado, decisiones, frame, indice):
             info = acumulado["fraudes"]
         elif estado == "DESCONOCIDO":
             if int(bbox[2]) - int(bbox[0]) < TAMANO_MINIMO_INTRUSO:
+                continue
+            # En lote no hay tracking continuo: se filtra por la mejor coincidencia
+            # y por los conflictos, que son registrados y no intrusos.
+            similitud = decision.get("similitud")
+            if similitud is not None and similitud >= UMBRAL_INTRUSO:
+                continue
+            if (decision.get("motivo") or "").startswith("conflicto"):
                 continue
             info = acumulado["intrusos"]
         else:

@@ -12,13 +12,12 @@ igual. Aceptar un archivo como fuente permite probar el flujo sin cámara.
 
 import threading
 import time
-import os
 
 import cv2
-from django.conf import settings
 from django.db import close_old_connections
 
 from core.db_config import alias_de
+from core.intrusos import SeguimientoIntrusos
 from core.registro_asistencia import aplicar_decisiones, mapa_estudiantes
 
 
@@ -110,10 +109,9 @@ class ServicioEnVivo:
                 profesor = asignacion.profesor
                 alias_profesor = alias_de(profesor.username, profesor.first_name)
 
-            motor = MotorAsistencia(
-                csv_path=os.path.join(settings.MEDIA_ROOT, "en_vivo_asistencia.csv")
-            )
+            motor = MotorAsistencia(registrar_csv=False)
             motor.tamano_minimo_rostro = 20
+            seguimiento = SeguimientoIntrusos()
 
             origen = int(fuente) if str(fuente).isdigit() else fuente
             captura = cv2.VideoCapture(origen)
@@ -137,6 +135,7 @@ class ServicioEnVivo:
                     resumen = aplicar_decisiones(
                         decisiones, frame, sesion, estudiantes,
                         alias_profesor=alias_profesor, profesor=profesor,
+                        seguimiento=seguimiento,
                     )
                 else:
                     resumen = {"confirmados": []}

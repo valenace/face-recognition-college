@@ -175,6 +175,41 @@ class TestCSVAsistencia:
 
 
 @pytest.mark.unit
+class TestAsistenciaCSVOpcional:
+    """El motor optimizado solo escribe CSV cuando se le pide.
+
+    Los flujos web y el modo `--sesion` escriben en RegistroAsistencia; el CSV
+    queda para los experimentos.
+    """
+
+    def _motor(self, csv_path, registrar_csv):
+        from scripts.asistencia_unificada_optimizada import MotorAsistencia
+
+        motor = MotorAsistencia.__new__(MotorAsistencia)
+        motor.csv_path = Path(csv_path)
+        motor.asistencia_hoy = set()
+        motor.fecha_actual = datetime.now().strftime("%Y-%m-%d")
+        motor.registrar_csv = registrar_csv
+        return motor
+
+    def test_modo_bd_no_crea_csv(self, tmp_path):
+        csv_path = tmp_path / "asistencia.csv"
+        motor = self._motor(csv_path, registrar_csv=False)
+        motor._registrar_asistencia("user1", 0.85)
+        assert not csv_path.exists()
+        assert motor.asistencia_hoy == set()
+
+    def test_modo_csv_escribe(self, tmp_path):
+        csv_path = tmp_path / "asistencia.csv"
+        motor = self._motor(csv_path, registrar_csv=True)
+        motor._preparar_archivo_csv()
+        motor._registrar_asistencia("user1", 0.85)
+        assert "user1" in motor.asistencia_hoy
+        with open(csv_path, "r") as f:
+            assert len(list(csv.reader(f))) == 2
+
+
+@pytest.mark.unit
 class TestVotacionTemporal:
     def test_votos_suficientes_anclan(self):
         votos = {}
@@ -283,3 +318,96 @@ class TestBandaRevision:
         ]
         self._motor()._marcar_revision(decisiones)
         assert [d["revision"] for d in decisiones] == [False, True]
+
+
+@pytest.mark.unit
+class TestSeguimientoIntrusos:
+    """Un desconocido de un frame no es intruso si la pista es un registrado."""
+
+    def _desconocido(self, track_id, sim, motivo=None):
+        return {
+            "track_id": track_id,
+            "estado": "DESCONOCIDO",
+            "similitud": sim,
+            "candidato": "dani",
+            "motivo": motivo,
+        }
+
+    def _confirmado(self, track_id):
+        return {"track_id": track_id, "estado": "CONFIRMADO", "similitud": 0.5}
+
+    def test_pista_persistente_bajo_umbral_crea_intruso(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=3)
+        crear = []
+        for _ in range(3):
+            crear, _ = seg.evaluar([self._desconocido(7, 0.10)])
+        assert [d["track_id"] for d in crear] == [7]
+
+    def test_pista_que_supera_el_umbral_no_es_intruso(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=3)
+        crear = []
+        for sim in (0.10, 0.12, 0.25, 0.25):
+            crear, _ = seg.evaluar([self._desconocido(7, sim)])
+        assert crear == []
+
+    def test_fila_creada_se_descarta_si_la_pista_mejora(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=2)
+        crear = []
+        for _ in range(2):
+            crear, _ = seg.evaluar([self._desconocido(7, 0.10)])
+        assert crear
+        seg.marcar_registrado(7, 99)
+        _, descartar = seg.evaluar([self._desconocido(7, 0.25)])
+        assert descartar == [99]
+
+    def test_conflicto_de_identidad_no_es_intruso(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=2)
+        crear = []
+        for _ in range(5):
+            crear, _ = seg.evaluar(
+                [self._desconocido(7, 0.10, "conflicto_con_pista_2")]
+            )
+        assert crear == []
+
+    def test_confirmacion_descarta_la_fila(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=2)
+        for _ in range(2):
+            crear, _ = seg.evaluar([self._desconocido(7, 0.10)])
+        assert crear
+        seg.marcar_registrado(7, 42)
+        _, descartar = seg.evaluar([self._confirmado(7)])
+        assert descartar == [42]
+
+    def test_pocos_frames_no_crean_intruso(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=3)
+        crear = []
+        for _ in range(2):
+            crear, _ = seg.evaluar([self._desconocido(7, 0.10)])
+        assert crear == []
+
+
+@pytest.mark.unit
+class TestAlias:
+    """El alias debe ser único: nombre para unc_*, username para el resto."""
+
+    def test_prefijo_unc(self):
+        from core.db_config import alias_de
+
+        assert alias_de("unc_alexa", "Alexa") == "alexa"
+
+    def test_username_sin_prefijo(self):
+        from core.db_config import alias_de
+
+        assert alias_de("20230001", "Juan") == "20230001"
