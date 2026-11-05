@@ -20,6 +20,10 @@ import math
 # estudiante registrado no confirmado (cuando el candidato no está ya anclado
 # simultáneamente en otra pista activa del aula).
 UMBRAL_INTRUSO = 0.24
+# Umbral sobre la MEJOR similitud efectiva de la pista. Si en algún momento se
+# acercó a un registrado, la pista no es un intruso aunque su promedio sea bajo:
+# el promedio es acumulativo y no baja cuando la cara mejora.
+UMBRAL_MEJOR = 0.26
 # Frames consecutivos que debe sostener la pista para crear la fila.
 FRAMES_INTRUSO = 15
 # Frames sin ver la pista para limpiar su estado interno.
@@ -37,6 +41,9 @@ class SeguimientoIntrusos:
     Reglas:
     - Se evalúa el PROMEDIO de similitud de la pista (`suma / muestras`), no el
       máximo de un único frame aislado.
+    - Y además su MEJOR similitud efectiva: si en algún momento la pista se
+      acercó a un registrado, no es un intruso (el promedio es acumulativo y no
+      refleja una mejora posterior de la cara).
     - Si el `candidato` más cercano ya está confirmado/anclado en OTRA pista
       activa en el mismo frame, esa muestra no penaliza a la pista desconocida
       (dos personas distintas en el mismo instante no pueden ser el mismo alumno).
@@ -52,12 +59,14 @@ class SeguimientoIntrusos:
     def __init__(
         self,
         umbral=UMBRAL_INTRUSO,
+        umbral_mejor=UMBRAL_MEJOR,
         frames=FRAMES_INTRUSO,
         olvido=OLVIDO_PISTA,
         olvido_espacial=OLVIDO_ESPACIAL,
         factor_distancia=FACTOR_DISTANCIA_ASIENTO,
     ):
         self.umbral = umbral
+        self.umbral_mejor = umbral_mejor
         self.frames = frames
         self.olvido = olvido
         self.olvido_espacial = olvido_espacial
@@ -142,6 +151,7 @@ class SeguimientoIntrusos:
             if info is None:
                 info = {
                     "best": 0.0,
+                    "best_ef": 0.0,
                     "suma": 0.0,
                     "muestras": 0,
                     "rachas": 0,
@@ -167,8 +177,15 @@ class SeguimientoIntrusos:
             info["suma"] += sim_efectiva
             info["muestras"] += 1
             promedio = info["suma"] / info["muestras"]
+            if sim_efectiva > info["best_ef"]:
+                info["best_ef"] = sim_efectiva
 
-            if promedio >= self.umbral:
+            # Se descarta si el promedio es alto O si en algún momento se acercó a
+            # un registrado: el promedio es acumulativo y no refleja una mejora
+            # posterior de la cara.
+            if promedio >= self.umbral or (
+                self.umbral_mejor is not None and info["best_ef"] >= self.umbral_mejor
+            ):
                 info["descartada"] = True
                 if info["registro_id"] and info.get("es_creador", True):
                     descartar.append(info["registro_id"])

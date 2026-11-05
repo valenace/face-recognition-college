@@ -367,6 +367,21 @@ class TestSeguimientoIntrusos:
         _, descartar = seg.evaluar([self._desconocido(7, 0.60)])
         assert descartar == [99]
 
+    def test_pista_que_se_acerco_a_un_registrado_no_es_intruso(self):
+        """El promedio es acumulativo: si la cara mejora, la pista se descarta."""
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=3, umbral=0.24, umbral_mejor=0.26)
+        crear = []
+        for _ in range(3):
+            crear, _ = seg.evaluar([self._desconocido(7, 0.10)])
+        assert crear
+        seg.marcar_registrado(7, 77)
+        # El promedio sigue bajo (0.15), pero la mejor similitud efectiva ya
+        # demuestra que es un estudiante registrado.
+        _, descartar = seg.evaluar([self._desconocido(7, 0.30)])
+        assert descartar == [77]
+
     def test_conflicto_de_identidad_no_es_intruso(self):
         from core.intrusos import SeguimientoIntrusos
 
