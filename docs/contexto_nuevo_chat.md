@@ -23,7 +23,7 @@ de visión offline (**RetinaFace + ArcFace** vía `uniface`, anti-spoofing inclu
 |---|---|
 | Tests | **76 pytest** (`pytest -m unit`) y **42 Django** (`manage.py test`), todos en verde |
 | `manage.py check` | limpio |
-| Base de datos | 10 usuarios base + `prof_flujo`, 9 embeddings; las sesiones de demo 97 y 98 están en curso (12 y 14 filas) |
+| Base de datos | 10 usuarios base + `prof_flujo`, 9 embeddings; la sesión de demo 101 está en curso (56 filas). Sus 47 intrusos son de la regla anterior a la calibración del 2026-11-05: conviene regrabar para ver el efecto |
 | Cambios sin commitear | Solo `docs/analisis/unc.zip` (respaldo del usuario) |
 | Commits | Ninguno hecho por el asistente: **solo se commitea si el usuario lo pide** |
 
