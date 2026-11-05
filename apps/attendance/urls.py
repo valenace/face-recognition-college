@@ -6,6 +6,8 @@ from apps.attendance.views import (
     sesiones,
     sesion_detalle,
     descartar_registro,
+    eliminar_sesion,
+    eliminar_todas_sesiones,
 )
 from apps.attendance.api import (
     RegistroBiometricoView,
@@ -22,7 +24,9 @@ urlpatterns = [
     path("en-vivo/sesion-demo/", crear_sesion_demo_view, name="crear_sesion_demo"),
     path("directorio/", directorio, name="directorio"),
     path("sesiones/", sesiones, name="sesiones"),
+    path("sesiones/eliminar-todas/", eliminar_todas_sesiones, name="eliminar_todas_sesiones"),
     path("sesiones/<int:sesion_id>/", sesion_detalle, name="sesion_detalle"),
+    path("sesiones/<int:sesion_id>/eliminar/", eliminar_sesion, name="eliminar_sesion"),
     path(
         "sesiones/<int:sesion_id>/registros/<int:registro_id>/descartar/",
         descartar_registro,

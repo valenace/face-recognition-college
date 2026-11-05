@@ -118,6 +118,28 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         registro.refresh_from_db()
         self.assertTrue(registro.alerta_revisada)
 
+    def test_crear_y_eliminar_sesiones(self):
+        self.client.login(username="professor_owner", password="password123")
+        inicial = SesionClase.objects.count()
+
+        # Crear una nueva sesión desde /sesiones/
+        resp = self.client.post(reverse("crear_sesion_demo"), {"next": "sesiones"})
+        self.assertRedirects(resp, reverse("sesiones"))
+        self.assertEqual(SesionClase.objects.count(), inicial + 1)
+
+        # Eliminar una sesión individual
+        nueva = SesionClase.objects.exclude(pk=self.sesion.id).first()
+        resp_del = self.client.post(
+            reverse("eliminar_sesion", kwargs={"sesion_id": nueva.id})
+        )
+        self.assertRedirects(resp_del, reverse("sesiones"))
+        self.assertFalse(SesionClase.objects.filter(pk=nueva.id).exists())
+
+        # Eliminar todas las sesiones
+        resp_all = self.client.post(reverse("eliminar_todas_sesiones"))
+        self.assertRedirects(resp_all, reverse("sesiones"))
+        self.assertEqual(SesionClase.objects.count(), 0)
+
     def test_directorio_muestra_contadores(self):
         self.client.login(username="professor_owner", password="password123")
         response = self.client.get(reverse("directorio"))

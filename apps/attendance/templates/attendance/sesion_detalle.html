@@ -20,7 +20,7 @@
                 Profesor: {{ sesion.asignacion_clase.profesor.get_full_name|default:sesion.asignacion_clase.profesor.username }}
             </p>
         </div>
-        <div>
+        <div class="flex items-center gap-3">
             {% if sesion.estado == "EN_CURSO" %}
             <span class="px-4 py-2 rounded-full text-sm font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
                 En curso
@@ -30,6 +30,14 @@
                 Finalizada
             </span>
             {% endif %}
+            <form method="post" action="{% url 'eliminar_sesion' sesion.id %}"
+                  onsubmit="return confirm('¿Eliminar esta sesión y todos sus registros?');">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700">
+                    Eliminar sesión
+                </button>
+            </form>
         </div>
     </div>
 

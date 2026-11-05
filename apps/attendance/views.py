@@ -34,14 +34,56 @@ def live_attendance(request):
 
 @role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
 def crear_sesion_demo_view(request):
-    """Crea la sesión de demo desde el control en vivo (sin panel de profesor)."""
+    """Crea una nueva sesión desde el control en vivo o desde el listado de sesiones."""
     if request.method != "POST":
         return redirect("live_attendance")
 
     from core.sesion_demo import crear_sesion_demo
 
     crear_sesion_demo()
-    return redirect("live_attendance")
+    siguiente = request.POST.get("next") or "live_attendance"
+    if siguiente not in {"live_attendance", "sesiones"}:
+        siguiente = "live_attendance"
+    return redirect(siguiente)
+
+
+def _borrar_sesion_y_archivos(sesion):
+    """Borra las capturas en disco de la sesión y elimina la sesión (y andamiaje demo si aplica)."""
+    from core.sesion_demo import limpiar_sesion_demo
+
+    for reg in sesion.asistencias.all():
+        if reg.captura_fraude:
+            reg.captura_fraude.delete(save=False)
+
+    if sesion.asignacion_clase.asignatura.codigo == "DEMO-FLUJO":
+        limpiar_sesion_demo(sesion)
+    else:
+        sesion.delete()
+
+
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def eliminar_sesion(request, sesion_id):
+    """Elimina una sesión específica y sus registros."""
+    if request.method != "POST":
+        return redirect("sesiones")
+
+    sesion = get_object_or_404(
+        SesionClase.objects.select_related("asignacion_clase__asignatura"),
+        pk=sesion_id,
+    )
+    _borrar_sesion_y_archivos(sesion)
+    return redirect("sesiones")
+
+
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def eliminar_todas_sesiones(request):
+    """Elimina todas las sesiones registradas para empezar desde cero."""
+    if request.method != "POST":
+        return redirect("sesiones")
+
+    for sesion in SesionClase.objects.select_related("asignacion_clase__asignatura").all():
+        _borrar_sesion_y_archivos(sesion)
+    return redirect("sesiones")
 
 
 @login_required

@@ -4,11 +4,33 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto">
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold">Sesiones</h1>
-        <p class="text-slate-500 dark:text-zinc-400 mt-1">
-            Historial de capturas y asistencia registrada en la base.
-        </p>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Sesiones</h1>
+            <p class="text-slate-500 dark:text-zinc-400 mt-1">
+                Historial de capturas y asistencia registrada en la base.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <form method="post" action="{% url 'crear_sesion_demo' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="sesiones">
+                <button type="submit"
+                        class="px-4 py-2.5 bg-brand-blue text-white rounded-xl text-sm font-bold hover:opacity-90">
+                    + Nueva sesión
+                </button>
+            </form>
+            {% if sesiones %}
+            <form method="post" action="{% url 'eliminar_todas_sesiones' %}"
+                  onsubmit="return confirm('¿Borrar todas las sesiones pasadas y sus registros?');">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700">
+                    Borrar todas
+                </button>
+            </form>
+            {% endif %}
+        </div>
     </div>
 
     {% if sesiones %}
@@ -55,10 +77,20 @@
                         <td class="px-6 py-4 text-center font-semibold text-red-500">{{ s.intrusos }}</td>
                         <td class="px-6 py-4 text-center font-semibold text-amber-500">{{ s.spoofing }}</td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{% url 'sesion_detalle' s.id %}"
-                               class="text-sm font-semibold text-brand-blue dark:text-brand-yellow hover:underline">
-                                Ver
-                            </a>
+                            <div class="inline-flex items-center gap-4">
+                                <a href="{% url 'sesion_detalle' s.id %}"
+                                   class="text-sm font-semibold text-brand-blue dark:text-brand-yellow hover:underline">
+                                    Ver
+                                </a>
+                                <form method="post" action="{% url 'eliminar_sesion' s.id %}"
+                                      onsubmit="return confirm('¿Eliminar la sesión #{{ s.id }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="text-sm font-semibold text-red-500 hover:underline">
+                                        Eliminar
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -70,7 +102,7 @@
     <div class="glass-card p-10 text-center">
         <p class="font-semibold">Todavía no hay sesiones registradas.</p>
         <p class="text-sm text-slate-500 mt-1">
-            Crea una desde el
+            Haz clic en «+ Nueva sesión» arriba o créala desde el
             <a href="{% url 'live_attendance' %}" class="text-brand-blue dark:text-brand-yellow hover:underline">Control de Asistencia</a>.
         </p>
     </div>
