@@ -41,6 +41,7 @@ def _dibujar(frame, decisiones):
 class ServicioEnVivo:
     def __init__(self):
         self._lock = threading.Lock()
+        self._cond = threading.Condition(self._lock)
         self._hilo = None
         self._activo = False
         self._jpeg = None
@@ -79,13 +80,41 @@ class ServicioEnVivo:
         return True, "Captura iniciada."
 
     def detener(self):
-        with self._lock:
+        with self._cond:
             self._activo = False
+            self._cond.notify_all()
         return True, "Captura detenida."
 
     def frame_jpeg(self):
         with self._lock:
             return self._jpeg
+
+    def stream_mjpeg(self):
+        """Generador MJPEG en paralelo: envía cada nuevo frame en cuanto está listo."""
+        ultimo_enviado = -1
+        while True:
+            with self._cond:
+                while self._activo and self._estado["frames"] == ultimo_enviado:
+                    self._cond.wait(timeout=0.5)
+                if self._estado["frames"] == ultimo_enviado:
+                    if not self._activo:
+                        break
+                    continue
+                jpeg = self._jpeg
+                ultimo_enviado = self._estado["frames"]
+                activo = self._activo
+
+            if jpeg:
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n"
+                    b"Content-Length: " + str(len(jpeg)).encode("ascii") + b"\r\n\r\n"
+                    + jpeg
+                    + b"\r\n"
+                )
+
+            if not activo:
+                break
 
     def estado(self):
         with self._lock:
@@ -143,7 +172,7 @@ class ServicioEnVivo:
                 anotado = _dibujar(frame, decisiones)
                 ok, buffer = cv2.imencode(".jpg", anotado, [cv2.IMWRITE_JPEG_QUALITY, 80])
                 if ok:
-                    with self._lock:
+                    with self._cond:
                         self._jpeg = buffer.tobytes()
                         self._estado["frames"] += 1
                         self._estado["caras"] = len(decisiones)
@@ -151,6 +180,7 @@ class ServicioEnVivo:
                         confirmados = set(self._estado["confirmados"])
                         confirmados.update(resumen.get("confirmados", []))
                         self._estado["confirmados"] = sorted(confirmados)
+                        self._cond.notify_all()
 
                 if espera:
                     time.sleep(max(0.0, espera - (time.time() - arranque)))
@@ -161,17 +191,19 @@ class ServicioEnVivo:
             return
         finally:
             close_old_connections()
-            with self._lock:
+            with self._cond:
                 self._activo = False
                 self._estado["activo"] = False
                 if self._estado["error"] is None:
                     self._estado["mensaje"] = "Captura finalizada."
+                self._cond.notify_all()
 
     def _fallar(self, mensaje):
-        with self._lock:
+        with self._cond:
             self._activo = False
             self._estado["activo"] = False
             self._estado["error"] = mensaje
+            self._cond.notify_all()
 
 
 servicio_en_vivo = ServicioEnVivo()

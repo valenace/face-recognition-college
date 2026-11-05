@@ -468,3 +468,47 @@ class FlujoAsistenciaTests(TestCase):
             ).count(),
             1,
         )
+
+    def test_en_vivo_stream_y_polling_conviven_en_paralelo(self):
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        # 1. Sin autenticar -> 403 en ambos endpoints
+        self.assertEqual(self.client.get("/api/en-vivo/frame/").status_code, 403)
+        self.assertEqual(self.client.get("/api/en-vivo/stream/").status_code, 403)
+
+        # 2. Estudiante no autorizado -> 403 en ambos endpoints
+        self.client.login(username="unc_alumno", password="x")
+        self.assertEqual(self.client.get("/api/en-vivo/frame/").status_code, 403)
+        self.assertEqual(self.client.get("/api/en-vivo/stream/").status_code, 403)
+
+        # 3. Profesor autenticado: verificar ambos modos con un frame de prueba
+        self.client.login(username="prof_test", password="x")
+        with servicio_en_vivo._cond:
+            servicio_en_vivo._jpeg = b"\xff\xd8\xff\xe0FAKE_JPEG\xff\xd9"
+            servicio_en_vivo._estado["frames"] = 1
+            servicio_en_vivo._activo = False
+
+        # Modo original (Polling HTTP)
+        resp_frame = self.client.get("/api/en-vivo/frame/")
+        self.assertEqual(resp_frame.status_code, 200)
+        self.assertEqual(resp_frame["Content-Type"], "image/jpeg")
+        self.assertEqual(resp_frame.content, b"\xff\xd8\xff\xe0FAKE_JPEG\xff\xd9")
+
+        # Modo nuevo en paralelo (Streaming MJPEG nativo)
+        resp_stream = self.client.get("/api/en-vivo/stream/")
+        self.assertEqual(resp_stream.status_code, 200)
+        self.assertTrue(resp_stream.streaming)
+        self.assertEqual(
+            resp_stream["Content-Type"],
+            "multipart/x-mixed-replace; boundary=frame",
+        )
+        chunks = list(resp_stream.streaming_content)
+        self.assertEqual(len(chunks), 1)
+        self.assertIn(b"--frame\r\nContent-Type: image/jpeg\r\n", chunks[0])
+        self.assertIn(b"\xff\xd8\xff\xe0FAKE_JPEG\xff\xd9", chunks[0])
+
+        # Limpiar estado
+        with servicio_en_vivo._cond:
+            servicio_en_vivo._jpeg = None
+            servicio_en_vivo._estado["frames"] = 0
+

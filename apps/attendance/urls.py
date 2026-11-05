@@ -13,6 +13,7 @@ from apps.attendance.api import (
     EnVivoDetenerView,
     EnVivoEstadoView,
     EnVivoFrameView,
+    EnVivoStreamView,
 )
 
 urlpatterns = [
@@ -36,4 +37,5 @@ urlpatterns = [
     path("api/en-vivo/detener/", EnVivoDetenerView.as_view(), name="api_en_vivo_detener"),
     path("api/en-vivo/estado/", EnVivoEstadoView.as_view(), name="api_en_vivo_estado"),
     path("api/en-vivo/frame/", EnVivoFrameView.as_view(), name="api_en_vivo_frame"),
+    path("api/en-vivo/stream/", EnVivoStreamView.as_view(), name="api_en_vivo_stream"),
 ]

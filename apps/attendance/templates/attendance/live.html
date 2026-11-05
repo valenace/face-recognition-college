@@ -133,8 +133,12 @@
     const enlace = document.getElementById('enlace-sesion');
 
     let activo = false;
-    let intervaloFrame = null;
     let intervaloEstado = null;
+    let streamConectado = false;
+
+    frame.addEventListener('error', () => {
+        streamConectado = false;
+    });
 
     function pintarEstado(e) {
         activo = !!e.activo;
@@ -164,15 +168,13 @@
             ? 'w-2 h-2 bg-emerald-500 rounded-full animate-pulse'
             : 'w-2 h-2 bg-slate-400 rounded-full';
 
-        if (encendido && !intervaloFrame) {
-            intervaloFrame = setInterval(() => {
-                frame.src = '/api/en-vivo/frame/?t=' + Date.now();
-                sinSenal.classList.add('hidden');
-            }, 300);
+        if (encendido && !streamConectado) {
+            frame.src = '/api/en-vivo/stream/?t=' + Date.now();
+            sinSenal.classList.add('hidden');
+            streamConectado = true;
         }
-        if (!encendido && intervaloFrame) {
-            clearInterval(intervaloFrame);
-            intervaloFrame = null;
+        if (!encendido) {
+            streamConectado = false;
         }
     }
 
@@ -188,6 +190,7 @@
             fuente: document.getElementById('fuente').value.trim() || '0',
             sesion_id: sesion.value || null,
         };
+        streamConectado = false;
         mensaje.textContent = 'Iniciando…';
         mensaje.className = 'text-sm text-slate-500';
         fetch('/api/en-vivo/iniciar/', {
@@ -208,6 +211,7 @@
     }
 
     function detener() {
+        streamConectado = false;
         fetch('/api/en-vivo/detener/', {
             method: 'POST',
             credentials: 'same-origin',

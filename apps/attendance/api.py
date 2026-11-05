@@ -250,3 +250,22 @@ class EnVivoFrameView(APIView):
         respuesta = HttpResponse(jpeg, content_type="image/jpeg")
         respuesta["Cache-Control"] = "no-store"
         return respuesta
+
+
+class EnVivoStreamView(APIView):
+    """GET /api/en-vivo/stream/ — Flujo continuo MJPEG en paralelo al polling."""
+
+    def get(self, request):
+        if not _autorizado_en_vivo(request.user):
+            return Response({"exito": False, "mensaje": "Sin permiso."}, status=403)
+
+        from django.http import StreamingHttpResponse
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        respuesta = StreamingHttpResponse(
+            servicio_en_vivo.stream_mjpeg(),
+            content_type="multipart/x-mixed-replace; boundary=frame",
+        )
+        respuesta["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        respuesta["X-Accel-Buffering"] = "no"
+        return respuesta
