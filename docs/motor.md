@@ -499,6 +499,8 @@ class MotorAsistencia:
   votos, la revalidación y los vetos.
 - **Línea 195 `identidades_ancladas`:** `track_id → {nombre, similitud, frame}`.
 - **Línea 196 `votos_identidad`:** `track_id → {candidato, conteo, ultimo}`.
+- **Línea 197 `votos_fraude`:** `track_id → {conteo, ultimo}`. Contador aparte para
+  el spoofing, que también exige 3 votos.
 - **Línea 197 `asistencia_hoy`:** nombres ya registrados hoy. Evita duplicados en
   el CSV y alimenta el contador de la ventana.
 - **Línea 198 `fecha_actual`:** fecha de hoy en formato `YYYY-MM-DD`. Si el
@@ -661,13 +663,24 @@ consenso de **3 frames consecutivos** (con tolerancia de 5 frames de ventana).
 
 ---
 
-## 9. `_evaluar_liveness()` (líneas 275-285)
+## 9. `_evaluar_liveness()` (líneas 276-297)
 
 ```python
-    def _evaluar_liveness(self, frame, bbox):
+    def _evaluar_liveness(self, frame, bbox, landmarks=None):
         ancho = bbox[2] - bbox[0]
         if ancho < self.tamano_minimo_liveness:
             return "omitido"
+        if landmarks is not None and len(landmarks) >= 3:
+            # RetinaFace landmarks: [ojo_izq, ojo_der, nariz, boca_izq, boca_der]
+            ojo_izq, ojo_der, nariz = landmarks[0], landmarks[1], landmarks[2]
+            dist_ojos = abs(ojo_der[0] - ojo_izq[0])
+            # Perfil extremo o cara casi de lado: la distancia interocular colapsa
+            if dist_ojos < ancho * 0.15:
+                return "omitido"
+            min_ojo_x = min(ojo_izq[0], ojo_der[0])
+            max_ojo_x = max(ojo_izq[0], ojo_der[0])
+            if nariz[0] < (min_ojo_x - dist_ojos * 0.3) or nariz[0] > (max_ojo_x + dist_ojos * 0.3):
+                return "omitido"
         try:
             res = self.spoofer.predict(frame, bbox)
         except Exception:
@@ -677,20 +690,49 @@ consenso de **3 frames consecutivos** (con tolerancia de 5 frames de ventana).
         return "fraude"
 ```
 
-- **Línea 276:** ancho de la cara en píxeles.
-- **Línea 277-278:** si mide menos de 60 px, devuelve `"omitido"`. No es fraude ni
-  real: simplemente no se evalúa porque el modelo es inestable en caras pequeñas.
-- **Línea 279-282:** si el spoofer lanza una excepción, devuelve `"error"`. El
-  error del modelo **no** se trata como fraude.
-- **Línea 283-284:** solo es `"real"` si el modelo lo dice y además tiene
-  confianza ≥ 0.90.
-- **Línea 285:** cualquier otro caso es `"fraude"`.
+- **Línea 277:** ancho de la cara.
+- **Línea 278-279:** con menos de 60 px no se evalúa (el modelo es inestable).
+- **Línea 280-293 (nuevo, 2026-11-05):** **descarta los perfiles extremos** antes
+  de llamar al spoofer:
+  - distancia interocular menor que 15 % del ancho: la cara está de lado;
+  - la nariz cae fuera del rango entre los ojos (±30 %): perfil o guiño.
+  - En ambos casos devuelve `"omitido"`, igual que una cara pequeña.
+- **Línea 294-296:** excepción del spoofer → `"error"` (no es fraude).
+- **Línea 297-299:** solo es `"real"` si el modelo lo dice con confianza ≥ 0.90.
 
 Valores posibles: `"omitido"`, `"real"`, `"fraude"`, `"error"`.
 
----
+## 9bis. Fraude con votos (líneas 331-343)
 
-## 10. `_decidir_identidad()` (líneas 287-336) — el corazón
+```python
+        liveness = self._evaluar_liveness(frame, rostro.bbox, getattr(rostro, "landmarks", None))
+        if liveness == "fraude":  # "omitido" (cara pequeña o perfil) continúa como válido
+            voto_f = self.votos_fraude.get(t_id)
+            if voto_f is None or self.frame_idx - voto_f["ultimo"] > self.ventana_votos:
+                voto_f = {"conteo": 0, "ultimo": self.frame_idx}
+                self.votos_fraude[t_id] = voto_f
+            voto_f["conteo"] += 1
+            voto_f["ultimo"] = self.frame_idx
+            if voto_f["conteo"] >= self.votos_requeridos:
+                self.votos_identidad.pop(t_id, None)
+                return "FRAUDE DETECTADO", sim, "FRAUDE", sim2, nombre2, candidato
+            return f"Verificando {voto_f['conteo']}/{self.votos_requeridos}", sim, "VERIFICANDO", sim2, nombre2, candidato
+
+        self.votos_fraude.pop(t_id, None)
+```
+
+- **Antes:** un solo frame con `FRAUDE` bastaba para generar la alerta.
+- **Ahora (2026-11-05):** el fraude exige **3 votos** del mismo `track_id`, con la
+  misma ventana de 5 frames que la identidad. Mientras no se reaches, la decisión es
+  `VERIFICANDO` (el mismo texto de la verificación de identidad).
+- Una detección que **no** es fraude borra el contador de votos de fraude de esa
+  pista.
+
+Motivo: un giro de cabeza o una foto mostrada un instante generaban alertas
+`SPOOFING` que el profesor tenía que descartar una por una.
+
+
+## 10. `_decidir_identidad()` (líneas 299-358) — el corazón
 
 ```python
     def _decidir_identidad(self, frame, t_id, rostro):
@@ -751,37 +793,37 @@ Esta función se llama una vez por pista y por frame. Devuelve **seis valores**:
 (nombre, similitud, estado, sim_top2, nombre2, candidato)
 ```
 
-### 10.1 Ancla (líneas 288-292)
+### 10.1 Ancla (líneas 300-304)
 
-- **Línea 288:** busca si la pista ya tiene una identidad confirmada
+- **Línea 300:** busca si la pista ya tiene una identidad confirmada
   (`identidades_ancladas`).
-- **Línea 290:** si el ancla tiene menos de 30 frames, se reutiliza.
-- **Línea 291:** devuelve el nombre y la similitud guardados, estado `ANCLADO`, y
+- **Línea 302:** si el ancla tiene menos de 30 frames, se reutiliza.
+- **Línea 303:** devuelve el nombre y la similitud guardados, estado `ANCLADO`, y
   `None` para top-2 (no se recalculó). El sexto valor es el propio nombre como
   candidato.
-- **Línea 292:** si el ancla tiene 30 frames o más, se borra y se recalcula.
+- **Línea 304:** si el ancla tiene 30 frames o más, se borra y se recalcula.
 
 **Por qué existe el ancla:** recalcular el embedding en cada frame es caro y, en
 una cara que ya está confirmada, innecesario. Se revalida cada segundo para
 detectar si la persona cambió o si otra ocupó su lugar.
 
-### 10.2 Búsqueda en FAISS (líneas 294-298)
+### 10.3 Búsqueda en FAISS (líneas 306-310)
 
-- **Línea 294:** `embedding_facial` alinea la cara con los landmarks, aplica el
+- **Línea 306:** `embedding_facial` alinea la cara con los landmarks, aplica el
   preprocesado (CLAHE, etc.) y devuelve el vector de 512. Es **el mismo** que usa
   el registro.
-- **Línea 295:** `search(vec, 2)` pide los **dos** centroides más parecidos.
+- **Línea 307:** `search(vec, 2)` pide los **dos** centroides más parecidos.
   `dist` son las similitudes; `idx`, sus posiciones.
-- **Línea 296:** `sim` = mejor similitud (top-1).
-- **Línea 297:** `sim2` = segunda mejor (top-2).
-- **Línea 298:** `nombre2` = nombre del segundo. Se guarda para análisis; **no
+- **Línea 308:** `sim` = mejor similitud (top-1).
+- **Línea 309:** `sim2` = segunda mejor (top-2).
+- **Línea 310:** `nombre2` = nombre del segundo. Se guarda para análisis; **no
   decide**.
 
-### 10.3 Umbral (líneas 300-302)
+### 10.4 Umbral (líneas 312-314)
 
-- **Línea 300:** si la mejor similitud es ≤ 0.30, la cara es desconocida.
-- **Línea 301:** borra los votos de esa pista. Un frame desconocido rompe la racha.
-- **Línea 302:** devuelve `"Desconocido"`, estado `DESCONOCIDO`, y como candidato
+- **Línea 312:** si la mejor similitud es ≤ 0.30, la cara es desconocida.
+- **Línea 313:** borra los votos de esa pista. Un frame desconocido rompe la racha.
+- **Línea 314:** devuelve `"Desconocido"`, estado `DESCONOCIDO`, y como candidato
   el top-1 (aunque no haya pasado el umbral). Ese candidato es el que luego se
   escribe en la nota del intruso: "mejor coincidencia: dani (0.14)".
 
@@ -789,38 +831,40 @@ detectar si la persona cambió o si otra ocupó su lugar.
 > considera desconocida. Es coherente con la tabla ROC, donde 0.30 es el punto de
 > operación.
 
-### 10.4 Veto por conflicto (líneas 304-316)
+### 10.5 Veto por conflicto (líneas 318-328)
 
-- **Línea 304:** `candidato` es el top-1 de este frame.
-- **Línea 308:** busca un veto para esta pista.
-- **Línea 309-314:** el veto aplica solo si:
+- **Línea 316:** `candidato` es el top-1 de este frame.
+- **Línea 320:** busca un veto para esta pista.
+- **Línea 321-326:** el veto aplica solo si:
   1. la pista tiene veto,
   2. el nombre vetado coincide con el candidato actual,
   3. todavía no expiró (`frame_idx <= hasta`),
   4. la pista ganadora **sigue anclada**.
-- **Línea 315-316:** si aplica, devuelve `DESCONOCIDO` y borra los votos. La pista
+- **Línea 327-328:** si aplica, devuelve `DESCONOCIDO` y borra los votos. La pista
   no puede reclamar una identidad que perdió mientras la ganadora siga presente.
 
-### 10.5 Anti-spoofing (líneas 318-323)
+### 10.6 Anti-spoofing (líneas 330-345)
 
-- **Línea 318:** evalúa liveness.
-- **Línea 319-321:** si es fraude, borra votos y devuelve `FRAUDE DETECTADO`
-  (estado `FRAUDE`).
-- **Línea 322-323:** si hubo error del modelo, devuelve `ERROR` **sin borrar
+- **Línea 330:** evalúa liveness pasando los landmarks (para descartar perfiles).
+- **Líneas 331-342:** si es fraude, **exige 3 votos** de la misma pista; mientras
+  no se reunan, la decisión es `VERIFICANDO`. Al tercer voto borra los votos de
+  identidad y devuelve `FRAUDE DETECTADO`.
+- **Línea 343:** una detección que no es fraude borra el contador de votos de fraude.
+- **Línea 344-345:** si hubo error del modelo, devuelve `ERROR` **sin borrar
   votos**: el error no es culpa de la cara.
-- `"omitido"` (cara pequeña) **no** entra en ninguno de los dos `if`: sigue el
-  flujo normal como si fuera real.
+- `"omitido"` (cara pequeña o perfil) **no** entra en ninguno de los dos `if`:
+  sigue el flujo normal como si fuera real.
 
-### 10.6 Consenso y confirmación (líneas 325-336)
+### 10.7 Consenso y confirmación (líneas 347-358)
 
-- **Línea 325:** suma un voto para el candidato.
-- **Línea 326:** si llegó a 3 votos…
-- **Línea 327-331:** guarda el ancla con nombre, similitud y frame actual.
-- **Línea 332:** limpia los votos (ya no hacen falta).
-- **Línea 333:** escribe la asistencia. En modo CSV escribe la fila; en modo BD no
+- **Línea 347:** suma un voto para el candidato.
+- **Línea 348:** si llegó a 3 votos…
+- **Línea 349-353:** guarda el ancla con nombre, similitud y frame actual.
+- **Línea 354:** limpia los votos (ya no hacen falta).
+- **Línea 355:** escribe la asistencia. En modo CSV escribe la fila; en modo BD no
   hace nada (lo resuelve la capa web).
-- **Línea 334:** devuelve estado `CONFIRMADO`.
-- **Línea 336:** si aún no hay 3 votos, devuelve `VERIFICANDO` con el conteo
+- **Línea 356:** devuelve estado `CONFIRMADO`.
+- **Línea 358:** si aún no hay 3 votos, devuelve `VERIFICANDO` con el conteo
   (`Verificando 2/3`). Ese texto se muestra en la ventana.
 
 ---

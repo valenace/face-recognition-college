@@ -234,110 +234,103 @@ nuevos dejarían de ser comparables.
 
 ---
 
-# Parte B — `core/intrusos.py` (120 líneas)
+# Parte B — `core/intrusos.py` (241 líneas)
 
-**Rol:** decidir cuándo un `DESCONOCIDO` es un intruso real y no un estudiante
-registrado que el motor perdió en un frame malo.
+**Rol:** decidir cuándo un desconocido es un intruso real y deduplicar por asiento.
 
-**Dependencias:** ninguna. Es lógica pura, sin Django y sin OpenCV, para poder
-probarla con `pytest -m unit`.
+**Dependencias:** solo `math`. Es lógica pura (sin Django) para poder probarla con
+`pytest -m unit`.
 
-**Contexto:** nació del problema medido en `docs/analisis/unc/11_intrusos.md`:
-en 44 s del video 1 (todos registrados) el motor generó **130 pistas
-desconocidas**. Escribir una fila por pista llenaba la sesión de intrusos falsos.
+> [!WARNING]
+> Esta sección se actualizó el **2026-11-05** tras cambiar la regla (promedio en vez
+> de máximo, deduplicación espacial y tamaño mínimo de 26 px). La calibración con
+> los videos 1 y 3 está en `docs/analisis/unc/11_intrusos.md`.
 
-## B.1 Constantes (líneas 13-24)
+## B.1 Constantes (líneas 17-31)
 
 ```python
-# Umbral para decidir si un `DESCONOCIDO` es intruso de verdad. Se compara contra
-# el MEJOR score que alcanza la pista en toda su vida, no contra el frame suelto:
-# un estudiante registrado en un frame malo puede dar 0.10 en un frame y 0.28 en
-# otro, mientras que un desconocido real no se acerca a los registrados.
-# Calibrado con los videos 1 y 3 (docs/analisis/unc/11_intrusos.md):
-#   video 1 (todos registrados): 130 pistas -> 9 filas con 0.18
-#   video 3 (21 desconocidos): 18 de 21 pistas detectadas con 0.18
-UMBRAL_INTRUSO = 0.18
+import math
+
+# Umbral sobre la similitud PROMEDIO de la pista para descartarla como posible
+# estudiante registrado no confirmado (cuando el candidato no está ya anclado
+# simultáneamente en otra pista activa del aula).
+UMBRAL_INTRUSO = 0.24
 # Frames consecutivos que debe sostener la pista para crear la fila.
 FRAMES_INTRUSO = 15
-# Frames sin ver la pista para considerarla desaparecida.
+# Frames sin ver la pista para limpiar su estado interno.
 OLVIDO_PISTA = 30
+# Ventana (en frames) y factor de distancia (en múltiplos del ancho del rostro)
+# para reutilizar la misma fila de INTRUSO cuando ByteTrack reasigna track_id
+# en el mismo asiento.
+OLVIDO_ESPACIAL = 240
+FACTOR_DISTANCIA_ASIENTO = 2.5
 ```
 
-- **Línea 20 `UMBRAL_INTRUSO = 0.18`:** el mejor score de la pista debe quedar por
-  debajo de 0.18 para considerarla intruso. Es más bajo que el umbral de identidad
-  (0.30) a propósito: un registrado en un mal frame puede llegar a 0.25-0.29; un
-  desconocido real no suele pasar de 0.15-0.18.
-- **Línea 22 `FRAMES_INTRUSO = 15`:** la pista debe estar desconocida 15 frames
-  seguidos (~0.5 s a 30 fps). Evita que un parpadeo cree una fila.
-- **Línea 24 `OLVIDO_PISTA = 30`:** si la pista no aparece en 30 frames, se
-  considera desaparecida y se limpia su estado. No borra la fila ya creada si el
-  score seguía bajo el umbral.
+- **Línea 22 `UMBRAL_INTRUSO = 0.24`:** se compara contra el **promedio** de la
+  pista, no contra su mejor frame.
+- **Línea 24 `FRAMES_INTRUSO = 15`:** muestras de desconocido que debe acumular la
+  pista.
+- **Línea 26 `OLVIDO_PISTA = 30`:** sin ver la pista, se limpia su estado.
+- **Línea 30 `OLVIDO_ESPACIAL = 240`:** ventana (~34 s a 7 fps) para reutilizar la
+  fila de un intruso cuyo rastro se perdió.
+- **Línea 31 `FACTOR_DISTANCIA_ASIENTO = 2.5`:** radio de reutilización, en
+  múltiplos del ancho de la cara.
 
-**Calibración (resumen):**
-
-| Corte | Falsos en video 1 (todos registrados) | Detectados en video 3 (21 desconocidos) |
-|---|---|---|
-| 0.15 | 2 | ~14-16 |
-| **0.18** | **9** | **18** |
-| 0.20 | 11 | 26 |
-| 0.25 | 31 | 63 |
-
-## B.2 Estado (líneas 27-42)
+## B.2 Estado (líneas 34-67)
 
 ```python
 class SeguimientoIntrusos:
-    """Decide cuándo un desconocido es un intruso real y no un registrado perdido.
-
-    Reglas:
-    - Se sigue el MEJOR score de cada pista. Si en algún momento se acerca a los
-      registrados (`>= umbral`), la pista deja de ser intruso y su fila se borra.
-    - Los conflictos de identidad nunca cuentan como intruso.
-    - Se exigen `frames` frames consecutivos de la misma pista para crear la fila.
-    """
-
-    def __init__(self, umbral=UMBRAL_INTRUSO, frames=FRAMES_INTRUSO, olvido=OLVIDO_PISTA):
-        self.umbral = umbral
-        self.frames = frames
-        self.olvido = olvido
-        self.frame_idx = 0
-        self._pistas = {}
+    def __init__(
+        self,
+        umbral=UMBRAL_INTRUSO,
+        frames=FRAMES_INTRUSO,
+        olvido=OLVIDO_PISTA,
+        olvido_espacial=OLVIDO_ESPACIAL,
+        factor_distancia=FACTOR_DISTANCIA_ASIENTO,
+    ):
+        ...
+        self._pistas = {}    # track_id -> {best, suma, muestras, rachas, ...}
+        self._asientos = {}  # registro_id -> {bbox, ultimo, track_id, max_ancho}
 ```
 
-- **Línea 28-35:** el docstring fija las tres reglas. Cualquier cambio debe
-  reflejarse aquí.
-- **Línea 37:** parámetros con los valores calibrados, pero inyectables para los
-  tests.
-- **Línea 41:** contador de frames. Se incrementa en cada `evaluar`.
-- **Línea 42:** diccionario `track_id → estado de la pista`:
-  - `best`: mejor similitud vista,
-  - `rachas`: frames desconocidos consecutivos,
-  - `ultimo`: último frame en que se vio,
-  - `registro_id`: id de la fila creada (o `None`),
-  - `descartada`: ya se demostró que es un registrado.
+Dos diccionarios: el **estado por pista** (estadísticas de similitud) y el
+**mapa de asientos** (qué fila de intruso ocupa cada zona de la imagen).
 
-## B.3 `evaluar()` (líneas 44-114)
+## B.3 `_buscar_asiento_cercano()` (líneas 69-95)
+
+```python
+    def _buscar_asiento_cercano(self, bbox, vistos):
+        """Busca si la caja cae en el asiento de un intruso perdido recientemente."""
+        ...
+        for reg_id, asiento in self._asientos.items():
+            if asiento["track_id"] in vistos:
+                continue
+            if self.frame_idx - asiento["ultimo"] > self.olvido_espacial:
+                continue
+            ...
+            dist = math.hypot(cx - scx, cy - scy)
+            limite = max(ancho, sancho) * self.factor_distancia
+            if dist <= limite and dist < mejor_dist:
+                mejor_dist = dist
+                mejor_id = reg_id
+        return mejor_id
+```
+
+- Ignora los asientos cuya pista **sigue visible** (no es la misma persona).
+- Ignora los asientos cuya última aparición fue hace más de `olvido_espacial`.
+- Compara **centros** y exige `dist <= max(ancho_actual, ancho_guardado) × factor`.
+
+## B.4 `evaluar()` (líneas 97-216)
 
 ```python
     def evaluar(self, decisiones):
-        """Actualiza el estado y devuelve (crear, descartar).
-
-        `crear` son las decisiones que ya califican como intruso; `descartar` son
-        los ids de filas que dejaron de calificar (la pista mejoró).
-        """
-        self.frame_idx += 1
-        crear, descartar = [], []
-        vistos = set()
-
+        ...
         for decision in decisiones:
-            track_id = decision.get("track_id")
-            if track_id is None:
-                continue
-            estado = decision.get("estado")
-            info = self._pistas.get(track_id)
-
+            ...
             if estado in ("CONFIRMADO", "ANCLADO"):
-                if info and info["registro_id"]:
+                if info and info["registro_id"] and info.get("es_creador", True):
                     descartar.append(info["registro_id"])
+                    self._asientos.pop(info["registro_id"], None)
                 if info is not None:
                     info["descartada"] = True
                     info["registro_id"] = None
@@ -350,27 +343,18 @@ class SeguimientoIntrusos:
             if motivo.startswith("conflicto") or similitud is None:
                 continue
 
-            vistos.add(track_id)
-            if info is None:
-                info = {
-                    "best": 0.0,
-                    "rachas": 0,
-                    "ultimo": self.frame_idx,
-                    "registro_id": None,
-                    "descartada": False,
-                }
-                self._pistas[track_id] = info
-            info["ultimo"] = self.frame_idx
-            info["rachas"] += 1
-            if similitud > info["best"]:
-                info["best"] = similitud
+            ...
+            candidato = decision.get("candidato")
+            # Si el candidato top-1 ya está confirmado/anclado en otra pista de
+            # este mismo frame, esta pista no puede ser esa persona.
+            sim_efectiva = 0.0 if (candidato and candidato in confirmados_en_frame) else similitud
+            info["suma"] += sim_efectiva
+            info["muestras"] += 1
+            promedio = info["suma"] / info["muestras"]
 
-            if info["best"] >= self.umbral:
-                # Se parece demasiado a un registrado: no es intruso.
+            if promedio >= self.umbral:
                 info["descartada"] = True
-                if info["registro_id"]:
-                    descartar.append(info["registro_id"])
-                    info["registro_id"] = None
+                ...
                 continue
 
             if (
@@ -378,104 +362,56 @@ class SeguimientoIntrusos:
                 and info["rachas"] >= self.frames
                 and info["registro_id"] is None
             ):
+                reutilizar_id = self._buscar_asiento_cercano(bbox, vistos - {track_id})
+                if reutilizar_id is not None:
+                    decision["reutilizar_registro_id"] = reutilizar_id
                 crear.append(decision)
-
-        for track_id, info in list(self._pistas.items()):
-            if track_id not in vistos and self.frame_idx - info["ultimo"] > self.olvido:
-                # La pista desapareció: si había creado fila y seguía bajo el
-                # umbral, se queda; si no, se descarta.
-                if info["registro_id"] and info["best"] >= self.umbral:
-                    descartar.append(info["registro_id"])
-                del self._pistas[track_id]
-
-        return crear, descartar
 ```
 
-Se llama **una vez por frame**, con todas las decisiones de ese frame. Devuelve
-dos listas:
+Cuatro mecanismos:
 
-- `crear`: decisiones que ya califican para escribir una fila `INTRUSO`.
-- `descartar`: ids de filas que hay que borrar porque la pista mejoró.
+1. **El promedio manda.** `sim_efectiva` es la similitud del frame, salvo que el
+   candidato top-1 esté confirmado en **otra pista del mismo frame**: en ese caso la
+   muestra vale 0, porque dos personas distintas no pueden ser el mismo alumno.
+2. **Si el promedio supera el umbral**, la pista deja de ser intrusa y su fila se
+   borra (si la creó ella).
+3. **Los conflictos de identidad** nunca cuentan.
+4. **Deduplicación por asiento**: si la pista califica donde había un intruso
+   reciente, se marca `reutilizar_registro_id` en vez de crear otra fila.
 
-### Paso a paso
-
-- **Línea 50:** avanza el contador global. Es el reloj de la pista.
-- **Línea 51-52:** acumuladores y conjunto de pistas vistas en este frame.
-- **Línea 54:** recorre cada decisión.
-- **Línea 55-57:** sin `track_id` no se puede seguir; se ignora.
-- **Línea 58-59:** estado y estado previo de esa pista.
-- **Línea 61-67 — la pista se confirmó:** si había una fila de intruso, se manda a
-  `descartar`; la pista queda marcada como `descartada` y sin fila. Es la prueba
-  definitiva de que era un registrado.
-- **Línea 68-69:** cualquier otro estado (`VERIFICANDO`, `FRAUDE`, `ERROR`,
-  `CENTRATE`) no se evalúa.
-- **Línea 71-74:** si la decisión viene de un **conflicto de identidad** o no
-  tiene similitud, se ignora. Los conflictos son registrados que perdieron contra
-  otra pista, no intrusos.
-- **Línea 76:** marca la pista como vista en este frame.
-- **Línea 77-85:** si es la primera vez que se ve, crea su estado con `best=0`,
-  `rachas=0`, `ultimo=frame actual`, sin fila y sin descartar.
-- **Línea 86:** actualiza el último frame visto.
-- **Línea 87:** suma un frame de racha.
-- **Línea 88-89:** actualiza el mejor score (solo puede subir).
-- **Línea 91-97 — el mejor score llegó al umbral:** la pista se parece a un
-  registrado. Se marca `descartada`; si ya tenía fila, se manda a borrar. No se
-  vuelve a crear aunque luego baje (el `best` es monotónico).
-- **Línea 99-104:** si no está descartada, lleva al menos 15 frames y todavía no
-  tiene fila, se añade a `crear`.
-- **Línea 106-112 — limpieza:** para cada pista no vista en este frame, si pasaron
-  más de 30 frames desde la última vez, se elimina del estado. Si tenía fila y el
-  `best` había llegado al umbral, se manda a borrar; si seguía por debajo, la fila
-  se queda (el intruso existió).
-- **Línea 114:** devuelve las dos listas.
-
-### Traza de ejemplo
-
-```
-frame 1:  pista 7, DESCONOCIDO 0.10 → best=0.10, rachas=1
-frame 2:  pista 7, DESCONOCIDO 0.12 → best=0.12, rachas=2
-...
-frame 15: pista 7, DESCONOCIDO 0.11 → best=0.12, rachas=15 → crear
-frame 16: pista 7, CONFIRMADO 0.55  → descartar [fila de 7]
-```
-
-## B.4 `marcar_registrado()` (líneas 116-120)
+## B.5 `marcar_registrado()` (líneas 218-241)
 
 ```python
-    def marcar_registrado(self, track_id, registro_id):
-        """Asocia la fila creada a la pista para poder descartarla si mejora."""
+    def marcar_registrado(self, track_id, registro_id, bbox=None, es_reutilizado=False):
+        """Asocia la fila creada o reutilizada a la pista y registra su asiento."""
         info = self._pistas.get(track_id)
         if info is not None:
             info["registro_id"] = registro_id
+            info["es_creador"] = not es_reutilizado
+        ...
+        asiento = self._asientos.get(registro_id)
+        if asiento is None:
+            self._asientos[registro_id] = {
+                "bbox": bbox, "ultimo": self.frame_idx, "track_id": track_id, "max_ancho": ancho,
+            }
+        else:
+            ...
 ```
 
-- **Línea 118:** busca el estado de la pista.
-- **Línea 119-120:** guarda el id de la fila recién creada. Sin esto, el
-  clasificador no sabría qué borrar si la pista luego se confirma.
+`es_reutilizado=False` marca las filas reutilizadas: **no se borran** si la pista se
+confirma después (la fila la creó otra pista).
 
-**Quién la llama:** `core.registro_asistencia.aplicar_decisiones`, justo después
-de crear la fila.
+## B.6 Invariantes
 
-## B.5 Invariantes y complejidad
+- El promedio es monotónico: una vez superado el umbral, la pista queda descartada.
+- Una fila reutilizada nunca se borra por la confirmación de la pista que la usa.
+- `_asientos` se limpia con las pistas (olvido de 30 frames) y al borrar la fila.
 
-- `best` nunca baja: una pista que se acercó a 0.18 no vuelve a ser intruso.
-- Una pista crea **como máximo una fila** (`registro_id is None`).
-- Una fila se borra si la pista se confirma o si su `best` cruza el umbral.
-- Complejidad: O(n) por frame, con n = número de pistas (≤ ~30 en un salón).
-- Memoria: un diccionario por pista; se limpia a los 30 frames sin verla.
+## B.7 Tests
 
-## B.6 Tests
-
-En `tests/test_registro.py`, clase `TestSeguimientoIntrusos` (6 pruebas):
-
-1. Pista persistente bajo el umbral crea intruso.
-2. Pista que supera el umbral no es intruso.
-3. Fila creada se descarta si la pista mejora.
-4. Conflicto de identidad no es intruso.
-5. Confirmación descarta la fila.
-6. Pocos frames no crean intruso.
-
----
+`tests/test_registro.py::TestSeguimientoIntrusos` (8 pruebas): pico aislado, pista que
+supera el umbral, descarte por mejora, conflicto, confirmación, pocos frames,
+candidato confirmado en otra pista y **deduplicación espacial por asiento**.
 
 # Parte C — `core/db_config.py` (132 líneas)
 
