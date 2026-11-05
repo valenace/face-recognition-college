@@ -29,7 +29,7 @@ registrarlo, verlo funcionar y revisar lo que quedó guardado.
 | Base de datos | PostgreSQL 16 + pgvector 0.6 (9 centroides de 512 d) |
 | Estudiantes registrados | 9 (`unc_alexa`, `unc_bob`, …, `unc_kevin`) |
 | Web visible | Directorio, Sesiones y Control de Asistencia |
-| Tests | 74 unitarios + 32 de Django, en verde |
+| Tests | 76 unitarios + 36 de Django, en verde |
 | Cómputo | CPU (i9-14900KF), ~7 fps en 1080p; la RTX 4090 no se usa |
 | Limitación principal | 1 falso positivo de identidad residual en el video 3 |
 

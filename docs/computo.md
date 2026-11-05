@@ -278,8 +278,8 @@ liberar espacio o mover los masters a otro volumen.
 
 | Suite | Cantidad | Tiempo |
 |---|---|---|
-| `pytest -m unit` | 74 | ~0.7 s |
-| `manage.py test` | 32 | ~32 s (incluye crear la base de test y migrar) |
+| `pytest -m unit` | 76 | ~1 s |
+| `manage.py test` | 36 | ~34 s (incluye crear la base de test y migrar) |
 | `manage.py check` | — | <1 s |
 
 Los tests de Django usan PostgreSQL (no SQLite) porque el tipo `vector` no existe

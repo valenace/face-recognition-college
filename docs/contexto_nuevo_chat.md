@@ -21,10 +21,10 @@ de visión offline (**RetinaFace + ArcFace** vía `uniface`, anti-spoofing inclu
 
 | Aspecto | Estado |
 |---|---|
-| Tests | **74 pytest** (`pytest -m unit`) y **32 Django** (`manage.py test`), todos en verde |
+| Tests | **76 pytest** (`pytest -m unit`) y **36 Django** (`manage.py test`), todos en verde |
 | `manage.py check` | limpio |
-| Base de datos | 10 usuarios (9 estudiantes + admin), 9 embeddings; la sesión de demo 94 añade `prof_flujo` y la asignación `DEMO-FLUJO` |
-| Cambios sin commitear | Flujos de asistencia, vista en vivo, banda de revisión, demos y docs 09/10 |
+| Base de datos | 10 usuarios base + `prof_flujo`, 9 embeddings; las sesiones de demo 97 y 98 están en curso (12 y 14 filas) |
+| Cambios sin commitear | Solo `docs/analisis/unc.zip` (respaldo del usuario) |
 | Commits | Ninguno hecho por el asistente: **solo se commitea si el usuario lo pide** |
 
 ---
@@ -239,6 +239,7 @@ venv/bin/python manage.py test
 | `docs/motor_2.md` | Capítulo 2: preprocesado, intrusos, pgvector y escritura |
 | `docs/motor_3.md` | Capítulo 3: batch, en vivo, sesión demo y registro |
 | `docs/web.md` | Web completa: rutas, settings, modelos, vistas, API y plantillas |
+| `docs/streaming_mjpeg_vs_polling.md` | Comparación medida MJPEG vs polling 300 ms |
 
 ---
 

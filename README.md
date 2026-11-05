@@ -17,6 +17,7 @@ rostros, ver el control de asistencia y revisar las sesiones guardadas.
 | [`docs/motor_3.md`](docs/motor_3.md) | Capítulo 3: flujos y registro |
 | [`docs/web.md`](docs/web.md) | Web completa: rutas, modelos, vistas, API y plantillas |
 | [`docs/computo.md`](docs/computo.md) | Hardware, versiones, rendimiento y migración a GPU |
+| [`docs/streaming_mjpeg_vs_polling.md`](docs/streaming_mjpeg_vs_polling.md) | MJPEG vs polling: medición y veredicto |
 | [`docs/base_datos.md`](docs/base_datos.md) | Esquema, pgvector y consultas |
 | [`docs/comandos.md`](docs/comandos.md) | Comandos listos para ejecutar |
 | [`docs/analisis/unc/`](docs/analisis/unc/) | Experimentos y resultados con datos |
