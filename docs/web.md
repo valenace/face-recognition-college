@@ -968,13 +968,18 @@ urlpatterns = [
 | `/sesiones/` | `sesiones` | `sesiones` | HTML |
 | `/sesiones/<id>/` | `sesion_detalle` | `sesion_detalle` | HTML |
 | `/sesiones/<id>/registros/<rid>/descartar/` | `descartar_registro` | `descartar_registro` | POST |
+| `/sesiones/<id>/presente/<estudiante_id>/` | `marcar_presente` | `marcar_presente` | POST |
+| `/sesiones/<id>/revision/<rid>/<accion>/` | `resolver_revision` | `resolver_revision` | POST |
+| `/sesiones/<id>/eliminar/` | `eliminar_sesion` | `eliminar_sesion` | POST |
+| `/sesiones/eliminar-todas/` | `eliminar_todas_sesiones` | `eliminar_todas_sesiones` | POST |
 | `/en-vivo/` | `live_attendance` | `live_attendance` | HTML |
 | `/en-vivo/sesion-demo/` | `crear_sesion_demo_view` | `crear_sesion_demo` | POST |
 | `/api/enrolar/` | `RegistroBiometricoView` | `api_enrolar` | API |
 | `/api/en-vivo/iniciar/` | `EnVivoIniciarView` | `api_en_vivo_iniciar` | API |
 | `/api/en-vivo/detener/` | `EnVivoDetenerView` | `api_en_vivo_detener` | API |
 | `/api/en-vivo/estado/` | `EnVivoEstadoView` | `api_en_vivo_estado` | API |
-| `/api/en-vivo/frame/` | `EnVivoFrameView` | `api_en_vivo_frame` | API |
+| `/api/en-vivo/frame/` | `EnVivoFrameView` | `api_en_vivo_frame` | API (respaldo) |
+| `/api/en-vivo/stream/` | `EnVivoStreamView` | `api_en_vivo_stream` | API (MJPEG, en uso) |
 
 - **Línea 2-9:** vistas HTML y acciones POST.
 - **Línea 10-16:** vistas de la API REST.
@@ -1133,7 +1138,10 @@ def sesiones(request):
 - **Línea 90:** renderiza `sesiones.html`; la plantilla usa `s.confirmados`,
   `s.intrusos`, `s.spoofing`.
 
-### 11.6 `sesion_detalle()` (líneas 97-127)
+### 11.6 `sesion_detalle()` (líneas 143-216)
+
+Además del listado de registros, arma la **nómina de la clase** y la lista de
+asistencias que el docente debe revisar:
 
 ```python
 @role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
@@ -1151,32 +1159,69 @@ def sesion_detalle(request, sesion_id):
         "tipo_evento", "hora_entrada", "id"
     )
 
-    resumen = {"confirmados": 0, "intrusos": 0, "spoofing": 0, "otra_seccion": 0}
-    for registro in registros:
-        if registro.tipo_evento == RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL:
-            resumen["confirmados"] += 1
-        elif registro.tipo_evento == RegistroAsistencia.TipoEvento.INTRUSO:
-            resumen["intrusos"] += 1
-        elif registro.tipo_evento == RegistroAsistencia.TipoEvento.SPOOFING:
-            resumen["spoofing"] += 1
-        else:
-            resumen["otra_seccion"] += 1
+    resumen = {"confirmados": 0, "intrusos": 0, "spoofing": 0, "otra_seccion": 0,
+               "rechazados": 0, "revision": 0, "ausentes": 0}
+    ...
+    inscritos = list(
+        Inscripcion.objects.filter(asignacion_clase=sesion.asignacion_clase)
+        .select_related("estudiante__user")
+        .order_by("estudiante__user__last_name", "estudiante__user__first_name")
+    )
+    normales = {
+        registro.estudiante_id: registro
+        for registro in registros
+        if registro.tipo_evento == RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL
+        and registro.estudiante_id
+    }
+    revision = [
+        registro
+        for registro in normales.values()
+        if registro.similitud_ia is not None
+        and registro.similitud_ia < UMBRAL_REVISION
+        and not registro.alerta_revisada
+    ]
+    revision.sort(key=lambda r: r.similitud_ia)
+    ausentes = [
+        inscripcion.estudiante
+        for inscripcion in inscritos
+        if inscripcion.estudiante_id not in normales
+    ]
+```
 
-    return render(
-        request,
-        "attendance/sesion_detalle.html",
-        {"sesion": sesion, "registros": registros, "resumen": resumen},
+- **Líneas 143-158:** 404 si la sesión no existe y carga de las filas.
+- **Líneas 160-172:** contadores por tipo (ahora incluye `rechazados`).
+- **Líneas 174-182:** inscritos de la asignación, ordenados por apellido.
+- **Líneas 183-188:** `normales` = asistencia normal por estudiante.
+- **Líneas 189-196:** **banda de revisión**: confirmadas con similitud < 0.40 y sin
+  revisar. Es la Attention band (0.30–0.40) que el motor no puede afirmar.
+- **Líneas 198-202:** **ausentes**: inscritos sin asistencia normal.
+- **Línea 205-216:** renderiza con `presentes`, `revision` y `ausentes`.
+
+### 11.7 `_puede_gestionar()`, `marcar_presente()` y `resolver_revision()` (líneas 218-281)
+
+```python
+def _puede_gestionar(user, sesion):
+    """El profesor dueño de la sesión o un directivo puede gestionarla."""
+    if user.is_superuser or user.role in (
+        User.Role.DEVELOPER, User.Role.DIRECTOR, User.Role.COORDINATOR
+    ):
+        return True
+    return (
+        user.role == User.Role.PROFESSOR
+        and sesion.asignacion_clase.profesor_id == user.id
     )
 ```
 
-- **Línea 96-103:** 404 si la sesión no existe.
-- **Línea 104-106:** filas ordenadas por tipo, hora e id. Incluye
-  `estudiante__user` para no consultar por cada fila.
-- **Línea 108:** contadores.
-- **Línea 109-117:** recorre y clasifica.
-- **Línea 119-123:** renderiza el detalle.
+- **`marcar_presente` (líneas 230-256):** POST. Crea o actualiza la fila del
+  estudiante con `tipo_evento=ASISTENCIA_NORMAL`, hora actual, `alerta_revisada=True`
+  y nota *"Marcado manualmente por el profesor."*
+- **`resolver_revision` (líneas 258-281):** POST con `accion` = `aceptar` o `rechazar`.
+  - `aceptar`: marca `alerta_revisada=True` y anota que el profesor confirmó la
+    asistencia limite.
+  - `rechazar`: cambia el tipo a `RECHAZADO` (migración `0011`), de modo que deja de
+    contar como asistencia pero queda auditado.
 
-### 11.7 `descartar_registro()` (líneas 130-139)
+### 11.8 `descartar_registro()` (líneas 283-293)
 
 ```python
 @role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
@@ -1196,7 +1241,7 @@ def descartar_registro(request, sesion_id, registro_id):
   esa sesión.
 - **Línea 135:** vuelve al detalle.
 
-### 11.8 Vistas académicas ocultas (líneas 141-365)
+### 11.9 Vistas académicas ocultas (líneas 295-365)
 
 Estas vistas siguen activas por URL, pero no están en el menú.
 
@@ -1576,7 +1621,7 @@ Usuario → elige sesión y fuente → Iniciar
 
 ## 17. Tests
 
-`apps/attendance/tests.py` (32 pruebas) cubre:
+`apps/attendance/tests.py` (42 pruebas en total del proyecto) cubre:
 
 - modelos: `RegistroAsistencia`, `posible_fuga`, `registrar_ping`,
   `porcentaje_permanencia`;
@@ -1584,7 +1629,7 @@ Usuario → elige sesión y fuente → Iniciar
   directorio y contadores;
 - flujos de escritura: confirmado, intruso, fraude, lote con 3 imágenes,
   agrupación de intrusos;
-- sesiones: listado, detalle y descartar;
+- sesiones: listado, detalle, descartar, ausentes, banda de revision y marcado manual;
 - API de enrolamiento: exige autenticación, rechaza profesores y crea
   `User` + `Estudiante` + `FaceEmbedding`.
 

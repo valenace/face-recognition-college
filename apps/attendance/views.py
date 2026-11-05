@@ -6,10 +6,14 @@ from django.views.generic import ListView, DetailView
 from django.db.models import Count, Q
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
+from django.utils import timezone
 import json
 from apps.users.permissions import RoleRequiredMixin, role_required
 from apps.attendance.models import RegistroAsistencia, SesionClase
-from apps.academic.models import Inscripcion
+from apps.academic.models import Estudiante, Inscripcion
+
+# Similitud por debajo de la cual una asistencia necesita revisión humana.
+UMBRAL_REVISION = 0.40
 
 
 User = get_user_model()
@@ -150,7 +154,8 @@ def sesion_detalle(request, sesion_id):
         "tipo_evento", "hora_entrada", "id"
     )
 
-    resumen = {"confirmados": 0, "intrusos": 0, "spoofing": 0, "otra_seccion": 0}
+    resumen = {"confirmados": 0, "intrusos": 0, "spoofing": 0, "otra_seccion": 0,
+               "rechazados": 0, "revision": 0, "ausentes": 0}
     for registro in registros:
         if registro.tipo_evento == RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL:
             resumen["confirmados"] += 1
@@ -158,14 +163,121 @@ def sesion_detalle(request, sesion_id):
             resumen["intrusos"] += 1
         elif registro.tipo_evento == RegistroAsistencia.TipoEvento.SPOOFING:
             resumen["spoofing"] += 1
+        elif registro.tipo_evento == RegistroAsistencia.TipoEvento.RECHAZADO:
+            resumen["rechazados"] += 1
         else:
             resumen["otra_seccion"] += 1
+
+    # Nómina de la clase: quién está, quién falta y quién está en la banda de
+    # revisión (similitud 0.30–0.40), que el docente confirma o rechaza.
+    inscritos = list(
+        Inscripcion.objects.filter(asignacion_clase=sesion.asignacion_clase)
+        .select_related("estudiante__user")
+        .order_by("estudiante__user__last_name", "estudiante__user__first_name")
+    )
+    normales = {
+        registro.estudiante_id: registro
+        for registro in registros
+        if registro.tipo_evento == RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL
+        and registro.estudiante_id
+    }
+    revision = [
+        registro
+        for registro in normales.values()
+        if registro.similitud_ia is not None
+        and registro.similitud_ia < UMBRAL_REVISION
+        and not registro.alerta_revisada
+    ]
+    revision.sort(key=lambda r: r.similitud_ia)
+    ausentes = [
+        inscripcion.estudiante
+        for inscripcion in inscritos
+        if inscripcion.estudiante_id not in normales
+    ]
+    resumen["revision"] = len(revision)
+    resumen["ausentes"] = len(ausentes)
 
     return render(
         request,
         "attendance/sesion_detalle.html",
-        {"sesion": sesion, "registros": registros, "resumen": resumen},
+        {
+            "sesion": sesion,
+            "registros": registros,
+            "resumen": resumen,
+            "presentes": sorted(
+                normales.values(),
+                key=lambda r: (r.estudiante.user.last_name, r.estudiante.user.first_name)
+                if r.estudiante else "",
+            ),
+            "revision": revision,
+            "ausentes": ausentes,
+        },
     )
+
+
+def _puede_gestionar(user, sesion):
+    """El profesor dueño de la sesión o un directivo puede gestionarla."""
+    if user.is_superuser or user.role in (
+        User.Role.DEVELOPER, User.Role.DIRECTOR, User.Role.COORDINATOR
+    ):
+        return True
+    return (
+        user.role == User.Role.PROFESSOR
+        and sesion.asignacion_clase.profesor_id == user.id
+    )
+
+
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def marcar_presente(request, sesion_id, estudiante_id):
+    """El docente marca manualmente la asistencia de un estudiante."""
+    if request.method != "POST":
+        return redirect("sesion_detalle", sesion_id=sesion_id)
+
+    sesion = get_object_or_404(
+        SesionClase.objects.select_related("asignacion_clase"), pk=sesion_id
+    )
+    if not _puede_gestionar(request.user, sesion):
+        return redirect("sesion_detalle", sesion_id=sesion_id)
+
+    estudiante = get_object_or_404(Estudiante, pk=estudiante_id)
+    ahora = timezone.localtime().time()
+    RegistroAsistencia.objects.update_or_create(
+        sesion=sesion,
+        estudiante=estudiante,
+        defaults={
+            "hora_entrada": ahora,
+            "ultima_vez_visto": ahora,
+            "tipo_evento": RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL,
+            "alerta_revisada": True,
+            "notas_auditoria": "Marcado manualmente por el profesor.",
+        },
+    )
+    return redirect("sesion_detalle", sesion_id=sesion_id)
+
+
+@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+def resolver_revision(request, sesion_id, registro_id, accion):
+    """Acepta o rechaza una asistencia de baja confianza (banda 0.30–0.40)."""
+    if request.method != "POST":
+        return redirect("sesion_detalle", sesion_id=sesion_id)
+
+    sesion = get_object_or_404(
+        SesionClase.objects.select_related("asignacion_clase"), pk=sesion_id
+    )
+    if not _puede_gestionar(request.user, sesion):
+        return redirect("sesion_detalle", sesion_id=sesion_id)
+
+    registro = get_object_or_404(RegistroAsistencia, pk=registro_id, sesion=sesion)
+    if accion == "aceptar":
+        registro.alerta_revisada = True
+        registro.notas_auditoria = "Similitud limite confirmada por el profesor."
+        registro.save(update_fields=["alerta_revisada", "notas_auditoria"])
+    elif accion == "rechazar":
+        registro.tipo_evento = RegistroAsistencia.TipoEvento.RECHAZADO
+        registro.alerta_revisada = True
+        registro.notas_auditoria = "Rechazada por el profesor: falso positivo de identidad."
+        registro.save(update_fields=["tipo_evento", "alerta_revisada", "notas_auditoria"])
+    return redirect("sesion_detalle", sesion_id=sesion_id)
 
 
 @role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")

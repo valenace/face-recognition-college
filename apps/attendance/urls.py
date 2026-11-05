@@ -1,4 +1,12 @@
 from django.urls import path
+from apps.attendance.api import (
+    RegistroBiometricoView,
+    EnVivoIniciarView,
+    EnVivoDetenerView,
+    EnVivoEstadoView,
+    EnVivoFrameView,
+    EnVivoStreamView,
+)
 from apps.attendance.views import (
     live_attendance,
     directorio,
@@ -8,14 +16,8 @@ from apps.attendance.views import (
     descartar_registro,
     eliminar_sesion,
     eliminar_todas_sesiones,
-)
-from apps.attendance.api import (
-    RegistroBiometricoView,
-    EnVivoIniciarView,
-    EnVivoDetenerView,
-    EnVivoEstadoView,
-    EnVivoFrameView,
-    EnVivoStreamView,
+    marcar_presente,
+    resolver_revision,
 )
 
 urlpatterns = [
@@ -27,6 +29,16 @@ urlpatterns = [
     path("sesiones/eliminar-todas/", eliminar_todas_sesiones, name="eliminar_todas_sesiones"),
     path("sesiones/<int:sesion_id>/", sesion_detalle, name="sesion_detalle"),
     path("sesiones/<int:sesion_id>/eliminar/", eliminar_sesion, name="eliminar_sesion"),
+    path(
+        "sesiones/<int:sesion_id>/presente/<int:estudiante_id>/",
+        marcar_presente,
+        name="marcar_presente",
+    ),
+    path(
+        "sesiones/<int:sesion_id>/revision/<int:registro_id>/<str:accion>/",
+        resolver_revision,
+        name="resolver_revision",
+    ),
     path(
         "sesiones/<int:sesion_id>/registros/<int:registro_id>/descartar/",
         descartar_registro,

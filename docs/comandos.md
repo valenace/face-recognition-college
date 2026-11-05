@@ -91,7 +91,35 @@ que en realidad sean estudiantes registrados.
 
 ---
 
-## 6. Tests
+## 6. Probar con cámara real
+
+Esta máquina **no tiene cámara** (`/dev/video*` no existe), así que la prueba con
+hardware hay que hacerla en el aula:
+
+```bash
+# 1. Cámara como fuente (0 = cámara por defecto)
+venv/bin/python scripts/asistencia_unificada_optimizada.py --fuente 0
+
+# 2. O en la web, con la sesión abierta
+venv/bin/python manage.py runserver
+# http://localhost:8000/en-vivo/  ->  Fuente: 0  ->  Iniciar
+```
+
+Lista de verificación:
+
+- [ ] La cámara abre sin error (`VideoCapture(0)`).
+- [ ] El frame llega al navegador por el stream MJPEG (sin parpadeo).
+- [ ] Los 9 registrados aparecen con su nombre y similitud.
+- [ ] Al menos uno queda en amarillo (`posible`) si está de perfil o con gorra.
+- [ ] Un desconocido genera una fila `INTRUSO` con su captura.
+- [ ] Al terminar, `/sesiones/<id>/` lista presentes, ausentes y la banda de revisión.
+
+Ayudas: buena luz frontal, la cámara a la altura de los ojos y a 2–3 m del grupo;
+si la imagen sale pequeña, baja el tamaño del frame o la distancia.
+
+---
+
+## 7. Tests
 
 ```bash
 venv/bin/python -m pytest -m unit          # 74 tests, rápido
@@ -101,7 +129,7 @@ venv/bin/python manage.py check
 
 ---
 
-## 7. Regresión de identidad (el motor no puede cambiar sin esto)
+## 8. Regresión de identidad (el motor no puede cambiar sin esto)
 
 ```bash
 venv/bin/python experiments/unc/regresion_identidad.py

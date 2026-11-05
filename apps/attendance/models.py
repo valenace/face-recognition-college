@@ -85,6 +85,7 @@ class RegistroAsistencia(models.Model):
         INTRUSO = "INTRUSO", "Intruso"
         OTRA_SECCION = "OTRA_SECCION", "Otra Sección"
         SPOOFING = "SPOOFING", "Spoofing"
+        RECHAZADO = "RECHAZADO", "Rechazado por el profesor"
 
     sesion = models.ForeignKey(SesionClase, on_delete=models.CASCADE, related_name="asistencias", verbose_name="sesión")
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE, null=True, blank=True, related_name="asistencias", verbose_name="estudiante")

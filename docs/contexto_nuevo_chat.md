@@ -21,7 +21,7 @@ de visión offline (**RetinaFace + ArcFace** vía `uniface`, anti-spoofing inclu
 
 | Aspecto | Estado |
 |---|---|
-| Tests | **76 pytest** (`pytest -m unit`) y **36 Django** (`manage.py test`), todos en verde |
+| Tests | **76 pytest** (`pytest -m unit`) y **42 Django** (`manage.py test`), todos en verde |
 | `manage.py check` | limpio |
 | Base de datos | 10 usuarios base + `prof_flujo`, 9 embeddings; las sesiones de demo 97 y 98 están en curso (12 y 14 filas) |
 | Cambios sin commitear | Solo `docs/analisis/unc.zip` (respaldo del usuario) |

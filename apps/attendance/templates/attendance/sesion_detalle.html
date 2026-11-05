@@ -41,24 +41,123 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         <div class="glass-card p-5 border-l-4 border-emerald-400">
             <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Confirmados</p>
             <h3 class="text-2xl font-bold mt-1 text-emerald-500">{{ resumen.confirmados }}</h3>
+        </div>
+        <div class="glass-card p-5 border-l-4 border-slate-300">
+            <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Ausentes</p>
+            <h3 class="text-2xl font-bold mt-1">{{ resumen.ausentes }}</h3>
+        </div>
+        <div class="glass-card p-5 border-l-4 border-amber-400">
+            <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Por revisar</p>
+            <h3 class="text-2xl font-bold mt-1 text-amber-500">{{ resumen.revision }}</h3>
         </div>
         <div class="glass-card p-5 border-l-4 border-red-400">
             <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Intrusos</p>
             <h3 class="text-2xl font-bold mt-1 text-red-500">{{ resumen.intrusos }}</h3>
         </div>
-        <div class="glass-card p-5 border-l-4 border-amber-400">
+        <div class="glass-card p-5 border-l-4 border-rose-400">
             <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Spoofing</p>
-            <h3 class="text-2xl font-bold mt-1 text-amber-500">{{ resumen.spoofing }}</h3>
+            <h3 class="text-2xl font-bold mt-1 text-rose-500">{{ resumen.spoofing }}</h3>
         </div>
         <div class="glass-card p-5 border-l-4 border-brand-blue">
             <p class="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Otra sección</p>
             <h3 class="text-2xl font-bold mt-1">{{ resumen.otra_seccion }}</h3>
         </div>
     </div>
+
+    {% if revision %}
+    <div class="glass-card overflow-hidden mb-8">
+        <div class="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between gap-4">
+            <div>
+                <h3 class="font-bold text-lg">Asistencias por revisar</h3>
+                <p class="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                    Similitud entre 0.30 y 0.40: el motor las confirmó, pero no con la
+                    confianza de una asistencia clara. Confirma o rechaza.
+                </p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                {{ revision|length }}
+            </span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs uppercase tracking-wider text-slate-500 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-900/50">
+                    <tr>
+                        <th class="px-6 py-4">Estudiante</th>
+                        <th class="px-6 py-4">Entrada</th>
+                        <th class="px-6 py-4">Similitud</th>
+                        <th class="px-6 py-4"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-zinc-800">
+                    {% for r in revision %}
+                    <tr class="hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
+                        <td class="px-6 py-4 font-medium">
+                            {{ r.estudiante.user.get_full_name|default:r.estudiante.user.username }}
+                        </td>
+                        <td class="px-6 py-4 text-slate-600 dark:text-zinc-300">
+                            {{ r.hora_entrada|time:"H:i:s"|default:"—" }}
+                        </td>
+                        <td class="px-6 py-4 font-semibold text-amber-600 dark:text-amber-400">
+                            {{ r.similitud_ia|floatformat:3 }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center justify-end gap-2">
+                                <form method="post" action="{% url 'resolver_revision' sesion.id r.id 'aceptar' %}">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700">
+                                        Aceptar
+                                    </button>
+                                </form>
+                                <form method="post"
+                                      action="{% url 'resolver_revision' sesion.id r.id 'rechazar' %}"
+                                      onsubmit="return confirm('¿Rechazar esta asistencia? Dejará de contar como presencia.');">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700">
+                                        Rechazar
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if ausentes %}
+    <div class="glass-card overflow-hidden mb-8">
+        <div class="p-5 border-b border-slate-100 dark:border-zinc-800">
+            <h3 class="font-bold text-lg">Ausentes</h3>
+            <p class="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                Inscritos en la sección sin confirmación del motor. Si estuvieron y el motor
+                no los captó, márcalos manualmente.
+            </p>
+        </div>
+        <div class="p-5 flex flex-wrap gap-3">
+            {% for est in ausentes %}
+            <div class="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700">
+                <span class="text-sm font-semibold">{{ est.user.get_full_name|default:est.user.username }}</span>
+                <span class="text-xs text-slate-400 font-mono">{{ est.matricula }}</span>
+                <form method="post" action="{% url 'marcar_presente' sesion.id est.id %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-3 py-1 rounded-lg text-xs font-bold bg-brand-blue text-white hover:opacity-90">
+                        Marcar presente
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     <div class="glass-card overflow-hidden">
         <div class="p-5 border-b border-slate-100 dark:border-zinc-800">
@@ -94,6 +193,8 @@
                             <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400">Intruso</span>
                             {% elif r.tipo_evento == "SPOOFING" %}
                             <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">Spoofing</span>
+                            {% elif r.tipo_evento == "RECHAZADO" %}
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-200 text-slate-700 dark:bg-zinc-700 dark:text-zinc-300">Rechazada</span>
                             {% else %}
                             <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">Otra sección</span>
                             {% endif %}

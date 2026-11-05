@@ -29,7 +29,7 @@ registrarlo, verlo funcionar y revisar lo que quedó guardado.
 | Base de datos | PostgreSQL 16 + pgvector 0.6 (9 centroides de 512 d) |
 | Estudiantes registrados | 9 (`unc_alexa`, `unc_bob`, …, `unc_kevin`) |
 | Web visible | Directorio, Sesiones y Control de Asistencia |
-| Tests | 76 unitarios + 36 de Django, en verde |
+| Tests | 76 unitarios + 42 de Django, en verde |
 | Cómputo | CPU (i9-14900KF), ~7 fps en 1080p; la RTX 4090 no se usa |
 | Limitación principal | 1 falso positivo de identidad residual en el video 3 |
 
@@ -117,7 +117,7 @@ La web quedó reducida a tres secciones visibles:
 |---|---|
 | `/directorio/` | Registra rostros con un video y lista a los registrados |
 | `/sesiones/` | Historial de capturas con sus contadores |
-| `/sesiones/<id>/` | Detalle: confirmados, intrusos, spoofing, similitudes y capturas |
+| `/sesiones/<id>/` | Detalle: confirmados, intrusos, spoofing, **ausentes**, **revisión 0.30–0.40** (aceptar/rechazar) y **marcar presente** |
 | `/en-vivo/` | Control de asistencia con cámara o video, frame anotado |
 
 - La raíz `/` redirige al directorio.

@@ -1,4 +1,5 @@
 import tempfile
+from datetime import time
 from unittest.mock import patch
 
 import numpy as np
@@ -7,7 +8,14 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
-from apps.academic.models import Estudiante, AsignacionClase, Asignatura, Salon, Seccion
+from apps.academic.models import (
+    Estudiante,
+    AsignacionClase,
+    Asignatura,
+    Inscripcion,
+    Salon,
+    Seccion,
+)
 from apps.attendance.models import SesionClase, RegistroAsistencia
 from core.registro_asistencia import (
     acumular_decisiones,
@@ -146,6 +154,118 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["con_biometria"], 0)
         self.assertEqual(response.context["sin_biometria"], 1)
+
+    # ── Gestión asíncrona de la sesión ───────────────────────────
+
+    def _inscribir(self):
+        Inscripcion.objects.create(
+            estudiante=self.estudiante, asignacion_clase=self.asignacion
+        )
+
+    def test_detalle_lista_ausentes_de_la_seccion(self):
+        self._inscribir()
+        self.client.login(username="professor_owner", password="password123")
+        response = self.client.get(
+            reverse("sesion_detalle", kwargs={"sesion_id": self.sesion.id})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["ausentes"]), 1)
+        self.assertEqual(response.context["ausentes"][0], self.estudiante)
+        self.assertEqual(response.context["revision"], [])
+
+    def test_detalte_marca_la_banda_de_revision(self):
+        self._inscribir()
+        RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=self.estudiante,
+            tipo_evento=RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL,
+            similitud_ia=0.35,
+            hora_entrada=time(9, 0),
+        )
+        self.client.login(username="professor_owner", password="password123")
+        response = self.client.get(
+            reverse("sesion_detalle", kwargs={"sesion_id": self.sesion.id})
+        )
+        self.assertEqual(len(response.context["revision"]), 1)
+        self.assertEqual(response.context["ausentes"], [])
+
+    def test_aceptar_revision_marca_revisada(self):
+        self._inscribir()
+        registro = RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=self.estudiante,
+            tipo_evento=RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL,
+            similitud_ia=0.35,
+            hora_entrada=time(9, 0),
+        )
+        self.client.login(username="professor_owner", password="password123")
+        url = reverse(
+            "resolver_revision",
+            kwargs={"sesion_id": self.sesion.id, "registro_id": registro.id, "accion": "aceptar"},
+        )
+        response = self.client.post(url)
+        self.assertRedirects(
+            response, reverse("sesion_detalle", kwargs={"sesion_id": self.sesion.id})
+        )
+        registro.refresh_from_db()
+        self.assertTrue(registro.alerta_revisada)
+        self.assertEqual(
+            registro.tipo_evento, RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL
+        )
+
+    def test_rechazar_revision_deja_de_contar_como_asistencia(self):
+        self._inscribir()
+        registro = RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=self.estudiante,
+            tipo_evento=RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL,
+            similitud_ia=0.35,
+            hora_entrada=time(9, 0),
+        )
+        self.client.login(username="professor_owner", password="password123")
+        url = reverse(
+            "resolver_revision",
+            kwargs={"sesion_id": self.sesion.id, "registro_id": registro.id, "accion": "rechazar"},
+        )
+        self.client.post(url)
+        registro.refresh_from_db()
+        self.assertEqual(
+            registro.tipo_evento, RegistroAsistencia.TipoEvento.RECHAZADO
+        )
+        self.assertTrue(registro.alerta_revisada)
+
+    def test_marcar_presente_manual_crea_la_asistencia(self):
+        self._inscribir()
+        self.client.login(username="professor_owner", password="password123")
+        url = reverse(
+            "marcar_presente",
+            kwargs={"sesion_id": self.sesion.id, "estudiante_id": self.estudiante.id},
+        )
+        response = self.client.post(url)
+        self.assertRedirects(
+            response, reverse("sesion_detalle", kwargs={"sesion_id": self.sesion.id})
+        )
+        registro = RegistroAsistencia.objects.get(
+            sesion=self.sesion, estudiante=self.estudiante
+        )
+        self.assertEqual(
+            registro.tipo_evento, RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL
+        )
+        self.assertIn("manualmente", registro.notas_auditoria)
+
+    def test_otro_profesor_no_puede_gestionar_la_sesion(self):
+        self._inscribir()
+        self.client.login(username="professor_other", password="password123")
+        url = reverse(
+            "marcar_presente",
+            kwargs={"sesion_id": self.sesion.id, "estudiante_id": self.estudiante.id},
+        )
+        self.client.post(url)
+        self.assertFalse(
+            RegistroAsistencia.objects.filter(
+                sesion=self.sesion, estudiante=self.estudiante
+            ).exists()
+        )
 
     def test_api_enrolar_requiere_autenticacion(self):
         response = self.client.post("/api/enrolar/", {})
