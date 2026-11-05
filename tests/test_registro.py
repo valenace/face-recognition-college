@@ -324,17 +324,18 @@ class TestBandaRevision:
 class TestSeguimientoIntrusos:
     """Un desconocido de un frame no es intruso si la pista es un registrado."""
 
-    def _desconocido(self, track_id, sim, motivo=None):
+    def _desconocido(self, track_id, sim, motivo=None, candidato="dani", bbox=(100, 100, 150, 150)):
         return {
             "track_id": track_id,
             "estado": "DESCONOCIDO",
             "similitud": sim,
-            "candidato": "dani",
+            "candidato": candidato,
             "motivo": motivo,
+            "bbox": bbox,
         }
 
-    def _confirmado(self, track_id):
-        return {"track_id": track_id, "estado": "CONFIRMADO", "similitud": 0.5}
+    def _confirmado(self, track_id, nombre="dani"):
+        return {"track_id": track_id, "estado": "CONFIRMADO", "similitud": 0.5, "nombre": nombre}
 
     def test_pista_persistente_bajo_umbral_crea_intruso(self):
         from core.intrusos import SeguimientoIntrusos
@@ -348,22 +349,22 @@ class TestSeguimientoIntrusos:
     def test_pista_que_supera_el_umbral_no_es_intruso(self):
         from core.intrusos import SeguimientoIntrusos
 
-        seg = SeguimientoIntrusos(frames=3)
+        seg = SeguimientoIntrusos(frames=3, umbral=0.24)
         crear = []
-        for sim in (0.10, 0.12, 0.25, 0.25):
+        for sim in (0.28, 0.29, 0.30):
             crear, _ = seg.evaluar([self._desconocido(7, sim)])
         assert crear == []
 
     def test_fila_creada_se_descarta_si_la_pista_mejora(self):
         from core.intrusos import SeguimientoIntrusos
 
-        seg = SeguimientoIntrusos(frames=2)
+        seg = SeguimientoIntrusos(frames=2, umbral=0.24)
         crear = []
         for _ in range(2):
             crear, _ = seg.evaluar([self._desconocido(7, 0.10)])
         assert crear
         seg.marcar_registrado(7, 99)
-        _, descartar = seg.evaluar([self._desconocido(7, 0.25)])
+        _, descartar = seg.evaluar([self._desconocido(7, 0.60)])
         assert descartar == [99]
 
     def test_conflicto_de_identidad_no_es_intruso(self):
@@ -396,6 +397,43 @@ class TestSeguimientoIntrusos:
         for _ in range(2):
             crear, _ = seg.evaluar([self._desconocido(7, 0.10)])
         assert crear == []
+
+    def test_candidato_confirmado_en_otra_pista_no_descarta_desconocido(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=3, umbral=0.24)
+        crear = []
+        # La pista 7 tiene similitud 0.28 con 'dani', pero 'dani' ya está confirmada en la pista 1
+        for _ in range(3):
+            crear, _ = seg.evaluar([
+                self._confirmado(1, nombre="dani"),
+                self._desconocido(7, 0.28, candidato="dani"),
+            ])
+        assert [d["track_id"] for d in crear] == [7]
+
+    def test_deduplicacion_espacial_reutiliza_asiento(self):
+        from core.intrusos import SeguimientoIntrusos
+
+        seg = SeguimientoIntrusos(frames=2)
+        bbox1 = (100, 100, 140, 140)
+        for _ in range(2):
+            crear, _ = seg.evaluar([self._desconocido(10, 0.10, bbox=bbox1)])
+        assert [d["track_id"] for d in crear] == [10]
+        seg.marcar_registrado(10, registro_id=501, bbox=bbox1)
+
+        # La pista 10 desaparece unos frames...
+        for _ in range(5):
+            seg.evaluar([])
+
+        # Aparece la pista 25 en el mismo asiento (bbox cercano)
+        bbox2 = (105, 102, 145, 142)
+        crear2 = []
+        for _ in range(2):
+            crear2, _ = seg.evaluar([self._desconocido(25, 0.10, bbox=bbox2)])
+
+        assert len(crear2) == 1
+        assert crear2[0]["track_id"] == 25
+        assert crear2[0]["reutilizar_registro_id"] == 501
 
 
 @pytest.mark.unit

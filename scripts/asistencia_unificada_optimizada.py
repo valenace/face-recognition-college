@@ -194,6 +194,7 @@ class MotorAsistencia:
         self.frame_idx = 0
         self.identidades_ancladas = {}
         self.votos_identidad = {}
+        self.votos_fraude = {}
         self.asistencia_hoy = set()
         self.fecha_actual = datetime.now().strftime("%Y-%m-%d")
 
@@ -272,10 +273,21 @@ class MotorAsistencia:
         voto["ultimo"] = self.frame_idx
         return voto["conteo"]
 
-    def _evaluar_liveness(self, frame, bbox):
+    def _evaluar_liveness(self, frame, bbox, landmarks=None):
         ancho = bbox[2] - bbox[0]
         if ancho < self.tamano_minimo_liveness:
             return "omitido"
+        if landmarks is not None and len(landmarks) >= 3:
+            # RetinaFace landmarks: [ojo_izq, ojo_der, nariz, boca_izq, boca_der]
+            ojo_izq, ojo_der, nariz = landmarks[0], landmarks[1], landmarks[2]
+            dist_ojos = abs(ojo_der[0] - ojo_izq[0])
+            # Perfil extremo o cara casi de lado: la distancia interocular colapsa
+            if dist_ojos < ancho * 0.15:
+                return "omitido"
+            min_ojo_x = min(ojo_izq[0], ojo_der[0])
+            max_ojo_x = max(ojo_izq[0], ojo_der[0])
+            if nariz[0] < (min_ojo_x - dist_ojos * 0.3) or nariz[0] > (max_ojo_x + dist_ojos * 0.3):
+                return "omitido"
         try:
             res = self.spoofer.predict(frame, bbox)
         except Exception:
@@ -315,10 +327,20 @@ class MotorAsistencia:
             self.votos_identidad.pop(t_id, None)
             return "Desconocido", sim, "DESCONOCIDO", sim2, nombre2, candidato
 
-        liveness = self._evaluar_liveness(frame, rostro.bbox)
-        if liveness == "fraude":  # "omitido" (cara pequeña) continúa como válido
-            self.votos_identidad.pop(t_id, None)
-            return "FRAUDE DETECTADO", sim, "FRAUDE", sim2, nombre2, candidato
+        liveness = self._evaluar_liveness(frame, rostro.bbox, getattr(rostro, "landmarks", None))
+        if liveness == "fraude":  # "omitido" (cara pequeña o perfil) continúa como válido
+            voto_f = self.votos_fraude.get(t_id)
+            if voto_f is None or self.frame_idx - voto_f["ultimo"] > self.ventana_votos:
+                voto_f = {"conteo": 0, "ultimo": self.frame_idx}
+                self.votos_fraude[t_id] = voto_f
+            voto_f["conteo"] += 1
+            voto_f["ultimo"] = self.frame_idx
+            if voto_f["conteo"] >= self.votos_requeridos:
+                self.votos_identidad.pop(t_id, None)
+                return "FRAUDE DETECTADO", sim, "FRAUDE", sim2, nombre2, candidato
+            return f"Verificando {voto_f['conteo']}/{self.votos_requeridos}", sim, "VERIFICANDO", sim2, nombre2, candidato
+
+        self.votos_fraude.pop(t_id, None)
         if liveness == "error":
             return "Error liveness", sim, "ERROR", sim2, nombre2, candidato
 

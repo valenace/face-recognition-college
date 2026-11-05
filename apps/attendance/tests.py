@@ -427,6 +427,45 @@ class FlujoAsistenciaTests(TestCase):
         self.assertTrue(registro.es_fraude)
         self.assertIsNone(registro.estudiante)
 
+    def test_fraude_ignorado_si_estudiante_ya_confirmado(self):
+        # 1. Alumno se confirma primero
+        aplicar_decisiones(
+            [self._decision("CONFIRMADO", "alumno")],
+            self._frame(), self.sesion, {"alumno": self.estudiante},
+        )
+        # 2. Luego aparece un frame con FRAUDE para ese mismo candidato
+        resumen = aplicar_decisiones(
+            [{"estado": "FRAUDE", "nombre": "alumno", "candidato": "alumno", "similitud": 0.38, "track_id": 40, "bbox": (20, 20, 120, 120)}],
+            self._frame(), self.sesion, {"alumno": self.estudiante},
+        )
+        self.assertEqual(resumen["fraudes"], 0)
+        self.assertFalse(
+            RegistroAsistencia.objects.filter(
+                sesion=self.sesion, tipo_evento=RegistroAsistencia.TipoEvento.SPOOFING
+            ).exists()
+        )
+
+    def test_intruso_reutiliza_asiento(self):
+        # 1. Se registra el primer intruso
+        dec1 = self._decision("DESCONOCIDO", "Desconocido", sim=0.10, track=10, bbox=(50, 50, 100, 100))
+        aplicar_decisiones([dec1], self._frame(), self.sesion, {})
+        reg_original = RegistroAsistencia.objects.get(
+            sesion=self.sesion, tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO
+        )
+
+        # 2. Nueva pista en el mismo asiento indicando reutilizar_registro_id
+        dec2 = self._decision("DESCONOCIDO", "Desconocido", sim=0.12, track=25, bbox=(52, 51, 102, 101))
+        dec2["reutilizar_registro_id"] = reg_original.id
+        aplicar_decisiones([dec2], self._frame(), self.sesion, {})
+
+        # Debe seguir habiendo solo 1 fila de intruso
+        self.assertEqual(
+            RegistroAsistencia.objects.filter(
+                sesion=self.sesion, tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO
+            ).count(),
+            1,
+        )
+
     def test_lote_exige_evidencia_en_tres_imagenes(self):
         acumulado = nuevo_acumulado()
         for indice in range(2):

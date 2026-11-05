@@ -23,7 +23,7 @@ from apps.academic.models import Estudiante
 from apps.attendance.models import RegistroAsistencia
 from core.intrusos import UMBRAL_INTRUSO
 
-TAMANO_MINIMO_INTRUSO = 40  # px de ancho para guardar una captura de intruso
+TAMANO_MINIMO_INTRUSO = 26  # px de ancho para guardar una captura de intruso
 
 
 def mapa_estudiantes(asignacion):
@@ -173,13 +173,33 @@ def aplicar_decisiones(decisiones, frame, sesion, estudiantes_por_alias,
             continue
 
         if estado == "FRAUDE":
-            _registrar_desconocido(
-                sesion, frame, bbox, es_fraude=True,
-                tipo_evento=RegistroAsistencia.TipoEvento.SPOOFING,
-                track_id=track_id, nota="Posible fraude (anti-spoofing).",
-                candidato=decision.get("candidato"), similitud=similitud,
-            )
-            resumen["fraudes"] += 1
+            candidato = decision.get("candidato")
+            # Si el estudiante candidato ya tiene asistencia confirmada en esta sesión,
+            # no generamos una falsa alarma de spoofing por un giro de cabeza o pose extrema.
+            ya_confirmado = False
+            if candidato and (candidato in estudiantes_por_alias or f"unc_{candidato}" in estudiantes_por_alias):
+                est = estudiantes_por_alias.get(candidato) or estudiantes_por_alias.get(f"unc_{candidato}")
+                if est and RegistroAsistencia.objects.filter(
+                    sesion=sesion,
+                    estudiante=est,
+                    tipo_evento=RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL,
+                ).exists():
+                    ya_confirmado = True
+            elif candidato and RegistroAsistencia.objects.filter(
+                sesion=sesion,
+                estudiante__user__username__in=[candidato, f"unc_{candidato}"],
+                tipo_evento=RegistroAsistencia.TipoEvento.ASISTENCIA_NORMAL,
+            ).exists():
+                ya_confirmado = True
+
+            if not ya_confirmado:
+                _registrar_desconocido(
+                    sesion, frame, bbox, es_fraude=True,
+                    tipo_evento=RegistroAsistencia.TipoEvento.SPOOFING,
+                    track_id=track_id, nota="Posible fraude (anti-spoofing).",
+                    candidato=candidato, similitud=similitud,
+                )
+                resumen["fraudes"] += 1
             continue
 
         if estado == "DESCONOCIDO":
@@ -187,14 +207,37 @@ def aplicar_decisiones(decisiones, frame, sesion, estudiantes_por_alias,
                 continue
             ancho = int(bbox[2]) - int(bbox[0])
             if ancho >= TAMANO_MINIMO_INTRUSO:
-                registro = _registrar_desconocido(
-                    sesion, frame, bbox, es_fraude=False,
-                    tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO,
-                    track_id=track_id, nota="Persona no registrada.",
-                    candidato=decision.get("candidato"), similitud=similitud,
-                )
-                if seguimiento is not None and registro is not None:
-                    seguimiento.marcar_registrado(track_id, registro.id)
+                reutilizar_id = decision.get("reutilizar_registro_id")
+                mejorar_captura = decision.get("mejorar_captura", False)
+                registro = None
+                if reutilizar_id is not None:
+                    registro = RegistroAsistencia.objects.filter(
+                        id=reutilizar_id, sesion=sesion
+                    ).first()
+                    if registro is not None:
+                        registro.ultima_vez_visto = ahora
+                        if similitud is not None:
+                            registro.similitud_ia = similitud
+                        registro.save(update_fields=["ultima_vez_visto", "similitud_ia"])
+                        if mejorar_captura:
+                            if registro.captura_fraude:
+                                registro.captura_fraude.delete(save=False)
+                            _guardar_captura(registro, frame, bbox)
+                        if seguimiento is not None:
+                            seguimiento.marcar_registrado(
+                                track_id, registro.id, bbox=bbox, es_reutilizado=True
+                            )
+                if registro is None:
+                    registro = _registrar_desconocido(
+                        sesion, frame, bbox, es_fraude=False,
+                        tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO,
+                        track_id=track_id, nota="Persona no registrada.",
+                        candidato=decision.get("candidato"), similitud=similitud,
+                    )
+                    if seguimiento is not None and registro is not None:
+                        seguimiento.marcar_registrado(
+                            track_id, registro.id, bbox=bbox, es_reutilizado=False
+                        )
                 resumen["intrusos"] += 1
 
     return resumen
@@ -211,6 +254,7 @@ def reiniciar_pistas(motor):
     motor.frame_idx = 0
     motor.identidades_ancladas = {}
     motor.votos_identidad = {}
+    motor.votos_fraude = {}
     motor.vetos_identidad = {}
     motor.tracker = sv.ByteTrack()
 
