@@ -47,18 +47,17 @@
                             <option value="">Sin sesión (solo visualizar)</option>
                             {% for s in sesiones %}
                             <option value="{{ s.id }}" {% if forloop.first %}selected{% endif %}>
-                                {{ s.asignacion_clase.asignatura.nombre }} · {{ s.asignacion_clase.seccion.codigo }}
+                                #{{ s.id }} · {{ s.asignacion_clase.asignatura.nombre }} ({{ s.fecha }})
                             </option>
                             {% endfor %}
                         </select>
-                        {% if not sesiones %}
                         <form method="post" action="{% url 'crear_sesion_demo' %}" class="mt-2">
                             {% csrf_token %}
+                            <input type="hidden" name="next" value="live_attendance">
                             <button type="submit" class="text-xs font-semibold text-brand-blue hover:underline">
-                                No hay sesiones: crear una de demo
+                                + Crear nueva sesión
                             </button>
                         </form>
-                        {% endif %}
                     </div>
                     <div>
                         <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Fuente</label>
