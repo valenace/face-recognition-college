@@ -23,7 +23,7 @@ UMBRAL_INTRUSO = 0.24
 # Umbral sobre la MEJOR similitud efectiva de la pista. Si en algún momento se
 # acercó a un registrado, la pista no es un intruso aunque su promedio sea bajo:
 # el promedio es acumulativo y no baja cuando la cara mejora.
-UMBRAL_MEJOR = 0.26
+UMBRAL_MEJOR = 0.22
 # Frames consecutivos que debe sostener la pista para crear la fila.
 FRAMES_INTRUSO = 15
 # Frames sin ver la pista para limpiar su estado interno.

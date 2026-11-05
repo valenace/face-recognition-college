@@ -23,7 +23,7 @@ from apps.academic.models import Estudiante
 from apps.attendance.models import RegistroAsistencia
 from core.intrusos import UMBRAL_INTRUSO
 
-TAMANO_MINIMO_INTRUSO = 26  # px de ancho para guardar una captura de intruso
+TAMANO_MINIMO_INTRUSO = 40  # px de ancho para guardar una captura de intruso
 
 
 def mapa_estudiantes(asignacion):

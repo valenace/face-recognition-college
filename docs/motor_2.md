@@ -255,6 +255,10 @@ import math
 # estudiante registrado no confirmado (cuando el candidato no está ya anclado
 # simultáneamente en otra pista activa del aula).
 UMBRAL_INTRUSO = 0.24
+# Umbral sobre la MEJOR similitud efectiva de la pista. Si en algún momento se
+# acercó a un registrado, la pista no es un intruso aunque su promedio sea bajo:
+# el promedio es acumulativo y no baja cuando la cara mejora.
+UMBRAL_MEJOR = 0.22
 # Frames consecutivos que debe sostener la pista para crear la fila.
 FRAMES_INTRUSO = 15
 # Frames sin ver la pista para limpiar su estado interno.
@@ -268,6 +272,10 @@ FACTOR_DISTANCIA_ASIENTO = 2.5
 
 - **Línea 22 `UMBRAL_INTRUSO = 0.24`:** se compara contra el **promedio** de la
   pista, no contra su mejor frame.
+- **Línea 26 `UMBRAL_MEJOR = 0.22`:** además del promedio, la pista queda
+  descartada si su **mejor similitud efectiva** llegó a 0.22 (se acercó a un
+  registrado). Calibrado el 2026-11-05: 7 falsos en 44 s del video 1 y 22 filas
+  para los 21 desconocidos del video 3. Detalle en `docs/analisis/unc/11_intrusos.md`.
 - **Línea 24 `FRAMES_INTRUSO = 15`:** muestras de desconocido que debe acumular la
   pista.
 - **Línea 26 `OLVIDO_PISTA = 30`:** sin ver la pista, se limpia su estado.
