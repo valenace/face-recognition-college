@@ -14,7 +14,7 @@
 | Tamaño mínimo | 40 px | **40 px** |
 | Deduplicación | no | **por asiento** (2.5× ancho, 240 frames) |
 | Falsos en video 1 (44 s, todos registrados) | 9 | **7** |
-| Intrusos en video 3 (21 desconocidos) | 18 | **22 (≈ los 21 reales)** |
+| Intrusos en video 3 (21 desconocidos) | 18 | **29 (21 reales + 8 de los registrados)** |
 
 Medición completa en la sección 4.
 
@@ -123,18 +123,26 @@ comparan con los 21 desconocidos reales.
 | 0.30 | 0.24 | 40 | 13 | 45 |
 
 La fila elegida (`mejor < 0.22`, `promedio < 0.24`, `40 px`) es la que **minimiza
-los falsos sin perder desconocidos**: 4 simulados y 22 filas en video 3, casi
-exactamente las 21 personas reales.
+los falsos sin perder desconocidos**: 4 simulados y 22 filas en video 3, y con el
+código real 7 y 29.
 
 ### 4.3 Verificación con el código real
 
 | Video | Filas de intruso | Creadas | Reutilizadas (asiento) | Descartadas |
 |---|---|---|---|---|
 | 1 (44 s, todos registrados) | **7** (todas falsas) | 13 | 8 | 6 |
-| 3 (completo, 21 desconocidos) | **22** | 39 | 53 | 17 |
+| 3 (completo, 21 desconocidos) | **29** | 47 | 10 | 18 |
 
-Los 22 detalles de video 3 tienen mejores scores entre 0.066 y 0.205 y promedios
-entre 0.016 y 0.149: son 22 rostros distintos, no duplicados.
+**Lectura del video 3:** las 29 filas son 21 desconocidos reales **más 8 filas de los
+8 estudiantes registrados** que en algún momento de la toma quedaron por debajo de
+0.22 y no llegaron a 0.22 en ningún otro frame. Es exactamente el número de
+registrados presentes, lo que confirma que el remanente falso son estudiantes, no
+desconocidos perdidos.
+
+El simulador offline predecía 22 filas: se quedó corto en 7, la misma diferencia
+que se ve en video 1 (4 simuladas frente a 7 reales). La causa es el detalle de
+"asiento visible" al reutilizar filas; para **elegir el umbral** la simulación
+servía, pero las cifras finales son siempre las del código real.
 
 ---
 
@@ -198,7 +206,7 @@ PY
 
 ## 9. Conclusión
 
-La regla v2 baja los intrusos falsos de 23 a 7 en el mismo tramo de video 1 y
-detecta los 21 desconocidos reales del video 3 con 22 filas. El coste es que un
-intramo muy lejano (< 40 px) no se reporta, y que dos personas muy juntas pueden
-compartir fila.
+La regla calibrada baja los intrusos falsos de 23 a 7 en el mismo tramo de video 1
+y deja el video 3 en 29 filas: los 21 desconocidos reales más 8 de los registrados.
+El coste es que un intruso muy lejano (< 40 px) no se reporta, y que dos personas
+muy juntas pueden compartir fila.
