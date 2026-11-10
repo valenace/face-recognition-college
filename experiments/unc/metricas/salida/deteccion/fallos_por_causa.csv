@@ -1,0 +1,3 @@
+resultado,n,ancho_medio,ancho_mediano,nitidez_media,pose_media
+acierto,71,54.07,38.0,1530.97,0.154
+falso_negativo,15,35.6,34.0,1982.76,0.302

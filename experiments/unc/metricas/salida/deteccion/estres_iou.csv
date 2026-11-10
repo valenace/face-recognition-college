@@ -1,0 +1,4 @@
+grupo,n_recortes,perturbaciones,aciertos,tasa_acierto,iou_mediano_medio,iou_mediano_min
+todos,300,6000,6000,1.0,0.8241,0.7895
+etiquetados,83,1660,1660,1.0,0.8234,0.7945
+desconocidos,160,3200,3200,1.0,0.8252,0.7928

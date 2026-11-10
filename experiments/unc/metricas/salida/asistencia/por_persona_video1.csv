@@ -1,0 +1,10 @@
+persona,recortes_etiquetados,reconocidos_confirmados,procesados_no_reconocidos,sin_decision,error_identidad,recall,pistas_confirmadas,primer_tiempo_confirmacion_s
+alexa,12,7,4,1,0,0.583,6,0.07
+bob,14,10,3,1,0,0.714,8,0.07
+carlos,6,5,1,0,0,0.833,4,0.06
+dani,17,15,1,1,0,0.882,5,0.07
+fran,3,2,1,0,0,0.667,2,0.26
+jesus,4,2,2,0,0,0.5,7,0.06
+jose,10,8,2,0,0,0.8,7,0.07
+kate,13,9,3,1,0,0.692,4,0.06
+kevin,7,5,0,2,0,0.714,4,0.07

@@ -1,0 +1,13 @@
+grupo,persona,frames_totales,frames_muestreados,tasa_deteccion,tasa_cara_unica,tasa_util,bbox_min,bbox_max,bbox_media,frames_utiles_estimados
+persona,alexa,105,35,1.0,1.0,1.0,556,614,585.9,105
+persona,bob,115,39,1.0,1.0,1.0,512,650,588.1,117
+persona,carlos,144,48,1.0,1.0,1.0,579,684,621.5,144
+persona,dani,125,42,1.0,1.0,1.0,520,613,571.5,126
+persona,fran,154,52,1.0,1.0,1.0,485,607,555.5,156
+persona,jesus,130,44,0.9773,0.9773,0.9318,452,664,525.1,123
+persona,jose,116,39,1.0,1.0,1.0,490,595,530.2,117
+persona,kate,163,55,1.0,1.0,1.0,448,553,512.2,165
+persona,kevin,100,34,1.0,1.0,1.0,520,652,577.7,102
+salon,salon_102851,3203,1068,0.9307,0.0927,0.0009,19,31,22.9,3
+agregado,PROMEDIO_9,1152,388,0.9975,0.9975,0.9924,448,684,563.1,1155
+agregado,MICRO_9,1152,388,0.9974,0.9974,0.9923,448,684,563.1,1155

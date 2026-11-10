@@ -1,0 +1,2 @@
+frames,caras_totales,caras_por_frame_media,caras_por_frame_mediana,ancho_medio,ancho_mediano,percentil_10,percentil_25,percentil_75,percentil_90,pct_menor_20,pct_menor_40,pct_mayor_igual_40,pct_mayor_igual_60
+1068,11345,10.62,13.0,42.96,37.0,27.0,31.0,52.0,70.0,0.0004,0.5846,0.4154,0.1534

@@ -1,0 +1,5 @@
+grupo,n,correctos,accuracy,score_medio_propio
+sin accesorios,44,37,0.8409,0.4643
+lentes,35,33,0.9429,0.4806
+gorra,3,3,1.0,0.5394
+gorra+lentes,4,2,0.5,0.2854

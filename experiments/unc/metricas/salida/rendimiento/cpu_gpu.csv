@@ -1,0 +1,3 @@
+equipo,proveedor,fps,estado,nota
+CPU (i9-14900KF),CPUExecutionProvider,7.52,medido,onnxruntime CPU 1.24.4; ~7 fps en 1080p
+GPU (RTX 4090),CUDAExecutionProvider,,pendiente,requiere onnxruntime-gpu y CUDA/cuDNN; no instalado en este entorno

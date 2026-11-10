@@ -1,0 +1,23 @@
+metrica,valor,nota
+n_positivos,86,86 recortes con nombre
+n_negativos_score,243,86 max-otra-persona + 157 desconocidos
+n_negativos_operativo,157,157 desconocidos
+auc,0.961623,ROC exacta score-level
+ap,0.953549,Average Precision exacta
+eer,0.079792,Equal Error Rate
+eer_umbral,0.2391,umbral del EER
+d_prime,2.8849,discriminabilidad
+youden_umbral,0.2812,argmax(TPR-FPR)
+youden_j,0.898,TPR-FPR
+youden_tpr,0.9186,
+youden_fpr,0.0206,
+mejor_f1_umbral,0.28,
+mejor_f1,0.9405,
+precision_030,0.9868,
+recall_030,0.8721,
+f1_030,0.9259,
+accuracy_030,0.9506,
+specificity_030,0.9936,
+mcc_030,0.8929,
+kappa_030,0.8891,
+prevalencia,0.3539,86/243 en el conjunto operativo

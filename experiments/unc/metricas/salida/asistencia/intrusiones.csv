@@ -1,0 +1,3 @@
+video,intrusos_reales,filas_intruso,tp,fp,fn,precision,recall,f1,falsos_por_segundo,nota
+"video 1 (44 s, 0 desconocidos reales)",0,7,0,7,0,,,,0.1591,todas las filas son falsas; no hay positivos reales
+video 3 (21 desconocidos reales),21,29,21,8,0,0.7241,1.0,0.84,0.0645,21 desconocidos + 8 filas de los 8 registrados presentes

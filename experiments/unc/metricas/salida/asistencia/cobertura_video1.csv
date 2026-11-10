@@ -1,0 +1,2 @@
+video,presentes_registrados,confirmados,cobertura,recortes_etiquetados,recortes_confirmados,recall_recortes,procesados_no_reconocidos,sin_decision,errores_identidad,desconocidos_etiquetados,desconocidos_falsos_aceptados,desconocidos_sin_decision,latencia_confirmacion_media_s,latencia_confirmacion_max_s
+video 1 (VID_20260907_102851.mp4),9,9,1.0,86,63,0.7326,17,6,0,157,1,22,0.09,0.26

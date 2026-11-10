@@ -1,0 +1,16 @@
+equipo,etapa,valor,unidad,fuente
+CPU,deteccion,47,ms/frame,docs/computo.md §6
+CPU,embedding,24,ms/cara,docs/computo.md §6
+CPU,faiss,0.02,ms/cara,docs/computo.md §6
+CPU,overhead,3,ms/frame,docs/computo.md §6
+CPU,pipeline_total,7.52,fps,"docs/computo.md §6 (200 frames, 26.6 s)"
+CPU,pipeline_rango,6.6-7.5,fps,docs/computo.md §6
+CPU,mjpeg_entrega,6.91,fps,docs/streaming_mjpeg_vs_polling.md §4
+CPU,polling_300ms_entrega,3.17,fps,docs/streaming_mjpeg_vs_polling.md §4
+CPU,mjpeg_time_to_first_frame,14,ms,docs/streaming_mjpeg_vs_polling.md §4
+CPU,mjpeg_separacion_media,164,ms,docs/streaming_mjpeg_vs_polling.md §4
+CPU,carga_modelos_cache,0.1,s,docs/computo.md §4
+CPU,cpu_consumido,31.3,cpu/s,docs/streaming_mjpeg_vs_polling.md §4
+CPU,ram_total,62,GiB,docs/computo.md §1
+CPU,ram_libre_medicion,2.7,GiB,docs/computo.md §1
+GPU,vram_total,24,GiB,docs/computo.md §1

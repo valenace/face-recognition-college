@@ -1,0 +1,4 @@
+grupo,n,iou_medio,iou_mediano,iou_min,pct_iou_ge_050,pct_iou_igual_1,confianza_media,caras_por_frame_media
+todos,300,1.0,1.0,1.0,1.0,1.0,0.8923,14.9
+etiquetados,83,1.0,1.0,1.0,1.0,1.0,0.9292,16.66
+desconocidos,160,1.0,1.0,1.0,1.0,1.0,0.8964,14.29

@@ -1,0 +1,6 @@
+metrica,valor,ic_inf,ic_sup,metodo
+auc,0.9616,0.9276,0.9877,bootstrap 2000
+f1_030,0.9259,0.8809,0.9665,bootstrap 2000
+accuracy_030,0.9506,0.9157,0.9715,Wilson
+recall_030,0.8721,0.7853,0.9271,Wilson
+precision_030,0.9868,0.9292,0.9977,Wilson
