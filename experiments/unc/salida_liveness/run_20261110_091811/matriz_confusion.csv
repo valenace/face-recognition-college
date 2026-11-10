@@ -1,0 +1,4 @@
+nivel,tp,fp,fn,tn,precision,recall,f1,accuracy
+frame_todos,617,425,0,205,0.5921,1.0,0.7438,0.6592
+segmento_todos,1,1,0,0,0.5,1.0,0.6667,0.5
+sujeto_mostrado,617,0,0,119,1.0,1.0,1.0,1.0

@@ -1,0 +1,2 @@
+n_segmento,etiqueta,gt_real,desde,hasta,duracion,frames,con_cara,sin_cara,omitidos,frames_real,frames_foto,pct_frames_real,score_mediana,score_media,score_min,score_max,decision_mayoria,s_voto_estable,id_reconocido,id_casos,sim_media
+1,real,True,0.05,9.32,9.27,114,114,0,0,114,0,100.0,0.999,0.998,0.977,1.0,real,0.0,val,114,0.554

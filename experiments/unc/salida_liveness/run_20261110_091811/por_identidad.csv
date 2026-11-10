@@ -1,0 +1,5 @@
+id_reconocido,frames,frames_real,frames_foto,pct_foto,score_mediana,score_media,segmentos
+val,1126,1041,85,7.5,0.999,0.974,1 2
+kevin,119,0,119,100.0,0.0,0.001,2
+bob,1,0,1,100.0,0.308,0.308,2
+dani,1,1,0,0.0,0.976,0.976,2
