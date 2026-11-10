@@ -21,10 +21,10 @@ de visión offline (**RetinaFace + ArcFace** vía `uniface`, anti-spoofing inclu
 
 | Aspecto | Estado |
 |---|---|
-| Tests | **76 pytest** (`pytest -m unit`) y **42 Django** (`manage.py test`), todos en verde |
+| Tests | **91 pytest** (`pytest -m unit`) y **48 Django** (`manage.py test`), todos en verde |
 | `manage.py check` | limpio |
-| Base de datos | 10 usuarios base + `prof_flujo`, 9 embeddings; la sesión de demo 101 está en curso (56 filas). Sus 47 intrusos son de la regla anterior a la calibración del 2026-11-05: conviene regrabar para ver el efecto |
-| Cambios sin commitear | Solo `docs/analisis/unc.zip` (respaldo del usuario) |
+| Base de datos | 9 `unc_*` + `admin` + `prof_flujo` + `val` (prueba), 10 embeddings; la sesión de demo 101 está en curso (56 filas). Sus 47 intrusos son de la regla anterior a la calibración del 2026-11-05: conviene regrabar para ver el efecto |
+| Cambios sin commitear | Correcciones V1 (permisos de gestión, re-enrolamiento/revocación de biometría, recarga caliente de FAISS), `experiments/unc/metricas/`, `experiments/unc/prueba_liveness.py`, `tests/test_prueba_liveness.py` y `docs/analisis/unc.zip` (respaldo del usuario) |
 | Commits | Ninguno hecho por el asistente: **solo se commitea si el usuario lo pide** |
 
 ---
@@ -52,6 +52,11 @@ de visión offline (**RetinaFace + ArcFace** vía `uniface`, anti-spoofing inclu
 | `unc_jose` | José Cabrera | UNC-2026-007 |
 | `unc_kate` | Katerine Vega | UNC-2026-008 |
 | `unc_kevin` | Kevin Navarro | UNC-2026-009 |
+| `val` | Valentina (prueba de liveness) | VAL-2026-001 |
+
+> `val` se registró el 2026-11-10 con el video
+> `data/unc/stds/val/video5158889925956863954.mp4` (15 muestras). Es un usuario
+> de prueba para la cámara; no forma parte de los 9 estudiantes del salón.
 
 - **Admin**: `admin` / `admin123`, rol `DEVELOPER` (superusuario). Cambiar contraseña.
 - Migración que introdujo el tipo vectorial: `attendance.0010` (borra embeddings previos,
@@ -147,10 +152,10 @@ no aparecen en el menú hasta que se rehabiliten. Si no hay sesiones abiertas,
 | Video 3: cobertura | 8/8 presentes; `jose` 0 confirmaciones |
 | Video 3: identidad | 1 falso positivo residual (30 frames, sin impacto en asistencia) |
 | Video 3: re-confirmación tras cada corte | mediana 1.31 s, máx 13.2 s |
-| ROC | AUC 0.744; umbral 0.30 |
+| ROC | AUC 0.962; AP 0.953; EER 0.080; umbral 0.30 |
 | Accesorios | lentes sin efecto (p=0.512); gorra sola sin efecto; **gorra+lentes** mediana 0.315 (2/4 pasan) |
-| Intrusos (video 1, 44 s) | 130 pistas desconocidas → **6 filas** finales; 8 confirmados intactos |
-| Intrusos (video 3) | 18 de 21 desconocidos detectados con el corte 0.18 |
+| Intrusos (video 1, 44 s) | **7 filas** (todas falsas, regla v2) |
+| Intrusos (video 3) | **29 filas**: 21 desconocidos reales + 8 registrados |
 
 **Cómo se logra reconocer con accesorios** (jesús, registrado sin ellos): centroide
 promediado de 50 frames con diversidad de pose + umbral 0.30 (con 0.35 pasaba 1 de 4) +
@@ -205,6 +210,12 @@ python scripts/asistencia_unificada_optimizada.py --crear-sesion --limpiar --fue
 # Regresión de identidad (sale con 1 si hay fallos nuevos)
 venv/bin/python experiments/unc/regresion_identidad.py
 
+# Métricas consolidadas para la tesis (ROC/PR/AUC/AP/EER, asistencia, rendimiento)
+venv/bin/python experiments/unc/metricas/metricas.py
+
+# Prueba de liveness con webcam (real / papel / teléfono) e informe
+venv/bin/python experiments/unc/prueba_liveness.py --fuente 0
+
 # Demos
 venv/bin/python experiments/unc/grabar_demo_motor.py
 venv/bin/python experiments/unc/grabar_demo_registro.py --persona=jesus
@@ -224,6 +235,8 @@ venv/bin/python manage.py test
 | `scripts/registro_video.py` | Registro desde video (CLI) |
 | `scripts/registro_unificado.py` | Registro (web) |
 | `core/db_config.py` | Lectura/escritura de centroides en pgvector |
+| `experiments/unc/metricas/metricas.py` | Métricas consolidadas para la tesis |
+| `experiments/unc/prueba_liveness.py` | Prueba de liveness con webcam y informe |
 | `core/registro_asistencia.py` | Decisiones → `RegistroAsistencia` |
 | `core/intrusos.py` | Clasificador de intrusos (sin Django) |
 | `core/sesion_demo.py` | Sesión de demo (profesor/asignación/inscripciones) |
@@ -268,9 +281,26 @@ Usar los `_web` para enviar; los normales son el máster.
    de desarrollo.
 5. Cambiar la contraseña del admin y completar apellidos/matrículas reales.
 6. Revalidar el umbral con más aulas y sesiones.
-7. **Bajar los intrusos falsos restantes**: los que no se acercan a 0.18 (9 en 44 s del
+7. **Bajar los intrusos falsos restantes**: los que no se acercan a 0.18 (7 en 44 s del
    video 1) requieren re-identificación; mientras tanto, se descartan desde
    `/sesiones/<id>/`.
+8. ~~**Permisos de gestión y biometría**~~ (hecho): solo el dueño/coordinación/
+   dirección gestiona una sesión; el profesor puede re-enrolar y un directivo puede
+   revocar el vector; el índice FAISS se recarga sin reiniciar.
+9. **Carpeta de métricas para la tesis** (`experiments/unc/metricas/`): creada
+   con AUC **0.9616** (corregida; la cifra 0.7439 era una rejilla truncada),
+   AP 0.9535, EER 0.0798, d' 2.885, tablas por umbral, métricas por estudiante,
+   detección, asistencia, intrusos y `resumen.md` reproducible.
+10. **mAP de detección**: no calculado. Exige ground truth exhaustivo (la caja de
+   **todas** las caras de los frames evaluados; ~300–500 cajas anotadas a mano
+   sobre ~20–35 frames del video 1), que no existe. Se reportan en su lugar IoU
+   de emparejamiento, prueba de estrés y tasas de detección, que no requieren GT
+   exhaustivo. Si se retoma, el plan es anotar esos frames y calcular
+   mAP@0.5 y mAP@[0.5:0.95] con RetinaFace.
+11. **Prueba de liveness con cámara** (`experiments/unc/prueba_liveness.py`):
+   script listo para que el operador presente su cara, una foto impresa y una
+   foto en el teléfono; genera CSV por frame/escenario y un `informe_liveness.md`.
+   Pendiente la corrida real en la UNC.
 
 ---
 

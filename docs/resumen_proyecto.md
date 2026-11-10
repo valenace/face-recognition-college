@@ -21,15 +21,15 @@ registrarlo, verlo funcionar y revisar lo que quedó guardado.
 
 ---
 
-## 2. Estado actual (2026-10-26)
+## 2. Estado actual (2026-11-10)
 
 | Aspecto | Estado |
 |---|---|
 | Motor | Estable, con reglas de identidad, conflicto e intrusos |
-| Base de datos | PostgreSQL 16 + pgvector 0.6 (9 centroides de 512 d) |
-| Estudiantes registrados | 9 (`unc_alexa`, `unc_bob`, …, `unc_kevin`) |
+| Base de datos | PostgreSQL 16 + pgvector 0.6 (10 centroides de 512 d) |
+| Estudiantes registrados | 9 (`unc_alexa`, `unc_bob`, …, `unc_kevin`) + `val` (prueba de liveness) |
 | Web visible | Directorio, Sesiones y Control de Asistencia |
-| Tests | 76 unitarios + 42 de Django, en verde |
+| Tests | 91 unitarios + 48 de Django, en verde |
 | Cómputo | CPU (i9-14900KF), ~7 fps en 1080p; la RTX 4090 no se usa |
 | Limitación principal | 1 falso positivo de identidad residual en el video 3 |
 
@@ -52,7 +52,7 @@ video / cámara
    │
    ├─ ArcFace ─────────────► vector de 512 dimensiones (norma 1)
    │
-   ├─ FAISS IndexFlatIP ───► similitud coseno contra los 9 centroides
+   ├─ FAISS IndexFlatIP ───► similitud coseno contra los centroides registrados
    │    umbral: 0.30
    │
    ├─ anti-spoofing ───────► real / fraude (se omite si la cara < 60 px)
@@ -115,13 +115,15 @@ La web quedó reducida a tres secciones visibles:
 
 | Ruta | Qué hace |
 |---|---|
-| `/directorio/` | Registra rostros con un video y lista a los registrados |
+| `/directorio/` | Registra rostros con un video, re-enrola o revoca la biometría y lista a los registrados |
 | `/sesiones/` | Historial de capturas con sus contadores |
 | `/sesiones/<id>/` | Detalle: confirmados, intrusos, spoofing, **ausentes**, **revisión 0.30–0.40** (aceptar/rechazar) y **marcar presente** |
 | `/en-vivo/` | Control de asistencia con cámara o video, frame anotado |
 
 - La raíz `/` redirige al directorio.
 - El login usa `admin` / `admin123` (cambiar la contraseña).
+- La gestión de cada sesión está limitada al profesor dueño, coordinación y
+  dirección; borrar todas las sesiones exige rol directivo.
 - El resto de páginas académicas (panel del profesor, reportes, auditoría, mapa de
   salones) **siguen existiendo por URL**, pero están fuera del menú hasta que se
   rehabiliten.
@@ -151,10 +153,10 @@ La consola escribe en la misma base y con las mismas reglas que la web; el CSV
 | Video 1: confirmación en ventana ±0.5 s | 76/80 (95 %) |
 | Video 3: cobertura | 8/8 presentes (`jose` ausente, 0 confirmaciones) |
 | Video 3: identidad | 1 falso positivo residual (~1 s, sin impacto en asistencia) |
-| ROC | AUC 0.744; umbral 0.30 |
+| ROC | AUC 0.962; AP 0.953; EER 0.080; umbral 0.30 |
 | Accesorios | Lentes sin efecto; gorra+lentes mediana 0.315 (el caso más frágil es `jesus`) |
-| Intrusos (video 1, 44 s) | 130 pistas desconocidas → 6 filas |
-| Intrusos (video 3) | 18 de 21 desconocidos detectados |
+| Intrusos (video 1, 44 s) | 7 filas (todas falsas, regla v2) |
+| Intrusos (video 3) | 29 filas: 21 desconocidos reales + 8 registrados |
 
 Los informes completos están en `docs/analisis/unc/`.
 
@@ -168,6 +170,9 @@ Los informes completos están en `docs/analisis/unc/`.
 - **Intrusos:** el clasificador reduce los falsos, pero no los elimina. Quedan
   caras pequeñas que no se acercan a 0.18; el profesor puede descartarlas desde
   `/sesiones/<id>/`.
+- **mAP de detección:** no se calculó. Requiere ground truth exhaustivo de todas
+  las caras de los frames evaluados; no hay esa anotación. Se reportan IoU,
+  estrés de emparejamiento y tasas de detección.
 - **Tiempo real:** a ~7 fps en CPU, el flujo en vivo va más lento que una cámara
   de 30 fps.
 - **Credenciales** de PostgreSQL por variables de entorno (`CV_DB_*`); los valores
@@ -211,6 +216,7 @@ docs/                                  documentación
 | `docs/comandos.md` | Comandos listos para ejecutar |
 | `docs/contexto_nuevo_chat.md` | Traspaso completo para retomar el proyecto |
 | `docs/analisis/unc/` | Experimentos, resultados y decisiones con datos |
+| `experiments/unc/metricas/` | Métricas consolidadas (ROC/PR/AUC/AP/EER/d'), CSV y `resumen.md` para la tesis |
 
 ---
 

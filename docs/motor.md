@@ -509,6 +509,52 @@ class MotorAsistencia:
   crea ningún archivo.
 - **Línea 202:** mensaje de listo.
 
+### 5.8 `recargar_centroides()` (V1)
+
+```python
+    def recargar_centroides(self):
+        """Recarga los centroides desde pgvector y reconstruye el índice FAISS."""
+        if not self.usar_bd:
+            return False
+
+        from core.db_config import cargar_centroides
+
+        db = cargar_centroides()
+        if not db:
+            return False
+
+        nombres = list(db.keys())
+        vectores = np.array(
+            [np.asarray(v).reshape(-1) for v in db.values()], dtype="float32"
+        )
+        if vectores.shape[1] != 512:
+            return False
+        normas = np.linalg.norm(vectores, axis=1, keepdims=True)
+        if not np.allclose(normas, 1.0, atol=1e-3):
+            vectores = vectores / normas
+
+        self.db = db
+        self.nombres_lista = nombres
+        self.indice_faiss = faiss.IndexFlatIP(512)
+        self.indice_faiss.add(vectores)
+        self.identidades_ancladas.clear()
+        self.votos_identidad.clear()
+        self.votos_fraude.clear()
+        self.vetos_identidad.clear()
+        return True
+```
+
+Se usa para aplicar un enrolamiento, re-enrolamiento o revocación **sin
+reiniciar** el proceso ni el hilo de captura. Solo opera en modo BD: en modo
+pickle devuelve `False` (el archivo se cargó al construir el motor). Reutiliza
+la misma validación de dimensión (512) y normalización L2 que `__init__`.
+Limpia el estado por pista porque las anclas y votos guardan índices de fila del
+índice FAISS anterior; conservarlos apuntaría a otras personas.
+
+El método es seguro entre hilos: el llamador (`_recargar_indice_global` en la
+web o el bucle de `ServicioEnVivo`) lo invoca antes del siguiente
+`procesar_frame()`.
+
 ---
 
 ## 6. CSV (`_preparar_archivo_csv` y `_registrar_asistencia`, líneas 204-249)

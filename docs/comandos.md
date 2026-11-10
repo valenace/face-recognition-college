@@ -122,8 +122,8 @@ si la imagen sale pequeña, baja el tamaño del frame o la distancia.
 ## 7. Tests
 
 ```bash
-venv/bin/python -m pytest -m unit          # 74 tests, rápido
-venv/bin/python manage.py test              # 32 tests Django
+venv/bin/python -m pytest -m unit          # 91 tests, rápido
+venv/bin/python manage.py test              # 48 tests Django
 venv/bin/python manage.py check
 ```
 
@@ -136,3 +136,75 @@ venv/bin/python experiments/unc/regresion_identidad.py
 ```
 
 Sale con código 1 si hay fallos nuevos.
+
+---
+
+## 9. Métricas consolidadas para la tesis
+
+```bash
+venv/bin/python experiments/unc/metricas/metricas.py
+```
+
+Una sola ejecución lee los CSV de las fases 0, 4, 6 y 7 y regenera
+`experiments/unc/metricas/salida/`:
+
+- `identidad/`: ROC y PR exactas, AUC, AP, EER, d', Youden, tabla de 181
+  umbrales, matriz de confusión, métricas por estudiante, top-k, intervalos de
+  confianza, error por ancho y accesorios, multiframe y 6 gráficas.
+- `deteccion/`: tasas de detección, IoU, estrés, tamaños y filtro.
+- `asistencia/`: cobertura de los videos 1 y 3, matriz de sesión, intrusos,
+  barrido de la regla v2, fragmentación de pistas y spoofing.
+- `rendimiento/`: FPS, latencia por etapa y CPU/GPU.
+- `resumen.md`: informe con todos los números y su archivo fuente.
+
+No usa scikit-learn ni pandas; solo NumPy y matplotlib. La semilla del bootstrap
+es fija (`20261105`). El detalle de cada métrica y sus límites está en
+`experiments/unc/metricas/README.md`.
+
+---
+
+## 10. Prueba de liveness con webcam (foto en papel / teléfono)
+
+```bash
+venv/bin/python experiments/unc/prueba_liveness.py --fuente 0
+```
+
+Se abre la cámara y se marca el escenario con el teclado antes de presentar el
+rostro:
+
+- `1` = cara real
+- `2` = foto impresa (papel)
+- `3` = foto en el teléfono
+- `4` = otro ataque
+- `e` = cerrar el escenario actual y pausar
+- `q` = terminar y escribir el informe
+
+Cada frame se evalúa con el mismo MiniFASNet del motor; si hay identidad
+cargada, también se reconoce a quién pertenece el rostro (ArcFace + pgvector).
+La corrida queda en `experiments/unc/salida_liveness/run_FechaHora/` con
+`liveness_frames.csv`, `liveness_segmentos.csv`, `umbrales.csv`,
+`matriz_confusion.csv`, `capturas/` e `informe_liveness.md`.
+
+Para el ataque con teléfono hay fotos listas de tres estudiantes en
+`experiments/unc/salida_liveness/fotos_telefono/` (`dani`, `alexa`, `bob`).
+Pasalas al teléfono y mostralas a pantalla completa.
+
+Para re-evaluar una grabación sin cámara:
+
+```bash
+venv/bin/python experiments/unc/prueba_liveness.py --video prueba.mp4 --etiqueta telefono --sin-ventana
+```
+
+Para regenerar el informe de una corrida ya guardada (sin cámara ni modelos):
+
+```bash
+venv/bin/python experiments/unc/prueba_liveness.py --reinforme experiments/unc/salida_liveness/run_20261110_091811
+```
+
+El informe incluye una matriz **Por sujeto mostrado** que separa al operador
+de la foto del estudiante; si el operador queda en cuadro durante el ataque,
+esa es la lectura correcta (la matriz cruda mezcla ambos).
+
+`--umbral 0.90` es el del motor; la tabla del informe también muestra 0.50 y
+0.75 para ver la sensibilidad. `--sin-identidad` acelera la corrida si solo
+interesa el anti-spoofing.

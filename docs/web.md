@@ -972,6 +972,7 @@ urlpatterns = [
 | `/sesiones/<id>/revision/<rid>/<accion>/` | `resolver_revision` | `resolver_revision` | POST |
 | `/sesiones/<id>/eliminar/` | `eliminar_sesion` | `eliminar_sesion` | POST |
 | `/sesiones/eliminar-todas/` | `eliminar_todas_sesiones` | `eliminar_todas_sesiones` | POST |
+| `/directorio/<user_id>/revocar/` | `revocar_biometria` | `revocar_biometria` | POST |
 | `/en-vivo/` | `live_attendance` | `live_attendance` | HTML |
 | `/en-vivo/sesion-demo/` | `crear_sesion_demo_view` | `crear_sesion_demo` | POST |
 | `/api/enrolar/` | `RegistroBiometricoView` | `api_enrolar` | API |
@@ -990,7 +991,7 @@ urlpatterns = [
 
 ---
 
-## 11. `apps/attendance/views.py` (365 líneas)
+## 11. `apps/attendance/views.py` (365 líneas documentadas; 576 actuales)
 
 ### 11.1 Imports (líneas 1-15)
 
@@ -1284,7 +1285,53 @@ de una sesión.
 
 ---
 
-## 12. `apps/attendance/api.py` (238 líneas)
+## 11.bis Actualización V1 (2026-11-05): permisos y biometría
+
+> Esta sección resume los cambios de la V1 sobre el código descrito en los
+> capítulos 11-14. Los números de línea de esos capítulos corresponden a la
+> versión documentada originalmente; el comportamiento vigente es el de aquí.
+
+### Permisos de gestión
+
+`_puede_gestionar(user, sesion)` centraliza la decisión:
+
+- superusuario, `DEVELOPER`, `DIRECTOR` y `COORDINATOR`: siempre;
+- el profesor dueño (`sesion.asignacion_clase.profesor_id == user.id`);
+- cualquier profesor en sesiones de demo (`asignatura.codigo == "DEMO-FLUJO"`),
+  porque son andamiaje compartido de pruebas.
+
+Se aplica en `sesion_detalle` (solo muestra los botones), `marcar_presente`,
+`resolver_revision`, `descartar_registro` y `eliminar_sesion`. `eliminar_sesion`
+redirige a `/sesiones/` sin borrar si el usuario no puede gestionarla.
+`eliminar_todas_sesiones` exige rol `DIRECTOR` o `DEVELOPER`; el listado pasa
+`puede_borrar_todas` para no mostrar el botón a quien no puede usarlo.
+
+### Gestión de biometría
+
+- **Re-enrolar:** el botón de cada fila de `/directorio/` abre el modal con el
+  carnet fijado y `sobrescribir=1`. El endpoint actualiza nombre, `Estudiante` y
+  `FaceEmbedding` (`update_or_create`) en vez de crear un usuario duplicado.
+  Sin `sobrescribir`, un carnet existente sigue devolviendo `409`.
+- **Revocar:** `POST /directorio/<user_id>/revocar/` borra el `FaceEmbedding` y
+  conserva el `User`, su matrícula y su historial. Exige `DEVELOPER`,
+  `DIRECTOR`, `COORDINATOR` o superusuario.
+- Tras enrolar, re-enrolar o revocar, `_recargar_indice_global()` recarga la
+  caché de centroides del motor de registro y avisa a la captura en vivo
+  (`servicio_en_vivo.solicitar_recarga()`); el hilo de captura reconstruye su
+  propio índice FAISS antes del siguiente frame. No hace falta reiniciar el
+  proceso.
+
+### Recarga caliente del índice
+
+`MotorAsistencia.recargar_centroides()` vuelve a leer pgvector, normaliza los
+vectores, reconstruye `faiss.IndexFlatIP(512)` y limpia anclas, votos, vetos y
+votos de fraude (apuntaban a las filas del índice anterior). En el hilo de
+captura, `ServicioEnVivo._debe_recargar()` consume la petición antes del
+siguiente `procesar_frame()`.
+
+---
+
+## 12. `apps/attendance/api.py` (311 líneas)
 
 ### 12.1 Singleton del motor (líneas 18-36)
 
@@ -1313,6 +1360,31 @@ def _get_motor():
   inviable (segundos por petición).
 - **Línea 36:** devuelve siempre la misma instancia.
 
+### 12.1.bis `_recargar_indice_global()`
+
+```python
+def _recargar_indice_global():
+    """Refresca la caché de centroides del motor de registro y avisa al en vivo."""
+    global _motor_biometrico
+    if _motor_biometrico is not None:
+        try:
+            _motor_biometrico.recargar_centroides()
+        except Exception:
+            logger.exception("No se pudo recargar el índice FAISS del motor.")
+    try:
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        servicio_en_vivo.solicitar_recarga()
+    except Exception:
+        pass
+```
+
+Se llama al final de un enrolamiento o re-enrolamiento exitoso y desde
+`revocar_biometria`. Si el motor aún no se ha cargado, no lo fuerza: la próxima
+petición lo creará leyendo la base actualizada. Si la captura en vivo está
+corriendo, el hilo consume la petición y reconstruye el índice antes del
+siguiente frame.
+
 ### 12.2 `RegistroBiometricoView` (líneas 42-186)
 
 Endpoint `POST /api/enrolar/` con `multipart/form-data`:
@@ -1329,7 +1401,9 @@ Endpoint `POST /api/enrolar/` con `multipart/form-data`:
 - `video` obligatorio y con `content_type` que empiece por `video/`.
 - Si hay errores, `400` con `{exito: false, errores: {...}}`.
 
-**Duplicado (líneas 86-94):** si ya existe un `User` con ese `username`, `409`.
+**Duplicado (líneas 86-94):** si ya existe un `User` con ese `username`, `409`
+salvo que el formulario envíe `sobrescribir=1` (re-enrolamiento). En ese caso se
+conserva el usuario y su matrícula, y se actualizan nombre y embeddings.
 
 **Video temporal (líneas 96-110):**
 - `media/tmp/` con `os.makedirs`.
@@ -1338,7 +1412,9 @@ Endpoint `POST /api/enrolar/` con `multipart/form-data`:
 
 **Motor (líneas 112-126):**
 - `id_usuario=carnet` (el alias del motor es el username, único).
-- `enrolar_usuario_headless(..., sobrescribir=False)`.
+- `enrolar_usuario_headless(..., sobrescribir=sobrescribir)`: en un alta normal
+  es `False`; en un re-enrolamiento es `True`, para que el motor no rechace al
+  usuario que ya existe en su caché.
 - Si falla, `422` con el mensaje del motor.
 
 **Usuario, estudiante y embedding (líneas 127-151):**
@@ -1349,6 +1425,10 @@ Endpoint `POST /api/enrolar/` con `multipart/form-data`:
   - crea `FaceEmbedding` con el vector devuelto, `modelo="arcface"`,
     `n_muestras`, `fuente=WEB`.
 - Si algo falla, la transacción revierte todo.
+- **Re-enrolamiento (`sobrescribir=1`):** no crea un `User` nuevo; actualiza
+  `first_name`/`last_name`, garantiza el `Estudiante` y hace
+  `FaceEmbedding.objects.update_or_create`. Al terminar llama a
+  `_recargar_indice_global()`.
 
 **Respuesta (líneas 154-165):** `201` con `{exito, mensaje, estudiante: {carnet,
 nombre, muestras_biometricas}}`.
@@ -1432,7 +1512,7 @@ def _autorizado_en_vivo(user):
 
 **Bloques disponibles:** `title`, `extra_head`, `content`, `extra_js`.
 
-### 13.2 `apps/attendance/templates/attendance/directorio.html` (198 líneas)
+### 13.2 `apps/attendance/templates/attendance/directorio.html` (198 líneas documentadas; 219 actuales)
 
 - **Línea 1-2:** extiende `base.html`, carga `static` y define el título.
 - **Línea 6-17:** encabezado y botón "Nuevo Registro".
@@ -1443,13 +1523,19 @@ def _autorizado_en_vivo(user):
   - carnet (`username`),
   - nombre,
   - biometría: `Activa` si `est.face_data` existe, `Pendiente` si no,
-  - fecha de alta.
-  - Estado vacío con mensaje.
+  - fecha de alta,
+  - acciones: **Re-enrolar** (abre el modal con el carnet fijo y
+    `sobrescribir=1`) y **Revocar** (form POST con confirmación; conserva
+    usuario e historial).
+  - Estado vacío con mensaje (`colspan="5"`).
 - **Línea 83-194:** modal de registro:
   - pestañas **Archivo** / **Cámara**,
   - drop zone con input `video`,
   - vista previa de cámara con guía facial y contador de grabación,
-  - formulario con `carnet`, `nombre_completo`, `video` y CSRF,
+  - formulario con `carnet`, `nombre_completo`, `video`, `sobrescribir`
+    (oculto) y CSRF,
+  - título dinámico: "Nuevo Registro Biométrico" o "Actualizar registro
+    biométrico",
   - aviso de calidad (rostro de frente, buena luz),
   - botón de envío y bloque de feedback.
 - **Línea 197-199:** carga `static/js/directorio.js`.
@@ -1482,7 +1568,7 @@ def _autorizado_en_vivo(user):
   - polling de estado cada **1 s**,
   - polling del frame cada **300 ms** mientras está activo.
 
-### 13.4 `apps/attendance/templates/attendance/sesiones.html` (79 líneas)
+### 13.4 `apps/attendance/templates/attendance/sesiones.html` (79 líneas documentadas; 115 actuales)
 
 - **Línea 1-10:** título y descripción.
 - **Línea 13-63:** tabla:
@@ -1494,7 +1580,7 @@ def _autorizado_en_vivo(user):
   - enlace "Ver" al detalle.
 - **Línea 64-77:** estado vacío con enlace al control de asistencia.
 
-### 13.5 `apps/attendance/templates/attendance/sesion_detalle.html` (135 líneas)
+### 13.5 `apps/attendance/templates/attendance/sesion_detalle.html` (135 líneas documentadas; 252 actuales)
 
 - **Línea 6-9:** enlace "Volver a sesiones".
 - **Línea 11-35:** encabezado con asignatura, sección, fecha, profesor y estado.
@@ -1510,13 +1596,14 @@ def _autorizado_en_vivo(user):
 
 ---
 
-## 14. `static/js/directorio.js` (303 líneas)
+## 14. `static/js/directorio.js` (303 líneas documentadas; 309 actuales)
 
 - **Línea 1-5:** docstring: subida de archivo y grabación con cámara, ambas al
   mismo endpoint.
 - **Línea 6:** IIFE para no contaminar el ámbito global.
 - **Línea 8-38:** referencias al DOM (modal, form, tabs, file, camera).
-- **Línea 40-46:** estado: modo, stream, recorder, chunks, blob, timer, segundos.
+- **Línea 40-46:** estado: modo, stream, recorder, chunks, blob, timer, segundos
+  y `modoReenrolar`.
 - **Línea 49-50:** clases de pestaña activa/inactiva.
 - **Línea 52-60:** pestaña **Archivo**: muestra su panel, oculta cámara, detiene
   la cámara y limpia el blob.
@@ -1533,20 +1620,22 @@ def _autorizado_en_vivo(user):
   restaura botones.
 - **Línea 156-176:** abrir/cerrar modal con transición de opacidad y escala.
 - **Línea 178-181:** eventos: abrir, cerrar, clic en el fondo y `Escape`.
+- **Botones Re-enrolar:** toman `data-carnet` y `data-nombre`, fijan el carnet
+  (deshabilitado), ponen `sobrescribir=1`, cambian el título del modal y lo
+  abren.
 - **Línea 184-195:** al elegir archivo, muestra nombre y tamaño.
 - **Línea 198-254:** submit:
   - valida que haya archivo o grabación,
   - deshabilita el botón y muestra spinner,
-  - arma `FormData` con carnet, nombre y video,
+  - arma `FormData` con carnet, nombre, video y `sobrescribir` si aplica,
   - envía a `/api/enrolar/` con `X-CSRFToken`,
-  - si `exito`, muestra feedback, agrega la fila y cierra a los 2 s,
+  - si `exito`, muestra feedback y recarga la página a los 1.2 s para reflejar
+    la biometría y las acciones de la fila,
   - si no, muestra el mensaje o los errores por campo,
   - `finally` restaura el botón.
-- **Línea 257-274:** `agregarFilaTabla`: inserta una fila nueva, elimina el estado
-  vacío y suma 1 al contador.
-- **Línea 276-284:** `mostrarFeedback`: clases verdes o rojas según el tipo.
-- **Línea 286-302:** `resetForm`: limpia formulario, feedback, archivo, cámara y
-  vuelve a la pestaña Archivo.
+- **`mostrarFeedback`:** clases verdes o rojas según el tipo.
+- **`resetForm`:** limpia formulario, feedback, archivo, cámara, el flag de
+  re-enrolamiento y vuelve a la pestaña Archivo.
 
 > **Nota de diseño:** la UI ya no usa emojis. Las pestañas y mensajes son texto
 > plano ("Subir archivo", "Cámara en vivo", "Detener"), y el color del feedback
@@ -1605,8 +1694,11 @@ Usuario → elige sesión y fuente → Iniciar
 | Cookies | `HttpOnly`, `SameSite=Lax`, expiran al cerrar |
 | Video temporal | Se borra en `finally` |
 | Validación de carnet | Regex `^[a-zA-Z0-9_-]+$` |
-| Duplicados | `409` si el username ya existe |
+| Duplicados | `409` si el username ya existe; `sobrescribir=1` actualiza el registro |
 | `/api/enrolar/` | `IsAuthenticated` + rol `DEVELOPER`/`COORDINATOR`/`DIRECTOR` |
+| Gestión de sesión | Dueño de la asignación, `COORDINATOR`/`DIRECTOR`/`DEVELOPER` o superusuario; demo abierta a profesores |
+| Borrar todas | Solo `DIRECTOR`/`DEVELOPER` o superusuario |
+| Revocar biometría | `DEVELOPER`/`DIRECTOR`/`COORDINATOR` o superusuario; conserva usuario e historial |
 | Credenciales | `CV_DB_*`, `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS` |
 
 **Pendiente para producción:**
@@ -1621,7 +1713,8 @@ Usuario → elige sesión y fuente → Iniciar
 
 ## 17. Tests
 
-`apps/attendance/tests.py` (42 pruebas en total del proyecto) cubre:
+`apps/attendance/tests.py` y `tests/test_registro.py` (48 pruebas Django + 91
+unitarias) cubren:
 
 - modelos: `RegistroAsistencia`, `posible_fuga`, `registrar_ping`,
   `porcentaje_permanencia`;
@@ -1629,9 +1722,16 @@ Usuario → elige sesión y fuente → Iniciar
   directorio y contadores;
 - flujos de escritura: confirmado, intruso, fraude, lote con 3 imágenes,
   agrupación de intrusos;
-- sesiones: listado, detalle, descartar, ausentes, banda de revision y marcado manual;
-- API de enrolamiento: exige autenticación, rechaza profesores y crea
-  `User` + `Estudiante` + `FaceEmbedding`.
+- sesiones: listado, detalle, descartar, ausentes, banda de revision y marcado
+  manual;
+- permisos de gestión: el profesor ajeno no puede marcar, aceptar/rechazar,
+  descartar ni eliminar; el director sí puede eliminar; solo el director borra
+  todas;
+- biometría: `POST /api/enrolar/` exige autenticación y rol, crea
+  `User` + `Estudiante` + `FaceEmbedding`, actualiza con `sobrescribir=1` y
+  revocar borra el vector sin borrar el usuario;
+- motor: `MotorAsistencia.recargar_centroides()` reconstruye FAISS y limpia el
+  estado de pistas.
 
 ```bash
 venv/bin/python manage.py test

@@ -437,6 +437,27 @@ class ServicioEnVivo:
 - **Línea 91-92:** devuelve una **copia** del estado para que el llamador no
   modifique el original.
 
+```python
+    def solicitar_recarga(self):
+        """Pide al hilo de captura que recargue los centroides."""
+        with self._lock:
+            self._recargar = True
+
+    def _debe_recargar(self):
+        with self._lock:
+            if not self._recargar:
+                return False
+            self._recargar = False
+            return True
+```
+
+- **`_recargar` (constructor y `iniciar`):** bandera compartida entre la
+  petición web y el hilo. Se limpia al arrancar una captura nueva.
+- **`solicitar_recarga()`:** la llama `_recargar_indice_global()` tras enrolar,
+  re-enrolar o revocar biometría. No bloquea ni toca el motor.
+- **`_debe_recargar()`:** consume la petición una sola vez; el bucle llama a
+  `motor.recargar_centroides()` antes del siguiente `procesar_frame()`.
+
 ## B.3 `_bucle()` (líneas 95-168)
 
 ```python
@@ -476,6 +497,9 @@ class ServicioEnVivo:
                 ok, frame = captura.read()
                 if not ok:
                     break
+
+                if self._debe_recargar():
+                    motor.recargar_centroides()
 
                 decisiones = motor.procesar_frame(frame)
 
@@ -529,6 +553,9 @@ class ServicioEnVivo:
   (`espera = 1/fps`). Si el video no reporta FPS, no espera.
 - **Línea 126:** bucle mientras `_activo`.
 - **Línea 127-130:** lee un frame; si no hay, termina.
+- **Recarga caliente:** si `_debe_recargar()` devuelve `True` (hubo un
+  enrolamiento, re-enrolamiento o revocación desde la web), llama a
+  `motor.recargar_centroides()` antes de procesar el frame.
 - **Línea 132:** procesa el frame.
 - **Línea 134-141:** si hay sesión, escribe la asistencia y obtiene el resumen;
   si no, resumen vacío.
@@ -1089,6 +1116,20 @@ class RegistroBiometrico:
 - **Línea 34:** devuelve el diccionario de centroides.
 - **Línea 35-37:** si la base falla, avisa y devuelve vacío. El registro queda
   operativo, pero sin comparar con lo existente.
+
+### E.2.bis `recargar_centroides()`
+
+```python
+    def recargar_centroides(self):
+        """Recarga los centroides desde pgvector."""
+        self.db_embeddings = self._cargar_db()
+        return bool(self.db_embeddings)
+```
+
+La llama `_recargar_indice_global()` después de enrolar, re-enrolar o revocar.
+Mantiene fresca la caché del motor de registro; el índice FAISS de la captura
+en vivo se reconstruye en su propio hilo
+(`MotorAsistencia.recargar_centroides`).
 
 ```python
     def _guardar_db(self, clave=None):
