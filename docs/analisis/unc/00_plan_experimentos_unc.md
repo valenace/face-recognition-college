@@ -30,7 +30,7 @@ Las fotos de `data/unc/_preview/` no coinciden con los videos de `stds/` y no se
 - `core/utils_facial.py`: `embedding_facial()`, preprocesado compartido entre registro e inferencia.
 - `scripts/registro_video.py`: carpeta de frames limpiada antes de cada registro; solo se acepta frame con una cara; muestreo uniforme en todo el video; mínimo de 15 fotos (si no, no se guarda); rutas absolutas; opción sin ventana.
 - `scripts/run_single_video_reg.py`: acepta `--db`, `--dataset`, `--liveness`, `--sin-ventana`.
-- `scripts/asistencia_unificada_optimizada.py`: anti-spoofing en cada decisión (sin excepción por tamaño); error del spoofer ya no cuenta como fraude; votos consecutivos con ventana; identidad ancla revalidada cada 90 frames; tracker actualizado en frames vacíos; reinicio de asistencia al cambiar de día; inferencia separada en `procesar_frame()`.
+- `scripts/asistencia_unificada_optimizada.py`: anti-spoofing en cada decisión con cara de 60 px o más (se omite por debajo); error del spoofer ya no cuenta como fraude; votos consecutivos con ventana; identidad ancla revalidada cada 90 frames; tracker actualizado en frames vacíos; reinicio de asistencia al cambiar de día; inferencia separada en `procesar_frame()`.
 
 **Hallazgos que afectan el diseño:**
 - **Video del salón usado:** solo `data/unc/salon/VID_20260907_102851.mp4` (106 s; estudiantes sentados, salen, regresan, se sientan y miran a cámara). El otro video del salón no se usa en esta fase.

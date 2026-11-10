@@ -88,7 +88,9 @@ def analizar_video(detector, ruta, persona, caras_salon=None):
         "bbox_min": min(anchos) if anchos else "",
         "bbox_max": max(anchos) if anchos else "",
         "bbox_media": round(float(np.mean(anchos)), 1) if anchos else "",
-        "frames_utiles_estimados": round(util * PASO),
+        "frames_utiles_estimados": (
+            min(round(util / muestreados * total), total) if muestreados else 0
+        ),
     }
 
 

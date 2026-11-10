@@ -187,10 +187,11 @@ falso positivo asigna una asistencia a la persona equivocada.
 
 | Video | Reales | Filas | TP | FP | FN | Precisión | Recall | F1 |
 |---|---|---|---|---|---|---|---|---|
-| video 1 (44 s, 0 desconocidos reales) | 0 | 7 | 0 | 7 | 0 | — | — | — |
+| video 1 (44 s, sin desconocidos verificados) | 0 | 7 | 0 | 7 | 0 | — | — | — |
 | video 3 (21 desconocidos reales) | 21 | 29 | 21 | 8 | 0 | 0.724 | 1.000 | 0.840 |
 
-El video 1 no tiene intrusos reales: las 7 filas son falsas (0.159/s). En
+El video 1 no tiene intrusos reales verificados: las 7 filas se reportan
+como cota superior de falsos (0.159/s; ver A1). En
 el video 3 hay 21 desconocidos reales y 8 filas de registrados; la
 precisión de fila es 0.724 y el recall 1.000. La regla está calibrada
 para no perder desconocidos; el profesor descarta los falsos desde

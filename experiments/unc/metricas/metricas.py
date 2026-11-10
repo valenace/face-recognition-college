@@ -764,13 +764,13 @@ def metricas_asistencia():
     # Intrusos: cifras del código real (docs/analisis/unc/11_intrusos.md)
     intrusiones = [
         {
-            "video": "video 1 (44 s, 0 desconocidos reales)",
+            "video": "video 1 (44 s, sin desconocidos verificados)",
             "intrusos_reales": 0,
             "filas_intruso": 7,
             "tp": 0, "fp": 7, "fn": 0,
             "precision": "", "recall": "", "f1": "",
             "falsos_por_segundo": round(7 / 44, 4),
-            "nota": "todas las filas son falsas; no hay positivos reales",
+            "nota": "cota superior de falsos: no hay positivos reales verificados (A1)",
         },
         {
             "video": "video 3 (21 desconocidos reales)",
@@ -1204,7 +1204,8 @@ def escribir_resumen(datos):
             f"{f(r['recall'], 3) if r['recall'] != '' else '—'} | "
             f"{f(r['f1'], 3) if r['f1'] != '' else '—'} |")
     add("")
-    add("El video 1 no tiene intrusos reales: las 7 filas son falsas (0.159/s). En")
+    add("El video 1 no tiene intrusos reales verificados: las 7 filas se reportan")
+    add("como cota superior de falsos (0.159/s; ver A1). En")
     add("el video 3 hay 21 desconocidos reales y 8 filas de registrados; la")
     add("precisión de fila es 0.724 y el recall 1.000. La regla está calibrada")
     add("para no perder desconocidos; el profesor descarta los falsos desde")

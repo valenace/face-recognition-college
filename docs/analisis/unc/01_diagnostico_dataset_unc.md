@@ -39,6 +39,11 @@ Antes de medir el reconocimiento, revisamos la calidad de los datos:
 | kate   | 163 | 55  | 1.00 | 1.00 | 1.00 | 448–553 | 512.2 | 165 |
 | kevin  | 100 | 34  | 1.00 | 1.00 | 1.00 | 520–652 | 577.7 | 102 |
 
+> **Nota de auditoría (A4):** la fila de `bob` (229 frames, 77 muestreados) es de
+> una versión anterior del video. La evaluación actual usa **115 frames y 39
+> muestreados** (`experiments/unc/fase1_resumen_videos.csv`). Se conserva la cifra
+> histórica para no reescribir el diagnóstico.
+
 **Lectura:**
 - Los videos de registro son muy buenos: prácticamente todos los frames muestreados tienen una sola cara, y casi todos pasan el filtro de nitidez.
 - Las caras de registro miden entre 450 y 680 px, muy por encima de los 40 px del salón.

@@ -230,6 +230,12 @@ modelo en caras pequeñas, ya documentadas en la fase 5: no confirman ni bloquea
 asistencia porque el estado `FRAUDE` no suma votos. El umbral de 0.90 sigue siendo
 inestable a ese tamaño.
 
+> **Nota de auditoría (A6):** estas 12 filas pertenecen a la corrida del video 3.
+> No son comparables con las 8 alarmas de
+> `experiments/unc/metricas/salida/asistencia/spoofing.csv` (revisión del video 1)
+> ni con el "39 → 3" de la Fase 5 (`07_reporte_final_unc.md`): cada cifra sale de
+> una corrida y una configuración distintas.
+
 ---
 
 ## 9. Conclusiones

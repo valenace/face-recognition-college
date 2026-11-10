@@ -123,6 +123,10 @@ Ver `04_resultados_curva_roc.md`.
 Aplicadas y verificadas:
 - Umbral calibrado 0.30.
 - Anti-spoofing omitido en caras menores de 60 px: las alarmas de fraude bajaron de **39 a 3** en el video completo.
+
+> Nota (A6): el "39 → 3" es de la configuración de la Fase 5. Las 8 alarmas de
+> `experiments/unc/metricas/salida/asistencia/spoofing.csv` y las 12 filas del
+> video 3 son de otras corridas; no se comparan entre sí.
 - Filtro de confianza de detección 0.75: eliminó los falsos positivos sobre brazos y ropa.
 - Revalidación del ancla cada 30 frames (+2.4 % de cómputo).
 - Margen top-2 registrado en cada decisión (sin usarse todavía para decidir).

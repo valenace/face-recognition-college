@@ -56,8 +56,9 @@ Arquitectura:
   - Tracking: ByteTrack para mantener IDs consistentes en multitudes. Se actualiza
     también en frames sin detecciones para envejecer pistas perdidas.
   - Reconocimiento: centroide por estudiante + FAISS IndexFlatIP (similitud coseno).
-  - Anti-spoofing: se evalúa en CADA decisión de reconocimiento, sin importar el tamaño
-    del rostro. Error del spoofer != fraude (no suma votos ni confirma identidad).
+  - Anti-spoofing: se evalúa en cada decisión de reconocimiento con rostro de
+    60 px o más; por debajo se omite (modelo poco fiable a ese tamaño).
+    Error del spoofer != fraude (no suma votos ni confirma identidad).
   - Consenso temporal: 3 votos consecutivos (ventana de frames) del mismo candidato.
   - Ancla de identidad: se revalida cada REVALIDAR_CADA frames.
   - Margen top-2: se registra la segunda mejor coincidencia para análisis; la decisión
@@ -75,7 +76,8 @@ Arquitectura:
   - **ByteTrack** mantiene un `track_id` por persona entre frames, incluso cuando un
     frame no tiene detecciones, para "envejecer" las pistas perdidas.
   - **FAISS `IndexFlatIP`** busca el centroide más parecido con producto interno.
-  - **Anti-spoofing** se evalúa en cada decisión; un error del modelo no es fraude.
+  - **Anti-spoofing** se evalúa en cada decisión con cara de 60 px o más; un
+    error del modelo no es fraude.
   - **3 votos** consecutivos del mismo candidato antes de confirmar.
   - **Ancla**: una identidad confirmada se reutiliza 30 frames sin recalcular.
   - **Margen top-2** se guarda para análisis, pero **no decide** todavía.
