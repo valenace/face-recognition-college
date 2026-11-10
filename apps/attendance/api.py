@@ -39,6 +39,22 @@ def _get_motor():
     return _motor_biometrico
 
 
+def _recargar_indice_global():
+    """Refresca la caché de centroides del motor de registro y avisa al en vivo."""
+    global _motor_biometrico
+    if _motor_biometrico is not None:
+        try:
+            _motor_biometrico.recargar_centroides()
+        except Exception:
+            logger.exception("No se pudo recargar la base de centroides del motor de registro.")
+    try:
+        from core.servicio_en_vivo import servicio_en_vivo
+
+        servicio_en_vivo.solicitar_recarga()
+    except Exception:
+        pass
+
+
 class RegistroBiometricoView(APIView):
     """
     POST /api/enrolar/
@@ -84,7 +100,11 @@ class RegistroBiometricoView(APIView):
             )
 
         # ── 2. Verificar duplicado ─────────────────────────────────
-        if User.objects.filter(username=carnet).exists():
+        sobrescribir = str(request.data.get("sobrescribir", "")).lower() in (
+            "1", "true", "on", "si"
+        )
+        usuario_existente = User.objects.filter(username=carnet).first()
+        if usuario_existente is not None and not sobrescribir:
             return Response(
                 {
                     "exito": False,
@@ -115,7 +135,7 @@ class RegistroBiometricoView(APIView):
             resultado = motor.enrolar_usuario_headless(
                 id_usuario=carnet,
                 ruta_video=ruta_video_tmp,
-                sobrescribir=False,
+                sobrescribir=sobrescribir,
             )
 
             if not resultado["exito"]:
@@ -124,29 +144,49 @@ class RegistroBiometricoView(APIView):
                     status=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 )
 
-            # ── 5. Crear usuario y guardar embedding en Django ─────
+            # ── 5. Crear o actualizar usuario y embedding ──────────
             partes_nombre = nombre.split(" ", 1)
             first_name = partes_nombre[0]
             last_name = partes_nombre[1] if len(partes_nombre) > 1 else ""
 
-            with transaction.atomic():
-                usuario = User.objects.create_user(                    username=carnet,
-                    first_name=first_name,
-                    last_name=last_name,
-                    role=User.Role.STUDENT,
-                    password=None,  # Sin login web, solo biometría
-                )
+            if usuario_existente is not None:
+                # Re-enrolamiento: misma persona, video nuevo.
+                with transaction.atomic():
+                    usuario = usuario_existente
+                    usuario.first_name = first_name
+                    usuario.last_name = last_name
+                    usuario.save(update_fields=["first_name", "last_name"])
+                    Estudiante.objects.get_or_create(
+                        user=usuario, defaults={"matricula": carnet}
+                    )
+                    FaceEmbedding.objects.update_or_create(
+                        user=usuario,
+                        defaults={
+                            "embedding": resultado["embedding"],
+                            "modelo": "arcface",
+                            "n_muestras": resultado.get("muestras", 0),
+                            "fuente": FaceEmbedding.Fuente.WEB,
+                        },
+                    )
+            else:
+                with transaction.atomic():
+                    usuario = User.objects.create_user(
+                        username=carnet,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role=User.Role.STUDENT,
+                        password=None,  # Sin login web, solo biometría
+                    )
+                    Estudiante.objects.create(user=usuario, matricula=carnet)
+                    FaceEmbedding.objects.create(
+                        user=usuario,
+                        embedding=resultado["embedding"],
+                        modelo="arcface",
+                        n_muestras=resultado.get("muestras", 0),
+                        fuente=FaceEmbedding.Fuente.WEB,
+                    )
 
-                Estudiante.objects.create(user=usuario, matricula=carnet)
-
-                FaceEmbedding.objects.create(
-                    user=usuario,
-                    embedding=resultado["embedding"],
-                    modelo="arcface",
-                    n_muestras=resultado.get("muestras", 0),
-                    fuente=FaceEmbedding.Fuente.WEB,
-                )
-
+            _recargar_indice_global()
             logger.info(f"Estudiante '{carnet}' registrado correctamente.")
 
             return Response(

@@ -21,6 +21,7 @@
                 </button>
             </form>
             {% if sesiones %}
+            {% if puede_borrar_todas %}
             <form method="post" action="{% url 'eliminar_todas_sesiones' %}"
                   onsubmit="return confirm('¿Borrar todas las sesiones pasadas y sus registros?');">
                 {% csrf_token %}
@@ -29,6 +30,7 @@
                     Borrar todas
                 </button>
             </form>
+            {% endif %}
             {% endif %}
         </div>
     </div>
@@ -82,6 +84,7 @@
                                    class="text-sm font-semibold text-brand-blue dark:text-brand-yellow hover:underline">
                                     Ver
                                 </a>
+                                {% if request.user.is_superuser or request.user.is_director or request.user.is_developer or s.asignacion_clase.profesor_id == request.user.id %}
                                 <form method="post" action="{% url 'eliminar_sesion' s.id %}"
                                       onsubmit="return confirm('¿Eliminar la sesión #{{ s.id }}?');">
                                     {% csrf_token %}
@@ -90,6 +93,7 @@
                                         Eliminar
                                     </button>
                                 </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

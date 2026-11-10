@@ -126,6 +126,22 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         registro.refresh_from_db()
         self.assertTrue(registro.alerta_revisada)
 
+    def test_otro_profesor_no_puede_descartar_registro(self):
+        registro = RegistroAsistencia.objects.create(
+            sesion=self.sesion,
+            estudiante=None,
+            tipo_evento=RegistroAsistencia.TipoEvento.INTRUSO,
+            es_fraude=False,
+        )
+        self.client.login(username="professor_other", password="password123")
+        url = reverse(
+            "descartar_registro",
+            kwargs={"sesion_id": self.sesion.id, "registro_id": registro.id},
+        )
+        self.client.post(url)
+        registro.refresh_from_db()
+        self.assertFalse(registro.alerta_revisada)
+
     def test_crear_y_eliminar_sesiones(self):
         self.client.login(username="professor_owner", password="password123")
         inicial = SesionClase.objects.count()
@@ -143,7 +159,13 @@ class AttendanceModelsAndViewsTestCase(TestCase):
         self.assertRedirects(resp_del, reverse("sesiones"))
         self.assertFalse(SesionClase.objects.filter(pk=nueva.id).exists())
 
-        # Eliminar todas las sesiones
+        # Eliminar todas las sesiones requiere rol directivo
+        User.objects.create_user(
+            username="director_borrar",
+            password="password123",
+            role=User.Role.DIRECTOR,
+        )
+        self.client.login(username="director_borrar", password="password123")
         resp_all = self.client.post(reverse("eliminar_todas_sesiones"))
         self.assertRedirects(resp_all, reverse("sesiones"))
         self.assertEqual(SesionClase.objects.count(), 0)
@@ -267,6 +289,56 @@ class AttendanceModelsAndViewsTestCase(TestCase):
             ).exists()
         )
 
+    def test_profesor_no_puede_eliminar_sesion_ajena(self):
+        self.client.login(username="professor_other", password="password123")
+        response = self.client.post(
+            reverse("eliminar_sesion", kwargs={"sesion_id": self.sesion.id})
+        )
+        self.assertRedirects(response, reverse("sesiones"))
+        self.assertTrue(SesionClase.objects.filter(pk=self.sesion.id).exists())
+
+    def test_director_puede_eliminar_sesion(self):
+        UserModel = get_user_model()
+        UserModel.objects.create_user(
+            username="director_test", password="password123",
+            role=UserModel.Role.DIRECTOR,
+        )
+        self.client.login(username="director_test", password="password123")
+        self.client.post(reverse("eliminar_sesion", kwargs={"sesion_id": self.sesion.id}))
+        self.assertFalse(SesionClase.objects.filter(pk=self.sesion.id).exists())
+
+    def test_solo_director_puede_borrar_todas(self):
+        self.client.login(username="professor_owner", password="password123")
+        self.client.post(reverse("eliminar_todas_sesiones"))
+        self.assertTrue(SesionClase.objects.filter(pk=self.sesion.id).exists())
+
+        UserModel = get_user_model()
+        UserModel.objects.create_user(
+            username="director_test2", password="password123",
+            role=UserModel.Role.DIRECTOR,
+        )
+        self.client.login(username="director_test2", password="password123")
+        self.client.post(reverse("eliminar_todas_sesiones"))
+        self.assertFalse(SesionClase.objects.exists())
+
+    def test_revocar_biometria_conserva_usuario(self):
+        from apps.attendance.models import FaceEmbedding
+
+        FaceEmbedding.objects.create(
+            user=self.student_user, embedding=[0.0] * 512, modelo="arcface",
+        )
+        UserModel = get_user_model()
+        UserModel.objects.create_user(
+            username="dev_revoke", password="password123",
+            role=UserModel.Role.DEVELOPER,
+        )
+        self.client.login(username="dev_revoke", password="password123")
+        self.client.post(
+            reverse("revocar_biometria", kwargs={"user_id": self.student_user.id})
+        )
+        self.assertFalse(FaceEmbedding.objects.filter(user=self.student_user).exists())
+        self.assertTrue(UserModel.objects.filter(pk=self.student_user.id).exists())
+
     def test_api_enrolar_requiere_autenticacion(self):
         response = self.client.post("/api/enrolar/", {})
         self.assertEqual(response.status_code, 403)
@@ -313,6 +385,54 @@ class AttendanceModelsAndViewsTestCase(TestCase):
             Estudiante.objects.filter(user=usuario, matricula="20230001").exists()
         )
         self.assertTrue(FaceEmbedding.objects.filter(user=usuario).exists())
+
+    @patch("apps.attendance.api._get_motor")
+    def test_api_enrolar_sobrescribir_actualiza_el_embedding(self, mock_get_motor):
+        from apps.attendance.models import FaceEmbedding
+
+        UserModel = get_user_model()
+        usuario = UserModel.objects.create_user(
+            username="20230002",
+            password="password123",
+            role=UserModel.Role.STUDENT,
+            first_name="Viejo",
+            last_name="Nombre",
+        )
+        Estudiante.objects.create(user=usuario, matricula="20230002")
+        FaceEmbedding.objects.create(user=usuario, embedding=[0.0] * 512, n_muestras=5)
+
+        UserModel.objects.create_user(
+            username="developer_reenrol",
+            password="password123",
+            role=UserModel.Role.DEVELOPER,
+        )
+        self.client.login(username="developer_reenrol", password="password123")
+
+        mock_get_motor.return_value.enrolar_usuario_headless.return_value = {
+            "exito": True,
+            "muestras": 20,
+            "mensaje": "Registro exitoso",
+            "embedding": [0.0] * 512,
+        }
+        video = SimpleUploadedFile("test.mp4", b"fake-video", content_type="video/mp4")
+        response = self.client.post(
+            "/api/enrolar/",
+            {
+                "carnet": "20230002",
+                "nombre_completo": "Nuevo Nombre",
+                "video": video,
+                "sobrescribir": "1",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(UserModel.objects.filter(username="20230002").count(), 1)
+        self.assertEqual(FaceEmbedding.objects.filter(user=usuario).count(), 1)
+        embedding = FaceEmbedding.objects.get(user=usuario)
+        self.assertEqual(embedding.n_muestras, 20)
+        usuario.refresh_from_db()
+        self.assertEqual(usuario.first_name, "Nuevo")
+        _, kwargs = mock_get_motor.return_value.enrolar_usuario_headless.call_args
+        self.assertTrue(kwargs["sobrescribir"])
 
     def test_clase_en_vivo_view_post_finalizes_session(self):
         from datetime import time

@@ -14,6 +14,10 @@
     const submitIcon   = document.getElementById('submit-icon');
     const submitText   = document.getElementById('submit-text');
     const feedback     = document.getElementById('feedback');
+    const inputCarnet  = document.getElementById('input-carnet');
+    const inputNombre  = document.getElementById('input-nombre');
+    const inputSobrescribir = document.getElementById('input-sobrescribir');
+    const modalTitulo  = document.getElementById('modal-titulo');
 
     // Tabs
     const tabArchivo   = document.getElementById('tab-archivo');
@@ -38,6 +42,7 @@
     const camStatus    = document.getElementById('cam-status');
 
     let modoActivo = 'archivo'; // 'archivo' | 'camara'
+    let modoReenrolar = false;
     let mediaStream = null;
     let mediaRecorder = null;
     let recordedChunks = [];
@@ -175,10 +180,23 @@
         }, 300);
     }
 
-    btnAbrir.addEventListener('click', abrirModal);
+    btnAbrir.addEventListener('click', () => { resetForm(); abrirModal(); });
     btnCerrar.addEventListener('click', cerrarModal);
     modal.addEventListener('click', (e) => { if (e.target === modal) cerrarModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) cerrarModal(); });
+
+    // ── RE-ENROLAMIENTO ───────────────────────────────────────
+    document.querySelectorAll('.btn-reenrolar').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            modoReenrolar = true;
+            inputCarnet.value = btn.dataset.carnet || '';
+            inputCarnet.disabled = true;
+            inputNombre.value = btn.dataset.nombre || '';
+            inputSobrescribir.value = '1';
+            if (modalTitulo) modalTitulo.textContent = 'Actualizar registro biométrico';
+            abrirModal();
+        });
+    });
 
     // ── FILE INPUT FEEDBACK ───────────────────────────────────
     inputVideo.addEventListener('change', () => {
@@ -218,6 +236,9 @@
         const formData = new FormData();
         formData.append('carnet', document.getElementById('input-carnet').value);
         formData.append('nombre_completo', document.getElementById('input-nombre').value);
+        if (inputSobrescribir.value) {
+            formData.append('sobrescribir', inputSobrescribir.value);
+        }
 
         if (modoActivo === 'archivo') {
             formData.append('video', inputVideo.files[0]);
@@ -237,8 +258,8 @@
 
             if (data.exito) {
                 mostrarFeedback('success', data.mensaje);
-                agregarFilaTabla(data.estudiante);
-                setTimeout(cerrarModal, 2000);
+                // Recarga para reflejar la biometría y las acciones de la fila.
+                setTimeout(() => window.location.reload(), 1200);
             } else {
                 const msg = data.mensaje || Object.values(data.errores || {}).join(' · ');
                 mostrarFeedback('error', msg);
@@ -254,25 +275,6 @@
     });
 
     // ── HELPERS ────────────────────────────────────────────────
-    function agregarFilaTabla(est) {
-        const tbody = document.getElementById('tabla-estudiantes');
-        const emptyRow = tbody.querySelector('td[colspan]');
-        if (emptyRow) emptyRow.closest('tr').remove();
-
-        const now = new Date().toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors bg-emerald-50/50 dark:bg-emerald-900/10';
-        tr.innerHTML = `
-            <td class="px-6 py-4 font-mono font-semibold text-brand-blue dark:text-brand-yellow">${est.carnet}</td>
-            <td class="px-6 py-4 font-medium">${est.nombre}</td>
-            <td class="px-6 py-4"><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Activa</span></td>
-            <td class="px-6 py-4 text-slate-500 dark:text-zinc-400">${now}</td>`;
-        tbody.prepend(tr);
-
-        const statTotal = document.getElementById('stat-total');
-        statTotal.textContent = parseInt(statTotal.textContent || '0') + 1;
-    }
-
     function mostrarFeedback(tipo, mensaje) {
         feedback.className = 'rounded-xl p-4 text-sm font-medium border';
         if (tipo === 'success') {
@@ -285,6 +287,10 @@
 
     function resetForm() {
         form.reset();
+        modoReenrolar = false;
+        inputSobrescribir.value = '';
+        inputCarnet.disabled = false;
+        if (modalTitulo) modalTitulo.textContent = 'Nuevo Registro Biométrico';
         feedback.className = 'hidden rounded-xl p-4 text-sm font-medium';
         placeholder.classList.remove('hidden');
         selected.classList.add('hidden');

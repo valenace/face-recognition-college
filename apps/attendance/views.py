@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 import json
 from apps.users.permissions import RoleRequiredMixin, role_required
-from apps.attendance.models import RegistroAsistencia, SesionClase
+from apps.attendance.models import FaceEmbedding, RegistroAsistencia, SesionClase
 from apps.academic.models import Estudiante, Inscripcion
 
 # Similitud por debajo de la cual una asistencia necesita revisión humana.
@@ -75,13 +75,15 @@ def eliminar_sesion(request, sesion_id):
         SesionClase.objects.select_related("asignacion_clase__asignatura"),
         pk=sesion_id,
     )
+    if not _puede_gestionar(request.user, sesion):
+        return redirect("sesiones")
     _borrar_sesion_y_archivos(sesion)
     return redirect("sesiones")
 
 
-@role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
+@role_required("DIRECTOR", "DEVELOPER")
 def eliminar_todas_sesiones(request):
-    """Elimina todas las sesiones registradas para empezar desde cero."""
+    """Elimina todas las sesiones registradas. Solo un directivo o el desarrollador."""
     if request.method != "POST":
         return redirect("sesiones")
 
@@ -104,6 +106,32 @@ def directorio(request):
         "con_biometria": con_biometria,
         "sin_biometria": len(estudiantes) - con_biometria,
     })
+
+
+@login_required
+def revocar_biometria(request, user_id):
+    """Borra el vector facial del usuario (derecho de revocación).
+
+    El usuario, su matrícula y su historial de asistencia se conservan; solo se
+    elimina el vector y se recarga el índice del motor.
+    """
+    if request.method != "POST":
+        return redirect("directorio")
+    if not (
+        request.user.is_superuser
+        or request.user.role in (User.Role.DEVELOPER, User.Role.DIRECTOR, User.Role.COORDINATOR)
+    ):
+        return redirect("directorio")
+
+    usuario = get_object_or_404(User, pk=user_id)
+    FaceEmbedding.objects.filter(user=usuario).delete()
+    try:
+        from apps.attendance.api import _recargar_indice_global
+
+        _recargar_indice_global()
+    except Exception:
+        pass
+    return redirect("directorio")
 
 
 @role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
@@ -136,7 +164,13 @@ def sesiones(request):
         )
         .order_by("-fecha", "-id")
     )
-    return render(request, "attendance/sesiones.html", {"sesiones": sesiones_qs})
+    return render(request, "attendance/sesiones.html", {
+        "sesiones": sesiones_qs,
+        "puede_borrar_todas": (
+            request.user.is_superuser
+            or request.user.role in (User.Role.DIRECTOR, User.Role.DEVELOPER)
+        ),
+    })
 
 
 @role_required("PROFESSOR", "COORDINATOR", "DIRECTOR")
@@ -204,6 +238,7 @@ def sesion_detalle(request, sesion_id):
             "sesion": sesion,
             "registros": registros,
             "resumen": resumen,
+            "puede_gestionar": _puede_gestionar(request.user, sesion),
             "presentes": sorted(
                 normales.values(),
                 key=lambda r: (r.estudiante.user.last_name, r.estudiante.user.first_name)
@@ -216,10 +251,17 @@ def sesion_detalle(request, sesion_id):
 
 
 def _puede_gestionar(user, sesion):
-    """El profesor dueño de la sesión o un directivo puede gestionarla."""
+    """El profesor dueño de la sesión o un directivo puede gestionarla.
+
+    Las sesiones de demo (``DEMO-FLUJO``) son andamiaje de prueba compartido:
+    cualquier profesor puede gestionarlas aunque el dueño nominal sea
+    ``prof_flujo``.
+    """
     if user.is_superuser or user.role in (
         User.Role.DEVELOPER, User.Role.DIRECTOR, User.Role.COORDINATOR
     ):
+        return True
+    if sesion.asignacion_clase.asignatura.codigo == "DEMO-FLUJO":
         return True
     return (
         user.role == User.Role.PROFESSOR
@@ -234,7 +276,10 @@ def marcar_presente(request, sesion_id, estudiante_id):
         return redirect("sesion_detalle", sesion_id=sesion_id)
 
     sesion = get_object_or_404(
-        SesionClase.objects.select_related("asignacion_clase"), pk=sesion_id
+        SesionClase.objects.select_related(
+            "asignacion_clase__asignatura", "asignacion_clase__profesor"
+        ),
+        pk=sesion_id,
     )
     if not _puede_gestionar(request.user, sesion):
         return redirect("sesion_detalle", sesion_id=sesion_id)
@@ -262,7 +307,10 @@ def resolver_revision(request, sesion_id, registro_id, accion):
         return redirect("sesion_detalle", sesion_id=sesion_id)
 
     sesion = get_object_or_404(
-        SesionClase.objects.select_related("asignacion_clase"), pk=sesion_id
+        SesionClase.objects.select_related(
+            "asignacion_clase__asignatura", "asignacion_clase__profesor"
+        ),
+        pk=sesion_id,
     )
     if not _puede_gestionar(request.user, sesion):
         return redirect("sesion_detalle", sesion_id=sesion_id)
@@ -284,6 +332,15 @@ def resolver_revision(request, sesion_id, registro_id, accion):
 def descartar_registro(request, sesion_id, registro_id):
     """Marca una alerta como revisada (el profesor ya identificó a la persona)."""
     if request.method != "POST":
+        return redirect("sesion_detalle", sesion_id=sesion_id)
+
+    sesion = get_object_or_404(
+        SesionClase.objects.select_related(
+            "asignacion_clase__asignatura", "asignacion_clase__profesor"
+        ),
+        pk=sesion_id,
+    )
+    if not _puede_gestionar(request.user, sesion):
         return redirect("sesion_detalle", sesion_id=sesion_id)
 
     RegistroAsistencia.objects.filter(

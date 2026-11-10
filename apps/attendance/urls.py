@@ -18,6 +18,7 @@ from apps.attendance.views import (
     eliminar_todas_sesiones,
     marcar_presente,
     resolver_revision,
+    revocar_biometria,
 )
 
 urlpatterns = [
@@ -25,6 +26,7 @@ urlpatterns = [
     path("en-vivo/", live_attendance, name="live_attendance"),
     path("en-vivo/sesion-demo/", crear_sesion_demo_view, name="crear_sesion_demo"),
     path("directorio/", directorio, name="directorio"),
+    path("directorio/<int:user_id>/revocar/", revocar_biometria, name="revocar_biometria"),
     path("sesiones/", sesiones, name="sesiones"),
     path("sesiones/eliminar-todas/", eliminar_todas_sesiones, name="eliminar_todas_sesiones"),
     path("sesiones/<int:sesion_id>/", sesion_detalle, name="sesion_detalle"),

@@ -44,6 +44,7 @@
                         <th class="px-6 py-4">Nombre</th>
                         <th class="px-6 py-4">Biometría</th>
                         <th class="px-6 py-4">Fecha</th>
+                        <th class="px-6 py-4 text-right">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tabla-estudiantes" class="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -63,10 +64,29 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 text-slate-500 dark:text-zinc-400">{{ est.date_joined|date:"d M Y, H:i" }}</td>
+                        <td class="px-6 py-4 text-right whitespace-nowrap">
+                            {% if est.face_data %}
+                            <button type="button"
+                                    class="btn-reenrolar text-xs font-semibold text-brand-blue dark:text-brand-yellow hover:underline"
+                                    data-carnet="{{ est.username }}"
+                                    data-nombre="{{ est.get_full_name|default:est.username }}">
+                                Re-enrolar
+                            </button>
+                            <form method="post" action="{% url 'revocar_biometria' est.id %}" class="inline"
+                                  onsubmit="return confirm('¿Borrar el vector facial de {{ est.username }}? El usuario y su historial se conservan.');">
+                                {% csrf_token %}
+                                <button type="submit" class="ml-3 text-xs font-semibold text-red-500 hover:underline">
+                                    Revocar
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-xs text-slate-400">Sin biometría</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-slate-400">
+                        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
                             <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 15.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                             <p class="font-medium">No hay estudiantes registrados aún.</p>
                             <p class="text-sm mt-1">Haz clic en "Nuevo Registro" para comenzar.</p>
@@ -90,7 +110,7 @@
                 <svg class="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
             </div>
             <div>
-                <h2 class="text-lg font-bold">Nuevo Registro Biométrico</h2>
+                <h2 id="modal-titulo" class="text-lg font-bold">Nuevo Registro Biométrico</h2>
                 <p class="text-xs text-slate-500 dark:text-zinc-400">Video del rostro del estudiante</p>
             </div>
         </div>
@@ -102,6 +122,7 @@
     <!-- Form -->
     <form id="form-enrolamiento" class="p-6 space-y-5">
         {% csrf_token %}
+        <input type="hidden" id="input-sobrescribir" name="sobrescribir" value="">
 
         <!-- Carnet -->
         <div>
