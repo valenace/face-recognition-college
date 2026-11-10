@@ -90,19 +90,20 @@ similitud efectiva y la caja. Después se **simularon** todas las reglas posible
 en offline, sin reprocesar:
 
 ```bash
-venv/bin/python /tmp/opencode/capturar_pistas.py    # engine → JSON por video
-venv/bin/python /tmp/opencode/simular_intrusos.py    # barrido de umbrales
+venv/bin/python experiments/unc/capturar_pistas.py    # engine → JSON por video
+venv/bin/python experiments/unc/simular_intrusos.py    # barrido de umbrales
 ```
 
 El simulador replica el clasificador (promedio, descarte, deduplicación por
-asiento). Difiere en ±3 filas respecto del código real por el detalle de "asiento
-visible"; se usaron las cifras del **código real** para la decisión final.
+asiento). Difiere en **hasta 7 filas** respecto del código real por el detalle de
+"asiento visible" (4 vs 7 en el video 1 y 22 vs 29 en el video 3); se usaron las
+cifras del **código real** para la decisión final.
 
 Videos:
 
 | Video | Contenido | Frames |
 |---|---|---|
-| 1 (`VID_20260907_102851.mp4`, 36–80 s) | 9 registrados, **0 desconocidos** → todo intruso es falso | 1 319 |
+| 1 (`VID_20260907_102851.mp4`, 36–80 s) | 9 registrados; la ausencia de desconocidos no está verificada (ver §10) | 1 319 |
 | 3 (`video5096333890499381162.mp4`) | 8 registrados + **21 desconocidos** | 3 710 |
 
 ### 4.2 Barrido de umbrales (simulación)
