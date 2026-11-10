@@ -473,7 +473,7 @@ docs/analisis/unc/03_resultados_robustez_accesorios.md
 
 ## FASE 4 — Curva ROC y Umbral Óptimo
 
-### Estado: ✅ Completada (2026-10-19). Ver `04_resultados_curva_roc.md`. AUC 0.744; umbral fijado en **0.30** (con 3 votos: precisión 1.000, recall 0.849, 0 falsos positivos en la muestra). Pendiente revalidar con más datos.
+### Estado: ✅ Completada (2026-10-19; AUC corregida el 2026-11-05). Ver `04_resultados_curva_roc.md`. AUC 0.962 (la cifra 0.744 era un artefacto de una rejilla de umbrales truncada); umbral fijado en **0.30** (con 3 votos: precisión 1.000, recall 0.849, 0 falsos positivos en la muestra). Pendiente revalidar con más datos.
 
 ### Objetivo
 Encontrar empíricamente el umbral de similitud óptimo usando datos reales del dataset UNC.

@@ -53,11 +53,67 @@ def cargar():
 
 
 def roc(pos, neg):
-    tpr = np.array([(pos >= t).mean() for t in UMBRALES])
-    fpr = np.array([(neg >= t).mean() for t in UMBRALES])
-    auc = float(np.trapezoid(tpr[::-1], fpr[::-1]))
+    """ROC exacta a partir de los scores ordenados.
+
+    La versión anterior evaluaba solo umbrales 0.10-0.705; al no incluir los
+    extremos, el área quedaba truncada (0.744). Esta versión usa un punto por
+    cada score único, desde +inf hasta el mínimo, e incluye el origen (0,0).
+    """
+    scores = np.concatenate([pos, neg])
+    etiquetas = np.concatenate([np.ones(len(pos)), np.zeros(len(neg))])
+    orden = np.argsort(-scores)
+    scores = scores[orden]
+    etiquetas = etiquetas[orden]
+
+    cortes = np.concatenate([[np.inf], scores])
+    tp = np.concatenate([[0], np.cumsum(etiquetas)])
+    fp = np.concatenate([[0], np.cumsum(1 - etiquetas)])
+    tpr = tp / len(pos)
+    fpr = fp / len(neg)
+
+    # tpr y fpr ascienden al bajar el umbral; la regla trapezoidal es directa.
+    auc = float(np.trapezoid(tpr, fpr))
     j = tpr - fpr
-    return tpr, fpr, auc, j
+    return tpr, fpr, auc, j, cortes
+
+
+def pr_curva(pos, neg):
+    """Curva Precision-Recall exacta (un punto por score único)."""
+    scores = np.concatenate([pos, neg])
+    etiquetas = np.concatenate([np.ones(len(pos)), np.zeros(len(neg))])
+    orden = np.argsort(-scores)
+    etiquetas = etiquetas[orden]
+    tp = np.cumsum(etiquetas)
+    fp = np.cumsum(1 - etiquetas)
+    precision = tp / (tp + fp)
+    recall = tp / len(pos)
+    return recall, precision
+
+
+def pr_auc(recall, precision):
+    """Average Precision (AP) exacta, estilo sklearn, sin interpolar."""
+    return float(np.sum(np.diff(np.concatenate([[0.0], recall])) * precision))
+
+
+def eer_desde_roc(fpr, tpr, cortes, pos, neg):
+    """Equal Error Rate: cruce FPR = FNR interpolado sobre la ROC exacta."""
+    fnr = 1 - tpr
+    diferencia = fpr - fnr
+    cruces = np.where(np.sign(diferencia[:-1]) != np.sign(diferencia[1:]))[0]
+    if not len(cruces):
+        return 0.0, 0.0
+    i = int(cruces[0])
+    alpha = diferencia[i] / (diferencia[i] - diferencia[i + 1]) if diferencia[i] != diferencia[i + 1] else 0.0
+    t = cortes[i] + alpha * (cortes[i + 1] - cortes[i])
+    if not np.isfinite(t):
+        return 0.0, 0.0
+    return float(((neg >= t).mean() + (pos < t).mean()) / 2), float(t)
+
+
+def d_prime(pos, neg):
+    """Discriminabilidad d' (medias separadas por la desviación combinada)."""
+    varianza = 0.5 * (pos.var(ddof=1) + neg.var(ddof=1))
+    return float((pos.mean() - neg.mean()) / np.sqrt(varianza))
 
 
 def operativa(registros, t):
@@ -84,10 +140,18 @@ def main():
     pos, neg, registros = cargar()
     print(f"Positivos: {len(pos)} | Negativos: {len(neg)}")
 
-    tpr, fpr, auc, j = roc(pos, neg)
+    tpr, fpr, auc, j, cortes = roc(pos, neg)
     idx_youden = int(np.argmax(j))
-    t_youden = float(UMBRALES[idx_youden])
-    print(f"AUC: {auc:.4f} | Youden: umbral {t_youden:.3f} (TPR {tpr[idx_youden]:.3f}, FPR {fpr[idx_youden]:.3f})")
+    t_youden = float(cortes[idx_youden])
+    recall_pr, precision_pr = pr_curva(pos, neg)
+    ap = pr_auc(recall_pr, precision_pr)
+    eer_val, t_eer = eer_desde_roc(fpr, tpr, cortes, pos, neg)
+    dp = d_prime(pos, neg)
+    print(
+        f"AUC: {auc:.4f} | AP: {ap:.4f} | EER: {eer_val:.4f} (umbral {t_eer:.3f}) "
+        f"| d': {dp:.3f}"
+    )
+    print(f"Youden: umbral {t_youden:.3f} (TPR {tpr[idx_youden]:.3f}, FPR {fpr[idx_youden]:.3f})")
 
     # Operativas
     ops = {float(t): operativa(registros, float(t)) for t in UMBRALES}
@@ -123,6 +187,9 @@ def main():
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.plot(fpr, tpr, label=f"AUC = {auc:.4f}")
     ax.scatter([fpr[idx_youden]], [tpr[idx_youden]], color="red", label=f"Youden t={t_youden:.2f}")
+    tpr_eer = (pos >= t_eer).mean()
+    fpr_eer = (neg >= t_eer).mean()
+    ax.scatter([fpr_eer], [tpr_eer], color="orange", marker="s", label=f"EER t={t_eer:.2f}")
     ax.plot([0, 1], [0, 1], "--", color="gray")
     ax.set_xlabel("Tasa de falsos positivos")
     ax.set_ylabel("Tasa de verdaderos positivos")
@@ -142,13 +209,14 @@ def main():
     fig.tight_layout()
     fig.savefig(SALIDA / "fase4_f1_vs_umbral.png", dpi=120)
 
-    # Precision-Recall operativa
-    prec = np.array([ops[float(t)][4] for t in UMBRALES])
-    rec = np.array([ops[float(t)][5] for t in UMBRALES])
+    # Precision-Recall score-level
     fig, ax = plt.subplots(figsize=(5, 5))
-    ax.plot(rec, prec)
+    ax.plot(recall_pr, precision_pr, label=f"AP = {ap:.4f}")
+    azar = len(pos) / (len(pos) + len(neg))
+    ax.axhline(azar, color="gray", linestyle="--", label=f"azar = {azar:.3f}")
     ax.set_xlabel("Recall")
     ax.set_ylabel("Precisión")
+    ax.legend()
     fig.tight_layout()
     fig.savefig(SALIDA / "fase4_curva_pr.png", dpi=120)
 

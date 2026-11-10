@@ -115,7 +115,7 @@ Ver `03_resultados_robustez_accesorios.md`.
 
 ### Fase 4 — Umbral
 Ver `04_resultados_curva_roc.md`.
-- AUC 0.744.
+- **AUC 0.962**; AP 0.953; EER 0.080; d' 2.885.
 - Mejor F1 en 0.28, pero con umbral 0.30 y la regla de 3 votos: **precisión 1.000, recall 0.849, F1 0.918, 0 falsos positivos** sobre la muestra.
 - Se fijó **0.30** en el motor.
 
@@ -243,6 +243,7 @@ Para una misma cara, la confianza del modelo cambió de 0.805 a 0.970 solo por r
 | `experiments/unc/fase4_similitudes.py` | Similitud contra los 9 centroides |
 | `experiments/unc/fase4_curva_roc.py` | ROC, AUC y métricas por umbral |
 | `experiments/unc/fase4_multiframe.py` | 1 frame vs 3 frames |
+| `experiments/unc/metricas/metricas.py` | Métricas consolidadas (ROC, PR, AUC, AP, EER, d', matrices, asistencia, rendimiento) |
 | `experiments/unc/fase6_evaluacion_salon.py` | Evaluación final del sistema |
 | `experiments/unc/demo_video_salon.py` | Corridas con video anotado y capturas |
 | `experiments/unc/fase7_video3_partes.py` | Corrida sobre las 11 partes del video 3 |

@@ -1,6 +1,6 @@
 # 04 — Curva ROC y umbral óptimo (Fase 4)
 
-**Fecha:** 2026-10-19
+**Fecha:** 2026-10-19 · **AUC corregida:** 2026-11-05
 **Datos:** 300 recortes etiquetados del video `VID_20260907_102851.mp4` (86 con nombre, 157 desconocidos; se excluyen `dudoso` y `no_cara`).
 **Scripts:** `experiments/unc/fase4_similitudes.py` y `experiments/unc/fase4_curva_roc.py`.
 
@@ -19,9 +19,21 @@ Se calculan dos lecturas:
 
 ## 2. Resultados
 
-- **AUC: 0.7439.**
-- **Youden:** umbral **0.28** (TPR 0.919, FPR 0.021).
+- **AUC (verificación, score-level): 0.9616.**
+- **Average Precision (AP): 0.9535.**
+- **EER: 0.0798** (umbral 0.239).
+- **d' (discriminabilidad): 2.885.**
+- **Youden:** umbral **0.281** (TPR 0.919, FPR 0.021).
 - **Mejor F1 operativo:** umbral **0.28** (precisión 0.963, recall 0.919, F1 0.940).
+
+> **Corrección del 2026-11-05.** La cifra anterior (**0.7439**) se calculó
+> evaluando la ROC solo en umbrales 0.10–0.705. Esa rejilla no incluye los
+> extremos: en 0.10 la FPR ya era 0.37 y en 0.705 la TPR era 0.07, así que el
+> área quedaba truncada. La ROC exacta —un punto por cada score, desde `+inf`
+> hasta el mínimo— da **AUC 0.9616**. La tabla operativa por umbral y la
+> recomendación de 0.30 **no cambian**: solo se corrige el área y su
+> interpretación. La comprobación por rangos (Mann-Whitney) coincide:
+> 0.96162.
 
 | Umbral | TP | FP | FN | TN | Precisión | Recall | F1 |
 |---|---|---|---|---|---|---|---|
@@ -32,12 +44,21 @@ Se calculan dos lecturas:
 | 0.40 | 61 | 0 | 25 | 157 | 1.000 | 0.709 | 0.830 |
 | 0.45 | 50 | 0 | 36 | 157 | 1.000 | 0.581 | 0.735 |
 
+> La tabla muestra 3 decimales; el valor exacto del mejor F1 es **0.9405** y el
+> de EER **0.0798**. Las cifras de 4 decimales están en
+> `experiments/unc/metricas/salida/identidad/scores.csv`.
+
 ## 3. Interpretación
 
 - **El umbral actual (0.35) es demasiado alto.** Con él se reconocen 71 de 86 personas (82.6 %) sin ningún falso positivo. Bajando a 0.30 se reconocen 75 (87.2 %) con **un solo falso positivo**.
 - **En 0.28 se gana un poco más de recall** (79 de 86) a cambio de 3 falsos positivos.
-- **El AUC de 0.744 no es alto.** Refleja lo que muestra el histograma: los positivos se extienden desde 0.2, así que hay caras genuinas que se parecen poco a su centroide (perfil, accesorios, baja resolución). El solapamiento con los negativos llega hasta 0.33.
-- **Esto es con decides de un solo frame.** El motor exige 3 votos consecutivos, lo que reduce aún más los falsos positivos. Un umbral algo más permisivo es razonable en la práctica.
+- **El AUC de 0.962 es alto.** En el 96.2 % de los pares (genuino, impostor) el
+  genuino obtiene mayor similitud. El histograma muestra una cola de positivos
+  desde 0.10 y negativos hasta 0.312; ese solapamiento explica los falsos
+  positivos a umbrales bajos, pero la mayor parte de los negativos queda muy por
+  debajo de los positivos. El EER de 8.0 % y la d' de 2.885 confirman una
+  separación fuerte, no un modelo débil.
+- **Esto es con decisiones de un solo frame.** El motor exige 3 votos consecutivos, lo que reduce aún más los falsos positivos. Un umbral algo más permisivo es razonable en la práctica.
 
 ## 4. Recomendación
 
@@ -56,6 +77,8 @@ Se calculan dos lecturas:
 
 - `experiments/unc/fase4/fase4_similitudes.csv`: similitud de cada recorte contra los 9.
 - `experiments/unc/fase4/fase4_tabla_umbrales.csv`: tabla completa por umbral.
+- `experiments/unc/metricas/`: carpeta consolidada con ROC/PR exactas, AUC,
+  AP, EER, d', matrices de confusión, métricas por estudiante y `resumen.md`.
 - `fase4_histograma.png`, `fase4_curva_roc.png`, `fase4_f1_vs_umbral.png`, `fase4_curva_pr.png`.
 
 ---

@@ -255,7 +255,7 @@
 
 | 2026-10-19 | Costo de revalidar el ancla cada 30 en vez de 90 frames | corrida 38–107 s (2 069 frames, 8 118 frames anclados en 31 pistas) | revalidaciones 78 → 256 (+178 ciclos, ~534 embeddings extra); detección 15.6 ms/frame y embedding 6.6 ms/cara → +3.5 s sobre ~145 s de cómputo total (**+2.4 %**) | `02` §27 |
 
-| 2026-10-19 | Fase 4: ROC/AUC, Youden y métricas operativas por umbral | 86 positivos + 243 negativos | AUC 0.744; Youden 0.28 (TPR 0.919, FPR 0.021); F1 máximo 0.940 en 0.28; en 0.30 P 0.987 R 0.872 F1 0.926 | `docs/analisis/unc/04_resultados_curva_roc.md` |
+| 2026-10-19 | Fase 4: ROC/AUC, Youden y métricas operativas por umbral | 86 positivos + 243 negativos | **AUC 0.9616** (corregida el 2026-11-05; la cifra 0.744 salía de una rejilla truncada), AP 0.9535, EER 0.0798, d' 2.885; Youden 0.281 (TPR 0.919, FPR 0.021); F1 máximo 0.940 en 0.28; en 0.30 P 0.987 R 0.872 F1 0.926 | `docs/analisis/unc/04_resultados_curva_roc.md` |
 
 | 2026-10-19 | Fase 4b: umbral con 1 frame vs 3 frames consecutivos (seguimiento por IoU) | 243 recortes (231 con 3 frames) | 0.28: 3f P 0.962 R 0.884 F1 0.921 (76/3/10); 0.30: 3f P 1.000 R 0.849 F1 0.918 (73/0/13) | `04_resultados_curva_roc.md` §7 |
 
