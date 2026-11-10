@@ -1,0 +1,87 @@
+orden,recorte_id,etiqueta,resultado,lentes,gorra,notas,
+1,v1_00002,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+2,v1_00014,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+3,v1_00020,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+4,v1_00055,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+5,v1_00074,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+6,v1_00091,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+7,v1_00104,carlos,acierto,sí,no,pre-anotación, pendiente de confirmación
+8,v1_00176,carlos,acierto,sí,no,pre-anotación, pendiente de confirmación
+9,v1_00192,carlos,acierto,sí,no,pre-anotación, pendiente de confirmación
+10,v1_00205,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+11,v1_00218,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+12,v1_00224,dani,falso_negativo,sí,no,confirmado por responsable,confirmado por responsable
+13,v1_00225,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+14,v1_00256,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+15,v1_00304,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+16,v1_00324,fran,acierto,no,sí,confirmado por responsable,confirmado por responsable
+17,v1_00327,bob,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+18,v1_00335,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+19,v1_00366,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+20,v1_00381,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+21,v1_00393,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+22,v1_00394,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+23,v1_00408,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+24,v1_00412,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+25,v1_00419,kevin,acierto,no,no,pre-anotación, pendiente de confirmación
+26,v1_00438,kevin,acierto,no,no,pre-anotación, pendiente de confirmación
+27,v1_00439,alexa,falso_negativo,sí,no,confirmado por responsable,confirmado por responsable
+28,v1_00441,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+29,v1_00448,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+30,v1_00458,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+31,v1_00488,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+32,v1_00491,bob,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+33,v1_00501,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+34,v1_00506,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+35,v1_00510,bob,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+36,v1_00535,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+37,v1_00537,kate,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+38,v1_00544,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+39,v1_00570,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+40,v1_00571,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+41,v1_00578,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+42,v1_00608,jesus,falso_negativo,sí,sí,confirmado por responsable,confirmado por responsable
+43,v1_00614,kate,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+44,v1_00630,alexa,falso_negativo,sí,no,confirmado por responsable,confirmado por responsable
+45,v1_00632,bob,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+46,v1_00639,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+47,v1_00643,alexa,acierto,sí,no,confirmado por responsable,confirmado por responsable
+48,v1_00703,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+49,v1_00736,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+50,v1_00759,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+51,v1_00778,carlos,acierto,sí,no,pre-anotación, pendiente de confirmación
+52,v1_00779,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+53,v1_00811,bob,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+54,v1_00825,carlos,acierto,sí,no,pre-anotación, pendiente de confirmación
+55,v1_00827,kate,falso_negativo,no,no,pre-anotación, pendiente de confirmación
+56,v1_00833,carlos,acierto,sí,no,pre-anotación, pendiente de confirmación
+57,v1_00842,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+58,v1_00845,alexa,falso_negativo,sí,no,confirmado por responsable,confirmado por responsable
+59,v1_00859,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+60,v1_00867,kevin,acierto,no,no,pre-anotación, pendiente de confirmación
+61,v1_00868,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+62,v1_00905,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+63,v1_00929,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+64,v1_00937,kevin,acierto,no,no,pre-anotación, pendiente de confirmación
+65,v1_00940,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+66,v1_00941,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+67,v1_00947,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+68,v1_00957,kevin,acierto,no,no,pre-anotación, pendiente de confirmación
+69,v1_00959,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+70,v1_00974,kevin,acierto,no,no,pre-anotación, pendiente de confirmación
+71,v1_00995,jesus,falso_negativo,sí,sí,confirmado por responsable,confirmado por responsable
+72,v1_00997,fran,acierto,no,sí,confirmado por responsable,confirmado por responsable
+73,v1_01011,jesus,acierto,sí,sí,confirmado por responsable,confirmado por responsable
+74,v1_01030,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+75,v1_01035,fran,acierto,no,sí,confirmado por responsable,confirmado por responsable
+76,v1_01036,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+77,v1_01037,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+78,v1_01040,alexa,acierto,sí,no,pre-anotación, pendiente de confirmación
+79,v1_01053,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+80,v1_01071,dani,acierto,sí,no,pre-anotación, pendiente de confirmación
+81,v1_01087,kevin,acierto,no,no,pre-anotación, pendiente de confirmación
+82,v1_01099,kate,acierto,no,no,pre-anotación, pendiente de confirmación
+83,v1_01105,jesus,falso_negativo,sí,sí,confirmado por responsable,confirmado por responsable
+84,v1_01108,jose,acierto,no,no,pre-anotación, pendiente de confirmación
+85,v1_01113,bob,acierto,no,no,pre-anotación, pendiente de confirmación
+86,v1_01118,kate,acierto,no,no,pre-anotación, pendiente de confirmación

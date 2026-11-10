@@ -1,0 +1,31 @@
+filtro_px,persona,total,reconocidos,tasa
+40,alexa,12,0,0.0
+40,bob,14,0,0.0
+40,carlos,6,4,0.667
+40,dani,17,16,0.941
+40,fran,3,3,1.0
+40,jesus,4,1,0.25
+40,jose,10,10,1.0
+40,kate,13,0,0.0
+40,kevin,7,0,0.0
+40,desconocidos (falsos positivos),157,0,0.0
+20,alexa,12,9,0.75
+20,bob,14,9,0.643
+20,carlos,6,6,1.0
+20,dani,17,16,0.941
+20,fran,3,3,1.0
+20,jesus,4,1,0.25
+20,jose,10,10,1.0
+20,kate,13,10,0.769
+20,kevin,7,7,1.0
+20,desconocidos (falsos positivos),157,0,0.0
+0,alexa,12,9,0.75
+0,bob,14,9,0.643
+0,carlos,6,6,1.0
+0,dani,17,16,0.941
+0,fran,3,3,1.0
+0,jesus,4,1,0.25
+0,jose,10,10,1.0
+0,kate,13,10,0.769
+0,kevin,7,7,1.0
+0,desconocidos (falsos positivos),157,0,0.0
