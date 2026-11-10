@@ -213,3 +213,18 @@ __marimo__/
 /experiments/
 /captures
 /media
+
+# Legado del dataset anterior (se deja de versionar; los archivos quedan en disco)
+/resultados_experimentales/
+/update_base.py
+/CLAUDE.md
+/docs/analisis/unc.zip
+/scripts/asistencia_unificada.py
+/scripts/registro.py
+/scripts/reconocimiento.py
+/scripts/run_single_video_reg.py
+/scripts/test_asistencia_salon.py
+/scripts/test_asistencia_video.py
+/scripts/register_all_students.py
+/scripts/generar_db.py
+/scripts/auditar_db.py
