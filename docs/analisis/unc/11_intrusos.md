@@ -210,3 +210,15 @@ La regla calibrada baja los intrusos falsos de 23 a 7 en el mismo tramo de video
 y deja el video 3 en 29 filas: los 21 desconocidos reales más 8 de los registrados.
 El coste es que un intruso muy lejano (< 40 px) no se reporta, y que dos personas
 muy juntas pueden compartir fila.
+
+---
+
+## 10. Nota de auditoría (2026-11-10)
+
+El reporte `reporte_auditoria_resultados.md` (alerta **A1**) señala que la etiqueta
+"video 1 sin desconocidos" no es verificable: en el mismo video hay 157 recortes
+`desconocido` (`experiments/unc/metricas/salida/identidad/dataset.csv`) y una
+estudiante no registrada documentada en `09_incidente_identidad_dani.md`. Por eso
+las **7 filas** del video 1 se reportan como **cota superior** de falsos, no como
+un conteo verificado, y la precisión de 0.724 en el video 3 depende del conteo
+manual de los 21 desconocidos. No se cambia ningún número; se deja la salvedad.
