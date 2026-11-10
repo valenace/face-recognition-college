@@ -36,6 +36,15 @@ class RegistroBiometrico:
             print(f"[AVISO] No se pudo leer la base vectorial: {e}")
             return {}
 
+    def recargar_centroides(self):
+        """Recarga los centroides desde pgvector.
+
+        Se usa después de un enrolamiento, re-enrolamiento o revocación para que
+        el motor de registro no siga comparando contra la lista anterior.
+        """
+        self.db_embeddings = self._cargar_db()
+        return bool(self.db_embeddings)
+
     def _guardar_db(self, clave=None):
         """Persiste en pgvector el último embedding calculado.
 

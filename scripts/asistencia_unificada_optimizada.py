@@ -202,6 +202,42 @@ class MotorAsistencia:
             self._preparar_archivo_csv()
         print("[OK] Sistema de Inferencia Listo.\n")
 
+    def recargar_centroides(self):
+        """Recarga los centroides desde pgvector y reconstruye el índice FAISS.
+
+        Se usa después de un registro, re-registro o revocación para que el motor
+        no siga comparando contra la lista anterior. Devuelve True si recargó.
+        """
+        if not self.usar_bd:
+            return False
+
+        from core.db_config import cargar_centroides
+
+        db = cargar_centroides()
+        if not db:
+            return False
+
+        nombres = list(db.keys())
+        vectores = np.array(
+            [np.asarray(v).reshape(-1) for v in db.values()], dtype="float32"
+        )
+        if vectores.shape[1] != 512:
+            return False
+        normas = np.linalg.norm(vectores, axis=1, keepdims=True)
+        if not np.allclose(normas, 1.0, atol=1e-3):
+            vectores = vectores / normas
+
+        self.db = db
+        self.nombres_lista = nombres
+        self.indice_faiss = faiss.IndexFlatIP(512)
+        self.indice_faiss.add(vectores)
+        # Las anclas y votos apuntan a las filas del índice anterior.
+        self.identidades_ancladas.clear()
+        self.votos_identidad.clear()
+        self.votos_fraude.clear()
+        self.vetos_identidad.clear()
+        return True
+
     def _preparar_archivo_csv(self):
         """Prepara el archivo CSV y carga los registros del día actual para no duplicar."""
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)

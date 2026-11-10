@@ -45,6 +45,7 @@ class ServicioEnVivo:
         self._hilo = None
         self._activo = False
         self._jpeg = None
+        self._recargar = False
         self._estado = {
             "activo": False,
             "fuente": None,
@@ -63,6 +64,7 @@ class ServicioEnVivo:
                 return False, "Ya hay una captura en curso."
             self._activo = True
             self._jpeg = None
+            self._recargar = False
             self._estado = {
                 "activo": True,
                 "fuente": str(fuente),
@@ -120,6 +122,18 @@ class ServicioEnVivo:
         with self._lock:
             return dict(self._estado)
 
+    def solicitar_recarga(self):
+        """Pide al hilo de captura que recargue los centroides."""
+        with self._lock:
+            self._recargar = True
+
+    def _debe_recargar(self):
+        with self._lock:
+            if not self._recargar:
+                return False
+            self._recargar = False
+            return True
+
     # ── Bucle de captura ───────────────────────────────────────────
     def _bucle(self, fuente, sesion_id):
         close_old_connections()
@@ -157,6 +171,9 @@ class ServicioEnVivo:
                 ok, frame = captura.read()
                 if not ok:
                     break
+
+                if self._debe_recargar():
+                    motor.recargar_centroides()
 
                 decisiones = motor.procesar_frame(frame)
 

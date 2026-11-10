@@ -464,3 +464,46 @@ class TestAlias:
         from core.db_config import alias_de
 
         assert alias_de("20230001", "Juan") == "20230001"
+
+
+@pytest.mark.unit
+class TestRecargaCentroides:
+    """El motor puede reconstruir el índice FAISS sin reiniciarse."""
+
+    def test_reconstruye_el_indice_y_limpia_el_estado(self, monkeypatch):
+        import numpy as np
+
+        import core.db_config as db_config
+        from scripts.asistencia_unificada_optimizada import MotorAsistencia
+
+        motor = MotorAsistencia.__new__(MotorAsistencia)
+        motor.usar_bd = True
+        motor.identidades_ancladas = {"x": 1}
+        motor.votos_identidad = {"x": 1}
+        motor.votos_fraude = {"x": 1}
+        motor.vetos_identidad = {"x": 1}
+
+        monkeypatch.setattr(
+            db_config,
+            "cargar_centroides",
+            lambda: {"alexa": np.ones(512), "bob": np.ones(512)},
+        )
+
+        assert motor.recargar_centroides() is True
+        assert motor.indice_faiss.ntotal == 2
+        assert motor.nombres_lista == ["alexa", "bob"]
+        assert motor.identidades_ancladas == {}
+        assert motor.votos_identidad == {}
+        assert motor.votos_fraude == {}
+        assert motor.vetos_identidad == {}
+
+    def test_registro_biometrico_recarga_su_cache(self, monkeypatch):
+        from scripts.registro_unificado import RegistroBiometrico
+
+        registro = RegistroBiometrico.__new__(RegistroBiometrico)
+        monkeypatch.setattr(
+            registro, "_cargar_db", lambda: {"alexa": [1.0] * 512}
+        )
+
+        assert registro.recargar_centroides() is True
+        assert registro.db_embeddings == {"alexa": [1.0] * 512}
